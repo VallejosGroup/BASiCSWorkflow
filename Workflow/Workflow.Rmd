@@ -84,10 +84,15 @@ Due to a strong confounding that is typically observed between mean and over-dis
 ## Operation
 This part of the methods should include the minimal system requirements needed to run the software and an overview of the workflow for the tool for users of the tool.
 
-
 # Analysis of serum grown mESCs (single group example)
 
 Give a short description of the data
+
+```{r}
+library(BASiCS)
+library(data.table)
+
+```
 
 ## Obtaining the data
 
@@ -129,7 +134,35 @@ Shorter description as above
 
 # Differential testing using differentiating cells (two group, droplet-based example)
 
-With the development of droplet-based scRNA-Seq [@Klein2015, @Makosco2015] lead to a strong increase in the number of cells that can be profiled per experiment. With this, large-scale scRNA-Seq datasets have been generated to study development across multiple time-points and capturing musltiple tissues [@Ibarra-Soria2018, @Kernfeld2018]. Here we dscribe the computational analysis of changes in mean expression and transcriptional variability when data is sparse and technical spike-in genes are missing. For this, we compare cells of the presomitic mesoderm and somitic mesoderm using droplet-based scRNA-Seq data [@Ibarra-Soria2018]. 
+With the development of droplet-based scRNA-Seq [@Klein2015, @Makosco2015] lead to a strong increase in the number of cells that can be profiled per experiment. With this, large-scale scRNA-Seq datasets have been generated to study development across multiple time-points and capturing musltiple tissues [@Ibarra-Soria2018, @Kernfeld2018]. Here we dscribe the computational analysis of changes in mean expression and transcriptional variability when data is sparse and technical spike-in genes are missing. For this, we compare cells of the presomitic mesoderm and somitic mesoderm using droplet-based scRNA-Seq data [@Ibarra-Soria2018].
+
+## Obtaining the data
+
+The full dataset is stored under the accession number E-MTAB-6153 on ArrayExpress and can be obtained via:
+
+```{r load-droplet-data, eval = FALSE, echo = FALSE}
+if(!file.exists("rawCounts.zip")){
+  download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.2.zip", 
+                destfile = "rawCounts.zip")
+  unzip(zipfile = "rawCounts.zip", exdir = "./")
+}
+rawCounts <- fread("rawCounts.tsv", sep = "\t", header = FALSE, 
+                   data.table = FALSE, )
+```
+
+*Of note:* The file is 65 mb in size while the unzipped, raw counts measure 873 mb in size.
+
+The cluster labels of the original publication ca be obtained via:
+
+```{r cluster-labels-droplet, eval = FALSE}
+if(!file.exists("cluster_labels.zip")){
+  download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.3.zip", 
+                destfile = "cluster_labels.zip")
+  unzip(zipfile = "cluster_labels.zip", exdir = "./")
+}
+
+cluster_labels <- read.table("cellAnnotation.tsv", sep = "\t", header = TRUE)
+```
 
 
 # Summary 
