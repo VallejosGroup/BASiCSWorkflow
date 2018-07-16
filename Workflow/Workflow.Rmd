@@ -50,12 +50,13 @@ Here we present a computational workflow for differential expression and differe
 # Methods
 
 ## The BASiCS model
+
 The BASiCS package features a hierarchical Bayesian model in which the transcript count of gene $i$ of cell $j$ is represented as a random variable $X_{ij}$. For all technical genes, counts can be modelled as Poisson distributed with a random effect capturing unexplained technical noise:
 
 $$
 \begin{aligned}
-X_{ij}|\mu_i,\nu_j&\sim{}Poisson(\nu_j\mu_i)\\
-\nu_j|s_j,\theta&\sim{}Gamma(1/\theta,1/(s_j\theta))
+X_{ij}|\mu_i,\nu_j&\sim{}\text{Poisson}(\nu_j\mu_i)\\
+\nu_j|s_j,\theta&\sim{}\text{Gamma}(1/\theta,1/(s_j\theta))
 \end{aligned}
 $$
 
@@ -65,8 +66,8 @@ This technical influence effects all biological genes in the same manner. In add
 
 $$
 \begin{aligned}
-X_{ij}|\mu_i,\phi_j,\nu_j,\rho_{ij}&\sim{}Poisson(\phi_j\nu_j\mu_i\rho_{ij})\\
-\rho_{ij}|\delta_i&\sim{}Gamma(1/\delta_i,1/\delta_i)
+X_{ij}|\mu_i,\phi_j,\nu_j,\rho_{ij}&\sim{}\text{Poisson}(\phi_j\nu_j\mu_i\rho_{ij})\\
+\rho_{ij}|\delta_i&\sim{}\text{Gamma}(1/\delta_i,1/\delta_i)
 \end{aligned}
 $$
 
@@ -76,21 +77,43 @@ In the further analysis, $\mu_i$ represents the mean expression and $\delta_i$ t
 
 ### Testing for changes in mean expression and over-dispersion
 
-Differential mean and differential over-dispersion testing is done by computing the tail posterior propabilities of the difference in mean expression or over-dispersion between two conditions ($p$ and $p'$) being larger than an evidence threshold $\tau_0$ or $\omega_0$ [@Bochkina2007, @Vallejos2016]:
+Differential mean and differential over-dispersion testing is done by computing the tail posterior propabilities of the difference in mean expression or over-dispersion between two conditions ($A$ and $B$) being larger than an evidence threshold $\tau_0$ or $\omega_0$ [@Bochkina2007, @Vallejos2016]:
 
 $$
 \begin{aligned}
-\pi_{ipp'}(\tau_0)&\equiv{}P(|log(\mu_i^{(p)}/\mu_i^{(p')})|>\tau_0|D)>\alpha_m\\
-\pi_{ipp'}(\omega_0)&\equiv{}P(|log(\delta_i^{(p)}/\delta_i^{(p')})|>\omega_0|D)>\alpha_d
+&\text{P}(\log(\mu_i^{(A)}/\mu_i^{(B)}))>\tau_0|\text{Data})>\alpha_m\\
+&\text{P}(\log(\delta_i^{(A)}/\delta_i^{(B)}))>\omega_0|\text{Data})>\alpha_d
 \end{aligned}
 $$
 
-If the tail posterior probability is larger than a given propability threshold $\alpha_m$ or $\alpha_d$, the gene is considered to be differentially expressed or differentially over-dispersed [@Vallejos2016]. The evidence threshold is usually fixed \emph{a priori} and the probability threshold is defined to control the expected false discovery rate (EFDR) to (e.g. 5%) [@Newton2004, Vallejos2016].
+If the tail posterior probability is larger than a given propability threshold $\alpha_m$ or $\alpha_d$, the gene is considered to be differentially expressed or differentially over-dispersed [@Vallejos2016]. The evidence threshold is usually fixed \emph{a priori} and the probability threshold is defined to control the expected false discovery rate (EFDR) to (e.g. 10%) [@Newton2004, Vallejos2016].
 
 As described in Vallejos \emph{et al.}, 2016 [@Vallejos2016], estimates of the over-dispersion parameters $\delta_i$ are negatively correlated to mean expression $\mu_i$. This indicates that in homogeneous populations of cells, highly expressed genes tend to be less noisy than lowly expressed genes. Differential over-dispersion testing is therefor confounded by mean expression changes. When assessing changes in over-dispersion $\delta_i$, only genes with no changes in mean expression are considered (see Vallejos \emph{et al.}, 2016 [@Vallejos2016]).
 
 ### Correcting the mean-variability confounding effect
 
+In Eling \emph{et al.}, 2017 [@Eling2017], we extended BASiCS to account for the confounding effect described above. For this purpose, we captured the relationship between mean and over-dispersion parameters by introducing the following joint prior distribution for $(\mu_i, \delta_i)'$: 
+
+$$
+\mu_i \sim \text{log-Normal}\left(0, s^2_{\mu}\right), \hspace{0.5cm}
+\delta_i | \mu_i \sim \text{log-t}_{\eta}\left( \text{f}(\mu_i), \sigma^2 \right).
+$$
+
+The latter is equivalent to the non-linear regression model:
+
+$$
+\log(\delta_i) = \text{f}(\mu_i)+\epsilon_i, \hspace{0.5cm} \epsilon_i \sim{}\text{t}_{\eta}(0,\sigma^2), 
+$$
+
+where $\mbox{f}(\mu_i)$ represents the over-dispersion (on the log-scale) that is predicted by the global trend (across all genes) for a given mean expression $\mu_i$. Therefore, $\epsilon_i$ can be interpreted as a latent gene-specific \emph{residual over-dispersion} parameter. Positive values for $\epsilon_i$ indicate more variation than expected for genes with similar expression level. Similarly, negative values of $\epsilon_i$ suggest less variation than expected.
+
+In line with the probabilistic approach described above, we identify changes in residual over-dispersion between groups of cells as follows. We identified statistically significant differences in residual over-dispersion for those genes where the tail posterior probability of observing a large difference between $\epsilon_i^A$ and $\epsilon_i^B$ exceeds a certain threshold:
+
+$$
+\text{P}(\mid\epsilon_i^{A}-\epsilon_i^{B}\mid >\psi_0 \mid \text{Data} ) >\alpha_R,
+$$
+where $\psi_0 > 0$ defines the minimum tolerance threshold. As a default choice, we assume $\psi_0 = \log_2(1.5) / \log_2(e) \approx 0.41$ which translates into a 50% increase in over-dispersion. The posterior probability threshold $\alpha_R$ is chosen to control the EFDR [@Newton2004]. 
+As a default and to support interpretability of the results, we exclude genes that are not expressed in at least 2 cells per condition from differential variability testing.
 
 ## Operation
 This part of the methods should include the minimal system requirements needed to run the software and an overview of the workflow for the tool for users of the tool.
