@@ -1,5 +1,5 @@
 ---
-title: "A BASiCS workflow for expression variability analysis using scRNAseq data"
+title: "A BASiCS workflow for expression variability analysis using scRNA-Seq data"
 author:
 - name: Nils Eling
   affiliation: 
@@ -41,7 +41,7 @@ output: BiocWorkflowTools::f1000_article
 
 # Introduction
 
-Single-cell RNA-sequencing (scRNA-seq) is the leading technology to study transcriptional heterogeneity in cellular subpopulations that remains undetected in bulk experiments [@Stegle2015]. Its applications range from studying cell types in immunity [@Lonnberg2017] and development [@Ibarra-Soria2018a] to dissecting the mechanism for cell-to-cell variability in expression [@Goolam2016] or understanding differentiation processes [@Proserpio2016]. Within a population of cells, transcript detection differences can be regarded as a mixture of possible causes. Extrinsic biological noise in form of differences in dynamic states (cell size, cell cycle, metabolism, intra- and inter-cellular signalling) and intrinsic noise that effects single promoters (mutations and epigenetic tags) alter gene expression within the cell [@Eberwine2015] while mRNA capture inefficiencies distort the detected transcript counts (technical noise) [@Brennecke2013].
+Single-cell RNA-sequencing (scRNA-Seq) is the leading technology to study transcriptional heterogeneity in cellular subpopulations that remains undetected in bulk experiments [@Stegle2015]. Its applications range from studying cell types in immunity [@Lonnberg2017] and development [@Ibarra-Soria2018a] to dissecting the mechanism for cell-to-cell differences in expression [@Goolam2016] or understanding differentiation processes [@Proserpio2016]. Within a population of cells, transcript detection differences can be regarded as a mixture of possible causes. Extrinsic biological noise in form of differences in dynamic states (cell size, cell cycle, metabolism, intra- and inter-cellular signalling) and intrinsic noise that effects single promoters (mutations and epigenetic tags) alter gene expression within the cell [@Eberwine2015] while mRNA capture inefficiencies distort the detected transcript counts (technical noise) [@Brennecke2013].
 
 To account for high amounts of technical noise that affects scRNA-seq data, external RNA spike-in molecules (ERCCs) [@Rna2005] can be added to the experiment before sequencing. Fitting the variance-mean dependency of the ERCCs allows the statistical detection of genes with higher dispersion in expression than the technical background [@Brennecke2013]. This idea has been expanded to estimate cell specific normalisation factors in parallel within the BASiCS model. Total variability can be decomposed into a technical and biological part by incorporating ERCC reads [@Vallejos2015]. Since the era of bulk RNA sequencing, methods for differential expression testing of transcript counts across two conditions have been developed [@Anders2010;@Robinson2009]. Due to zero inflation in scRNA-seq data, approaches different from bulk RNA-seq analysis were developed for differential expression testing in scRNA-seq data [@Katayama2013;@Kharchenko2014;@Delmans2016]. In contrast to bulk samples, scRNA-seq allows the characterization of gene expression variability across a population of cells. To compare changes in transcriptional variability, the BASiCS package has been expanded to include differential mean expression and differential variability testing. In this setting, BASiCS uses the over-dispersion after correcting for technical noise as proxy for biolgocial variability [@Vallejos2016a]. Due to a strong confounding between mean expression and over-dispersion, BASiCS has been extended to model this relationship an capture residual over-dispersion estimates that show no correlation to mean expression. Therefore, it is possible to test changes in mean expression in parallel to changes in variability [@Eling2017]. 
 
@@ -54,8 +54,8 @@ The BASiCS package features a hierarchical Bayesian model in which the transcrip
 
 $$
 \begin{aligned}
-X_{ij}&|\mu_i,\nu_j\sim{}Poisson(\nu_j\mu_i)\\
-\nu_j&|s_j,\theta\sim{}Gamma(1/\theta,1/(s_j\theta))
+X_{ij}|\mu_i,\nu_j&\sim{}Poisson(\nu_j\mu_i)\\
+\nu_j|s_j,\theta&\sim{}Gamma(1/\theta,1/(s_j\theta))
 \end{aligned}
 $$
 
@@ -65,8 +65,8 @@ This technical influence effects all biological genes in the same manner. In add
 
 $$
 \begin{aligned}
-X_{ij}&|\mu_i,\phi_j,\nu_j,\rho_{ij}\sim{}Poisson(\phi_j\nu_j\mu_i\rho_{ij})\\
-\rho_{ij}&|\delta_i\sim{}Gamma(1/\delta_i,1/\delta_i)
+X_{ij}|\mu_i,\phi_j,\nu_j,\rho_{ij}&\sim{}Poisson(\phi_j\nu_j\mu_i\rho_{ij})\\
+\rho_{ij}|\delta_i&\sim{}Gamma(1/\delta_i,1/\delta_i)
 \end{aligned}
 $$
 
@@ -76,7 +76,18 @@ In the further analysis, $\mu_i$ represents the mean expression and $\delta_i$ t
 
 ### Testing for changes in mean expression and over-dispersion
 
-Due to a strong confounding that is typically observed between mean and over-dispersion for scRNA-seq datasets, 
+Differential mean and differential over-dispersion testing is done by computing the tail posterior propabilities of the difference in mean expression or over-dispersion between two conditions ($p$ and $p'$) being larger than an evidence threshold $\tau_0$ or $\omega_0$ [@Bochkina2007, @Vallejos2016]:
+
+$$
+\begin{aligned}
+\pi_{ipp'}(\tau_0)&\equiv{}P(|log(\mu_i^{(p)}/\mu_i^{(p')})|>\tau_0|D)>\alpha_m\\
+\pi_{ipp'}(\omega_0)&\equiv{}P(|log(\delta_i^{(p)}/\delta_i^{(p')})|>\omega_0|D)>\alpha_d
+\end{aligned}
+$$
+
+If the tail posterior probability is larger than a given propability threshold $\alpha_m$ or $\alpha_d$, the gene is considered to be differentially expressed or differentially over-dispersed [@Vallejos2016]. The evidence threshold is usually fixed \emph{a priori} and the probability threshold is defined to control the expected false discovery rate (EFDR) to (e.g. 5%) [@Newton2004, Vallejos2016].
+
+As described in Vallejos \emph{et al.}, 2016 [@Vallejos2016], estimates of the over-dispersion parameters $\delta_i$ are negatively correlated to mean expression $\mu_i$. This indicates that in homogeneous populations of cells, highly expressed genes tend to be less noisy than lowly expressed genes. Differential over-dispersion testing is therefor confounded by mean expression changes. When assessing changes in over-dispersion $\delta_i$, only genes with no changes in mean expression are considered (see Vallejos \emph{et al.}, 2016 [@Vallejos2016]).
 
 ### Correcting the mean-variability confounding effect
 
