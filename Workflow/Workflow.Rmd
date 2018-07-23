@@ -244,7 +244,7 @@ droplet.sce <- computeSumFactors(droplet.sce,
 droplet.sce <- normalize(droplet.sce)
 ```
 
-Next, we compute a tSNE using the `scater` package. 
+Next, we compute a PCA using the `scater` package. 
 
 ```{r}
 droplet.sce <- runPCA(droplet.sce)
@@ -298,9 +298,16 @@ SM.Data <- newBASiCS_Data(Counts = as.matrix(counts(cur_counts)),
 
 ## Running the MCMC
 
+We next estimate model parameters by running the MCMC cell-type specifically. 
+Due to the high cell number (1150 for the pre-somitic mesoderm and 739 for the somitic mesoderm), we set the number of iterations to 20000. 
+In this case, we used the regression BASiCS model to additionally estimate residual over-dispersion parameters.
+
 ```{r}
+# Presomitic mesoderm cells
 PSM.MCMC <- BASiCS_MCMC(PSM.Data, N = 20000, Thin = 10, Burn = 10000, Regression = TRUE)
 
+# Somitic mesoderm cells
+SM.MCMC <- BASiCS_MCMC(SM.Data, N = 20000, Thin = 10, Burn = 10000, Regression = TRUE)
 ```
 
 # Summary 
