@@ -125,7 +125,9 @@ Give a short description of the data
 ```{r}
 library(BASiCS)
 library(data.table)
-
+library(scater)
+library(SingleCellExperiment)
+library(scran)
 ```
 
 ## Obtaining the data
@@ -183,8 +185,12 @@ if(!file.exists("rawCounts.zip")){
                 destfile = "rawCounts.zip")
   unzip(zipfile = "rawCounts.zip", exdir = "./")
 }
-rawCounts <- fread("rawCounts.tsv", sep = "\t", header = FALSE, 
-                   data.table = FALSE, )
+rawCounts <- as.matrix(fread("rawCounts.tsv", sep = "\t", header = FALSE, 
+                   data.table = FALSE))
+
+# Genenames are stored in first column
+rownames(rawCounts) <- rawCounts[,1]
+rawCounts <- rawCounts[,-1]
 ```
 
 *Of note:* The file is 65 mb in size while the unzipped, raw counts measure 873 mb in size.
@@ -198,9 +204,63 @@ if(!file.exists("cluster_labels.zip")){
   unzip(zipfile = "cluster_labels.zip", exdir = "./")
 }
 
-cluster_labels <- read.table("cellAnnotation.tsv", sep = "\t", header = TRUE)
+cluster_labels <- read.table("cellAnnotation.tsv", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 ```
 
+## Generating SingleCellExperiment object
+
+For pre-processing and visualization purposes, we load the data into a SingleCellExperiment object.
+The metadata will be stored in the `colData` slot.
+
+```{r droplet-sce}
+droplet.sce <- SingleCellExperiment(assays=list(counts=as(rawCounts,"dgCMatrix")))
+rm(rawCounts)
+colData(droplet.sce) <- DataFrame(cluster_labels, subCellType = sub("_.*", "", cluster_labels$cell))
+```
+
+## Select populations of interest and quality control
+
+We select the somitic and pre-somitic mesoderm cells to perform differential testing. 
+Prior to running the MCMC, we want to control for outlying cells and heterogeneous substructure in both cell populations. 
+
+```{r droplet-cell-selection}
+droplet.sce <- droplet.sce[,which(colData(droplet.sce)$cellType == "presomiticMesoderm" | 
+                             colData(droplet.sce)$cellType == "somiticMesoderm")]
+```
+
+For further processing steps, we remove lowly expressed genes.
+
+```{r} 
+droplet.sce <- droplet.sce[Matrix::rowMeans(counts(droplet.sce)) > 0.1,]
+```
+
+To visualize possible sub-structure in the data, we normalize both cell populations using the `scran` package.
+
+```{r}
+droplet.sce <- computeSumFactors(droplet.sce, 
+                                 clusters=colData(droplet.sce)$subCellType)
+droplet.sce <- normalize(droplet.sce)
+```
+
+Next, we compute a tSNE using the `scater` package. 
+
+```{r}
+droplet.sce <- runPCA(droplet.sce)
+```
+
+We can now visualize the different factors stored in the `colData` slot.
+
+```{r}
+plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "subCellType")
+```
+
+The first PC separates the two different cell types while the second PC captures outlying cells.
+We will remove these outliers and the intermediate cell population from down-stream analysis.
+
+```{r}
+droplet.sce <- droplet.sce[,reducedDims(droplet.sce)$PCA[,2] > -5 |
+                             colData(droplet.sce)$subCellType != "presomiticMesoderm.b"]
+```
 
 # Summary 
 This section is required if the paper does not include novel data or analyses.  It allows authors to briefly summarize the key points from the article.
