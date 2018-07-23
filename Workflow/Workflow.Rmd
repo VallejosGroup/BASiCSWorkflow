@@ -115,6 +115,8 @@ $$
 where $\psi_0 > 0$ defines the minimum tolerance threshold. As a default choice, we assume $\psi_0 = \log_2(1.5) / \log_2(e) \approx 0.41$ which translates into a 50% increase in over-dispersion. The posterior probability threshold $\alpha_R$ is chosen to control the EFDR [@Newton2004]. 
 As a default and to support interpretability of the results, we exclude genes that are not expressed in at least 2 cells per condition from differential variability testing.
 
+### Parameter estimation when technical spike-in genes are not available
+
 ## Operation
 This part of the methods should include the minimal system requirements needed to run the software and an overview of the workflow for the tool for users of the tool.
 
@@ -179,7 +181,7 @@ For this, we compare cells of the presomitic mesoderm and somitic mesoderm using
 
 The full dataset is stored under the accession number E-MTAB-6153 on ArrayExpress and can be obtained via:
 
-```{r load-droplet-data, eval = FALSE}
+```{r load-droplet-data}
 if(!file.exists("rawCounts.zip")){
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.2.zip", 
                 destfile = "rawCounts.zip")
@@ -197,7 +199,7 @@ rawCounts <- rawCounts[,-1]
 
 The cluster labels of the original publication ca be obtained via:
 
-```{r cluster-labels-droplet, eval = FALSE}
+```{r cluster-labels-droplet}
 if(!file.exists("cluster_labels.zip")){
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.3.zip", 
                 destfile = "cluster_labels.zip")
@@ -251,6 +253,7 @@ droplet.sce <- runPCA(droplet.sce)
 We can now visualize the different factors stored in the `colData` slot.
 
 ```{r}
+# Cell types identified by clustering
 plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "subCellType")
 ```
 
@@ -260,6 +263,44 @@ We will remove these outliers and the intermediate cell population from down-str
 ```{r}
 droplet.sce <- droplet.sce[,reducedDims(droplet.sce)$PCA[,2] > -5 |
                              colData(droplet.sce)$subCellType != "presomiticMesoderm.b"]
+```
+
+We now collected the cells that we want to process using BASiCS. 
+For this, we will generate the BASiCS data objects.
+
+## Generating BASiCS data objects
+
+Since droplet-based scRNA-Seq data are generated without including technical spike-in genes, BASiCS uses measurement error models to quantify technical variation through replication [@Carrol1998].
+Here, it is crucial to provide batch information to the BASiCS model.
+In the case of the somitic and pre-somoitic mesoderm cells, embryos of two mice have been used to generate the data. 
+Cells isolated from the first embryo were split into two batches and processed independently.
+To capture cell-type extrinsic, biological variation between the two mice, we pool cells from the two batches of the first animal and only considere cells from mouse 1 and mouse 2 as replicates.
+
+```{r BASiCS-droplet-data}
+# Presomitic mesoderm
+cur_counts <- droplet.sce[,colData(droplet.sce)$cellType == "presomiticMesoderm"]
+cur_batch <- round(colData(cur_counts)$sample, digits = 0)
+
+PSM.Data <- newBASiCS_Data(Counts = as.matrix(counts(cur_counts)),
+                           Tech = rep(FALSE, nrow(droplet.sce)),
+                           SpikeInfo = NULL,
+                           BatchInfo = cur_batch)
+
+# Somitic mesoderm
+cur_counts <- droplet.sce[,colData(droplet.sce)$cellType == "somiticMesoderm"]
+cur_batch <- round(colData(cur_counts)$sample, digits = 0)
+
+SM.Data <- newBASiCS_Data(Counts = as.matrix(counts(cur_counts)),
+                           Tech = rep(FALSE, nrow(droplet.sce)),
+                           SpikeInfo = NULL,
+                           BatchInfo = cur_batch)
+```
+
+## Running the MCMC
+
+```{r}
+PSM.MCMC <- BASiCS_MCMC(PSM.Data, N = 20000, Thin = 10, Burn = 10000, Regression = TRUE)
+
 ```
 
 # Summary 
