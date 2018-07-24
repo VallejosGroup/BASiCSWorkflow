@@ -353,7 +353,25 @@ BASiCS_showFit(SM.MCMC)
 
 Both trends display similar behaviour which allows us to compare residual over-dispersion estimates.
 
-##
+## Differential testing 
+
+Next, we test for changes in mean expression and expression variability between the somitic and pre-somitic mesoderm.
+First, we are interested in assessing global changes in expression variability between the two conditions.
+For this, over-dispersion paramters $\delta_i$ for genes that are similarly expressed in both conditions are compared.
+
+```{r}
+Droplet.Test.logFC0 <- BASiCS_TestDE(PSM.MCMC, SM.MCMC, EpsilonM = 0, 
+                                     GroupLabel1 = "PSM", GroupLabel2 = "SM")
+for.plot <- Droplet.Test.logFC0$TableDisp[Droplet.Test.logFC0$TableDisp$ResultDiffDisp != "ExcludedFromTesting",
+                                          c("Disp1", "Disp2")]
+for.plot <- melt(for.plot)
+ggplot(for.plot) + geom_boxplot(aes(variable, log(value))) + 
+  scale_x_discrete(labels = c("PSM", "SM")) + theme_minimal(base_size = 15) + 
+  ylab("log(delta)") + xlab("")
+```
+
+With this analysis, we do not detect global changes in expression variability.
+
 
 # Summary 
 This section is required if the paper does not include novel data or analyses.  It allows authors to briefly summarize the key points from the article.
