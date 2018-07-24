@@ -133,6 +133,17 @@ library(scran)
 library(coda)
 ```
 
+To obtain gene annotations used in thiw workflow, we used the `biomaRt` package.
+We will use the ensemble gene annotations
+
+```{r obtain-gene-symbols}
+library(biomaRt)
+ensembl <- useMart("ensembl")
+ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", mart = ensembl)
+genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
+                   mart = ensembl)
+```
+
 ## Obtaining the data
 
 Use direct download link
@@ -371,6 +382,31 @@ ggplot(for.plot) + geom_boxplot(aes(variable, log(value))) +
 ```
 
 With this analysis, we do not detect global changes in expression variability.
+We next profile changes in mean expression and expression variability on a gene-specific level.
+For this, we use a log$_2$ fold change threshold of 1 for mean expression testing and the default threshold of $\psi_0\approx0.41$ for differential variability testing.
+
+```{r droplet-gene-specific-testing}
+Droplet.Test <- BASiCS_TestDE(PSM.MCMC, SM.MCMC, EpsilonM = 1, 
+                                     GroupLabel1 = "PSM", GroupLabel2 = "SM", 
+                              Plot = FALSE, PlotOffset = FALSE)
+
+# Differential expression
+ggplot(Droplet.Test$TableMean) + 
+  geom_point(aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean)) +
+  theme_minimal(base_size = 15) + 
+  scale_colour_manual(name = "Differential expression", values = c("grey80", "#2166ac", "#b2182b")) +
+  ylab(expression(mu[PSM]/mu[SM])) + xlab(expression(log(mu))) 
+
+# Differential variability
+ggplot(Droplet.Test$TableResDisp) + 
+  geom_point(aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp)) +
+  theme_minimal(base_size = 15) + 
+  scale_colour_manual(name = "Differential variability", values = c("grey80", "#b35806", "#542788")) +
+  ylab(expression(epsilon[PSM]-epsilon[SM])) + xlab(expression(log(mu))) 
+```
+
+
+
 
 
 # Summary 
