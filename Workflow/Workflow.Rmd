@@ -142,6 +142,7 @@ ensembl <- useMart("ensembl")
 ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", mart = ensembl)
 genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
                    mart = ensembl)
+rownames(genenames) <- genenames$ensembl_gene_id
 ```
 
 ## Obtaining the data
@@ -273,7 +274,7 @@ The first PC separates the two different cell types while the second PC captures
 We will remove these outliers and the intermediate cell population from down-stream analysis.
 
 ```{r}
-droplet.sce <- droplet.sce[,reducedDims(droplet.sce)$PCA[,2] > -5 |
+droplet.sce <- droplet.sce[,reducedDims(droplet.sce)$PCA[,2] > -5 &
                              colData(droplet.sce)$subCellType != "presomiticMesoderm.b"]
 ```
 
@@ -381,6 +382,8 @@ ggplot(for.plot) + geom_boxplot(aes(variable, log(value))) +
   ylab("log(delta)") + xlab("")
 ```
 
+### Global changes in variability
+
 With this analysis, we do not detect global changes in expression variability.
 We next profile changes in mean expression and expression variability on a gene-specific level.
 For this, we use a log$_2$ fold change threshold of 1 for mean expression testing and the default threshold of $\psi_0\approx0.41$ for differential variability testing.
@@ -405,6 +408,46 @@ ggplot(Droplet.Test$TableResDisp) +
   ylab(expression(epsilon[PSM]-epsilon[SM])) + xlab(expression(log(mu))) 
 ```
 
+### Differential mean expression
+
+We can now list the genes that were detected as differenitally expressed and differentially variable ordered by their difference in mean expression/variability.
+We first focus on genes that are differentially expressed between the two cell types.
+
+```{r gene-lists-mean}
+# Highly expressed in somitic mesoderm
+SM.mean <- Droplet.Test$TableMean[Droplet.Test$TableMean$ResultDiffMean == "SM+",]
+SM.mean <- SM.mean[order(SM.mean$MeanLog2FC, decreasing = FALSE),]
+SM.mean$Symbol <- genenames[SM.mean$GeneName,2]
+
+# Highly expressed in pre-somitic mesoderm
+PSM.mean <- Droplet.Test$TableMean[Droplet.Test$TableMean$ResultDiffMean == "PSM+",]
+PSM.mean <- PSM.mean[order(PSM.mean$MeanLog2FC, decreasing = TRUE),]
+PSM.mean$Symbol <- genenames[PSM.mean$GeneName,2]
+```
+
+Perform Go analysis here
+
+### Differential variability testing
+
+Next, we are interested in genes that change in variability between the two cell types.
+
+```{r gene-lists-mean}
+# Highly variable in somitic mesoderm
+SM.var <- Droplet.Test$TableResDisp[Droplet.Test$TableResDisp$ResultDiffResDisp == "SM+",]
+SM.var <- SM.var[order(SM.var$ResDispDistance, decreasing = FALSE),]
+SM.var$Symbol <- genenames[SM.var$GeneName,2]
+
+# Highly variable in pre-somitic mesoderm
+PSM.var <- Droplet.Test$TableResDisp[Droplet.Test$TableResDisp$ResultDiffResDisp == "PSM+",]
+PSM.var <- PSM.var[order(PSM.var$ResDispDistance, decreasing = TRUE),]
+PSM.var$Symbol <- genenames[PSM.var$GeneName,2]
+```
+
+We can visualize individual genes using scater.
+
+```{r violin-plots}
+plotExpression(droplet.sce, )
+```
 
 
 
