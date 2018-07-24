@@ -130,6 +130,7 @@ library(data.table)
 library(scater)
 library(SingleCellExperiment)
 library(scran)
+library(coda)
 ```
 
 ## Obtaining the data
@@ -309,6 +310,37 @@ PSM.MCMC <- BASiCS_MCMC(PSM.Data, N = 20000, Thin = 10, Burn = 10000, Regression
 # Somitic mesoderm cells
 SM.MCMC <- BASiCS_MCMC(SM.Data, N = 20000, Thin = 10, Burn = 10000, Regression = TRUE)
 ```
+
+Running these MCMC will take around 8-12 hours on a standard PC (2.6 GHz i5, 8 GB RAM, using 1 core). Here, we provide these chains to download from:
+
+```{r droplet-chain-download}
+PSM.MCMC <- readRDS("../../../Desktop/PSM_MCMC.rds")
+SM.MCMC <- readRDS("../../../Desktop/SM_MCMC.rds")
+```
+
+## Chain convergence
+
+To assess whether the chains converged, we will visualize trace plots for some of the parameters. The `mcmc` function of the `coda` package is suited to generate trace plots for each chain. 
+
+```{r droplet-chain-convergence}
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "mu")[,120]))
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "delta")[,10]))
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "epsilon")[,20]))
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "s")[,90]))
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "nu")[,100]))
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "beta")[,2]))
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "sigma2")))
+
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "mu")[,120]))
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "delta")[,10]))
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "epsilon")[,20]))
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "s")[,90]))
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "nu")[,100]))
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "beta")[,2]))
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "sigma2")))
+```
+
+We observe that the chains for all chosen paramteres converged. 
 
 # Summary 
 This section is required if the paper does not include novel data or analyses.  It allows authors to briefly summarize the key points from the article.
