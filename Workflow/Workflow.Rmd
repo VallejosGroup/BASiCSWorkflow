@@ -318,29 +318,42 @@ PSM.MCMC <- readRDS("../../../Desktop/PSM_MCMC.rds")
 SM.MCMC <- readRDS("../../../Desktop/SM_MCMC.rds")
 ```
 
-## Chain convergence
+## Validating the model fit
 
-To assess whether the chains converged, we will visualize trace plots for some of the parameters. The `mcmc` function of the `coda` package is suited to generate trace plots for each chain. 
+Next, we visualize the results of the MCMC sampler by visualizing the different chains and by plotting the regression trend.
+To assess whether the chains converged, we will visualize trace plots for some of the parameters. 
+The `mcmc` function of the `coda` package is suited to generate trace plots for each chain. 
 
 ```{r droplet-chain-convergence}
-plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "mu")[,120]))
-plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "delta")[,10]))
-plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "epsilon")[,20]))
-plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "s")[,90]))
-plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "nu")[,100]))
-plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "beta")[,2]))
-plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "sigma2")))
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "mu")[,120]), main = "mu[120]")
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "delta")[,10]), main = "delta[10]")
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "epsilon")[,20]), main = "epsilon[20]")
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "s")[,90]), main = "s[90]")
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "nu")[,100]), main = "nu[100]")
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "beta")[,2]), main = "beta[2]")
+plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "sigma2")), main = "sigma2")
 
-plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "mu")[,120]))
-plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "delta")[,10]))
-plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "epsilon")[,20]))
-plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "s")[,90]))
-plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "nu")[,100]))
-plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "beta")[,2]))
-plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "sigma2")))
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "mu")[,120]), main = "mu[120]")
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "delta")[,10]), main = "delta[10]")
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "epsilon")[,20]), main = "epsilon[20]")
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "s")[,90]), main = "s[90]")
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "nu")[,100]), main = "nu[100]")
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "beta")[,2]), main = "beta[2]")
+plot(mcmc(displayChainBASiCS(SM.MCMC, Param = "sigma2")), main = "sigma2")
 ```
 
 We observe that the chains for all chosen paramteres converged. 
+Furthermore, to validate that the model fitted the mean-variability trend correctly, we plot posterior estimates for over-dispersion paramters $\delta_i$ against posterior estimates of mean expression parameters $\mu_i$.
+For this, the `BASiCS_showFit` function can be used.
+
+```{r droplet-regression-trend}
+BASiCS_showFit(PSM.MCMC)
+BASiCS_showFit(SM.MCMC)
+```
+
+Both trends display similar behaviour which allows us to compare residual over-dispersion estimates.
+
+##
 
 # Summary 
 This section is required if the paper does not include novel data or analyses.  It allows authors to briefly summarize the key points from the article.
