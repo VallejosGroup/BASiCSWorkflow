@@ -132,6 +132,8 @@ library(SingleCellExperiment)
 library(scran)
 library(coda)
 library(goseq)
+library(viridis)
+library(pheatmap)
 ```
 
 To obtain gene annotations used in thiw workflow, we used the `biomaRt` package.
@@ -451,8 +453,8 @@ SM.GO = DataFrame(GO.wall[p.adjust(GO.wall$over_represented_pvalue, method="fdr"
 all_genes <- vector(length = nrow(SM.GO))
 for(j in 1:nrow(SM.GO)){
   allegs = get(SM.GO$category[j], org.Mm.egGO2ALLEGS)
-  genes = unique(unlist(mget(allegs, org.Mm.egSYMBOL)))
-  genes = as.character(genes[genes %in% SM.mean$Symbol])
+  genes = unique(unlist(mget(allegs, org.Mm.egENSEMBL)))
+  genes = as.character(genes[genes %in% SM.mean$GeneName])
   all_genes[j] <- paste(genes, collapse = ", ")
 }
 SM.GO$Genes <- all_genes
@@ -474,8 +476,8 @@ PSM.GO = DataFrame(GO.wall[p.adjust(GO.wall$over_represented_pvalue, method="fdr
 all_genes <- vector(length = nrow(PSM.GO))
 for(j in 1:nrow(PSM.GO)){
   allegs = get(PSM.GO$category[j], org.Mm.egGO2ALLEGS)
-  genes = unique(unlist(mget(allegs, org.Mm.egSYMBOL)))
-  genes = as.character(genes[genes %in% PSM.mean$Symbol])
+  genes = unique(unlist(mget(allegs, org.Mm.egENSEMBL)))
+  genes = as.character(genes[genes %in% PSM.mean$GeneName])
   all_genes[j] <- paste(genes, collapse = ", ")
 }
 PSM.GO$Genes <- all_genes
@@ -491,24 +493,52 @@ plotReducedDim(droplet.sce, use_dimred = "PCA",
                colour_by = genenames[genenames$external_gene_name == "Fgf8",1])
 ```
 
+Visualize one category in form of heatmap.
+
+```{r, fig.height=7, fig.width=5}
+for.heatmap <- logcounts(droplet.sce)[unlist(strsplit(PSM.GO[1,"Genes"], ", ")),]
+colnames(for.heatmap) <- colData(droplet.sce)$cell
+
+# Order cells by cell type
+for.heatmap <- for.heatmap[,order(colnames(for.heatmap))]
+
+# Order rows by log2FC
+for.heatmap <- for.heatmap[order(PSM.mean[match(rownames(for.heatmap), PSM.mean$GeneName),"MeanLog2FC"],
+                                 decreasing = TRUE),]
+
+pheatmap(for.heatmap, cluster_cols = FALSE, show_colnames = FALSE, cluster_rows = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "white", "#d6604d", "#67001f"))(100), 
+         labels_row = genenames[rownames(for.heatmap),2],
+         cellheight = 8, fontsize = 7, annotation_col = data.frame(row.names = colnames(for.heatmap),
+                  cellType = sub("_.*", "", colnames(for.heatmap))), scale = "row")
+```
+
 
 ### Differential variability testing
 
 Next, we are interested in genes that change in variability between the two cell types.
+To help interpretion of the result, we will split the genes into four categories.
+These include:
+* More variable in SM, highly expressed in SM
+* More variable in SM, lowly expressed in SM
+* More variable in PSM, highly expressed in PSM
+* More variable in PSM, lowly expressed in SM
 
 ```{r gene-lists-mean}
-# Highly variable in somitic mesoderm
-SM.var <- Droplet.Test$TableResDisp[Droplet.Test$TableResDisp$ResultDiffResDisp == "SM+",]
-SM.var <- SM.var[order(SM.var$ResDispDistance, decreasing = FALSE),]
-SM.var$Symbol <- genenames[SM.var$GeneName,2]
+gene.groups <- data.frame(Genename = Droplet.Test$TableResDisp$GeneName,
+                          Symbol = genenames[Droplet.Test$TableResDisp$GeneName,2],
+                          MeanLog2FC = Droplet.Test$TableMean$MeanLog2FC,
+                          ResDispDistance = Droplet.Test$TableResDisp$ResDispDistance,
+                          Regulation = paste(Droplet.Test$TableMean$ResultDiffMean, 
+                                             Droplet.Test$TableResDisp$ResultDiffResDisp,
+                                             sep = "_"))
+gene.groups <- gene.groups[gene.groups$Regulation %in% 
+                             c("SM+_SM+", "SM+_PSM+", "PSM+_PSM+","PSM+_SM+"),]
 
-# Highly variable in pre-somitic mesoderm
-PSM.var <- Droplet.Test$TableResDisp[Droplet.Test$TableResDisp$ResultDiffResDisp == "PSM+",]
-PSM.var <- PSM.var[order(PSM.var$ResDispDistance, decreasing = TRUE),]
-PSM.var$Symbol <- genenames[PSM.var$GeneName,2]
+gene.groups[gene.groups$Regulation == "SM+_SM+",]
 ```
 
-We can visualize individual genes using scater.
+We can visualize individual genes using `scater`.
 
 ```{r violin-plots}
 # Expression of Meox2 in both conditions
@@ -516,9 +546,6 @@ plotExpression(droplet.sce, features = "ENSMUSG00000036144", x = "cellType",
                colour_by = "cellType")
 plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "ENSMUSG00000036144")
 ```
-
-
-
 
 # Summary 
 This section is required if the paper does not include novel data or analyses.  It allows authors to briefly summarize the key points from the article.
