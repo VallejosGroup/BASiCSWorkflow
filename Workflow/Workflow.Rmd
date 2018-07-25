@@ -131,18 +131,27 @@ library(scater)
 library(SingleCellExperiment)
 library(scran)
 library(coda)
+library(goseq)
 ```
 
 To obtain gene annotations used in thiw workflow, we used the `biomaRt` package.
-We will use the ensemble gene annotations
+We will use the ensemble gene annotations.
 
-```{r obtain-gene-symbols}
+```{r obtain-gene-symbols, message=FALSE}
 library(biomaRt)
 ensembl <- useMart("ensembl")
 ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", mart = ensembl)
 genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
                    mart = ensembl)
 rownames(genenames) <- genenames$ensembl_gene_id
+```
+
+To perform GO analysis, we collect the length for each gene.
+
+```{r obtain-gene-symbols, message=FALSE}
+library(EnsDb.Mmusculus.v79)
+exons.list <- exonsBy(EnsDb.Mmusculus.v79,by="gene")
+genelength <- unlist(lapply(exons.list,function(x){sum(width(reduce(x)))}))
 ```
 
 ## Obtaining the data
@@ -315,7 +324,7 @@ We next estimate model parameters by running the MCMC cell-type specifically.
 Due to the high cell number (1150 for the pre-somitic mesoderm and 739 for the somitic mesoderm), we set the number of iterations to 20000. 
 In this case, we used the regression BASiCS model to additionally estimate residual over-dispersion parameters.
 
-```{r}
+```{r, eval = FALSE}
 # Presomitic mesoderm cells
 PSM.MCMC <- BASiCS_MCMC(PSM.Data, N = 20000, Thin = 10, Burn = 10000, Regression = TRUE)
 
@@ -404,7 +413,7 @@ ggplot(Droplet.Test$TableMean) +
 ggplot(Droplet.Test$TableResDisp) + 
   geom_point(aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp)) +
   theme_minimal(base_size = 15) + 
-  scale_colour_manual(name = "Differential variability", values = c("grey80", "#b35806", "#542788")) +
+  scale_colour_manual(name = "Differential variability", values = c("black", "grey80", "#542788", "#b35806")) +
   ylab(expression(epsilon[PSM]-epsilon[SM])) + xlab(expression(log(mu))) 
 ```
 
@@ -425,7 +434,63 @@ PSM.mean <- PSM.mean[order(PSM.mean$MeanLog2FC, decreasing = TRUE),]
 PSM.mean$Symbol <- genenames[PSM.mean$GeneName,2]
 ```
 
-Perform Go analysis here
+We can next perform GO analysis on up- or down-regulated genes. 
+First, we will perform GO analysis on somitic mesoderm specific genes.
+
+```{r GO-analysis-mean-SM}
+# Collect significan genes as 1 and all other as 0
+SM.genes <- as.integer(Droplet.Test$TableMean$ResultDiffMean == "SM+")
+names(SM.genes) <- Droplet.Test$TableMean$GeneName
+
+# Build a Null distribution by correcting the gene length bias
+pwf = nullp(SM.genes, "mm10", "ensGene", bias.data = genelength[names(SM.genes)])
+GO.wall = goseq(pwf,"mm10","ensGene")
+SM.GO = DataFrame(GO.wall[p.adjust(GO.wall$over_represented_pvalue, method="fdr") < 0.01,])
+
+# Add genenames to the GO categories
+all_genes <- vector(length = nrow(SM.GO))
+for(j in 1:nrow(SM.GO)){
+  allegs = get(SM.GO$category[j], org.Mm.egGO2ALLEGS)
+  genes = unique(unlist(mget(allegs, org.Mm.egSYMBOL)))
+  genes = as.character(genes[genes %in% SM.mean$Symbol])
+  all_genes[j] <- paste(genes, collapse = ", ")
+}
+SM.GO$Genes <- all_genes
+```
+
+Now, we perform GO analysis on pre-somitic mesoderm specific genes
+
+```{r GO-analysis-mean-PSM}
+# Collect significan genes as 1 and all other as 0
+PSM.genes <- as.integer(Droplet.Test$TableMean$ResultDiffMean == "PSM+")
+names(PSM.genes) <- Droplet.Test$TableMean$GeneName
+
+# Build a Null distribution by correcting the gene length bias
+pwf = nullp(PSM.genes, "mm10", "ensGene", bias.data = genelength[names(PSM.genes)])
+GO.wall = goseq(pwf,"mm10","ensGene")
+PSM.GO = DataFrame(GO.wall[p.adjust(GO.wall$over_represented_pvalue, method="fdr") < 0.01,])
+
+# Add genenames to the GO categories
+all_genes <- vector(length = nrow(PSM.GO))
+for(j in 1:nrow(PSM.GO)){
+  allegs = get(PSM.GO$category[j], org.Mm.egGO2ALLEGS)
+  genes = unique(unlist(mget(allegs, org.Mm.egSYMBOL)))
+  genes = as.character(genes[genes %in% PSM.mean$Symbol])
+  all_genes[j] <- paste(genes, collapse = ", ")
+}
+PSM.GO$Genes <- all_genes
+```
+
+To visualize the expression of individual genes, we can use the `scater` package.
+
+```{r violin-plots}
+# Expression of Fgf8 in both conditions
+plotExpression(droplet.sce, features = genenames[genenames$external_gene_name == "Fgf8",1], 
+               x = "cellType", colour_by = "cellType")
+plotReducedDim(droplet.sce, use_dimred = "PCA", 
+               colour_by = genenames[genenames$external_gene_name == "Fgf8",1])
+```
+
 
 ### Differential variability testing
 
@@ -446,7 +511,10 @@ PSM.var$Symbol <- genenames[PSM.var$GeneName,2]
 We can visualize individual genes using scater.
 
 ```{r violin-plots}
-plotExpression(droplet.sce, )
+# Expression of Meox2 in both conditions
+plotExpression(droplet.sce, features = "ENSMUSG00000036144", x = "cellType", 
+               colour_by = "cellType")
+plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "ENSMUSG00000036144")
 ```
 
 
