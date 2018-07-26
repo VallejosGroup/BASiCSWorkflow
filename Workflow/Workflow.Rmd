@@ -544,9 +544,11 @@ We can visualize individual genes using `scater`.
 
 ```{r violin-plots}
 # Expression of Meox2 in both conditions
-plotExpression(droplet.sce, features = "ENSMUSG00000036144", x = "cellType", 
-               colour_by = "cellType") + scale_fill_manual(values = c("coral4", "limegreen"))
-plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "ENSMUSG00000036144", alpha = 1)
+plotExpression(droplet.sce, features = genenames[genenames$external_gene_name == "Meox2",1], 
+               x = "cellType", colour_by = "cellType") + 
+  scale_fill_manual(values = c("coral4", "limegreen"))
+plotReducedDim(droplet.sce, use_dimred = "PCA", 
+               colour_by = genenames[genenames$external_gene_name == "Meox2",1], alpha = 1)
 ```
 
 # Summary 
