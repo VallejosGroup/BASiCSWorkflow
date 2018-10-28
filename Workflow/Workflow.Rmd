@@ -151,17 +151,22 @@ To support interpretability of the results, we exclude genes that are not expres
 
 ### Parameter estimation when technical spike-in genes are not available
 
-Write the model when spike-ins are not available.
+Explain the model when spike-ins are not available.
 
 ## Operation
 
 This part of the methods should include the minimal system requirements needed to run the software and an overview of the workflow for the tool for users of the tool.
 
-# Analysis of serum grown mESCs (single group example)
+## Prerequisites 
 
-Give a short description of the data
+*Move this section into the code once the workflow is done*
 
-```{r}
+*And introduce each package that was used*
+
+The following R packages and data objects are needed throughout the workflow.
+We introduce them at this point as convinience and will link to this section whenever these objects are used.
+
+```{r libraries}
 library(BASiCS)
 library(data.table)
 library(scater)
@@ -175,7 +180,7 @@ library(ggplot2)
 ```
 
 To obtain gene annotations used in thiw workflow, we used the `biomaRt` package.
-We will use the ensemble gene annotations.
+The **Mus musculus** gene ids and gene names can be directly accessed using the following code: 
 
 ```{r obtain-gene-symbols, message=FALSE}
 library(biomaRt)
@@ -186,13 +191,22 @@ genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
 rownames(genenames) <- genenames$ensembl_gene_id
 ```
 
-To perform GO analysis, we collect the length for each gene.
+To perform gene ontology (GO) analysis, we collect the length for each gene.
+This can be extracted from the `EnsDb.Mmusculus.v79` package.
 
 ```{r, message=FALSE}
 library(EnsDb.Mmusculus.v79)
 exons.list <- exonsBy(EnsDb.Mmusculus.v79,by="gene")
 genelength <- unlist(lapply(exons.list,function(x){sum(width(reduce(x)))}))
 ```
+
+# Analysis of serum grown mESCs (single group example)
+
+In the first case, we use scRNA-Seq data of mouse embryonic stem cells (mESCs) [@Grun2014] which were processed using the Cel-Seq protocol [@Hashimshony2012] while labelling individual transcripts using unique molecular identifiers (UMIs, [@Kivioja2011]). 
+Cells grown in the 2i medium were sequenced to derive a method to accurately quantify technical and biological variability across the population on mESCs. 
+Furthermore, Grün **et al.** sequenced serum grown mESCs to assess differences in expression variability between cells grown in 2i or serum conditions. 
+This dataset contains ERCC spike-in genes [@Rna2005] which BASiCS uses to quantify technical noise.
+In this section, we will use mESCs grown in serum conditions to dissect their heterogeneity in expression.
 
 ## Obtaining the data
 
