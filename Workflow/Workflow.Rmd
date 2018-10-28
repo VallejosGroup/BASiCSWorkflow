@@ -210,7 +210,17 @@ In this section, we will use mESCs grown in serum conditions to dissect their he
 
 ## Obtaining the data
 
-Use direct download link
+The full dataset can be obtain from Gene Expression Omnibus (GEO) under the accessor: GSE54695
+
+```{r Grun-data}
+if(!file.exists("Grun_rawCounts.zip")){
+  download.file("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE54695", 
+                destfile = "Grun_rawCounts.zip")
+  unzip(zipfile = "Grun_rawCounts.zip", exdir = "./")
+}
+rawCounts <- as.matrix(fread("Grun_rawCounts.tsv", sep = "\t", header = FALSE, 
+                   data.table = FALSE))
+```
 
 ## Filtering the data
 
