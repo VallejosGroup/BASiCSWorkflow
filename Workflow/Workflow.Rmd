@@ -25,7 +25,7 @@ We will first introduce simple analyses to find highly and lowly variable genes,
 The later allows the detection of global as well as gene-specific changes in variability and we exemplify a comparison that reveals heterogeneously induced genes hinting at possible, early cell fate commitment processes.  
 
 #Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.
-keywords: Please list up to eight keywords to help readers interested in your article find it more easily.
+keywords: Single-cell RNA sequencing, expression variability, noise, differential expression testing
 bibliography: BASiCSworkflow.bib
 output: BiocWorkflowTools::f1000_article
 #output:
