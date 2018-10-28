@@ -14,7 +14,17 @@ author:
   - The Alan Turing Institute, British Library, 96 Euston Road, London NW1 2DB, UK
   - Department of Statistical Science, University College London, 1-19 Torrington Place, London WC1E 7HB, UK
   email: INSERT.EMAIL
-abstract: Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.
+abstract: Heterogeneity in cellular responses is an inherent feature of biological systems. 
+Stochastic and deterministic differences between individual cells on the transcriptional level introduce expression variability in cell populations. 
+Single-cell RNA sequencing (scRNA-Seq) has been introduced to quantify expression variability across hundreds to thousands of cells.
+While scRNA-Seq is prone to high degrees of technical noise, the addition of external spike-in RNA or repetitions of experiments can be used to quantify technical noise.
+Here, we introduce a computational workflow to quantify and test for changes in biological variability in gene expression from scRNA-Seq data using the BASiCS package. 
+The outlined analysis highlights possible confounding effects on variability measures, such as expression level and technical noise, and gives detailed analysis how to avoid these confounders.
+Furthermore, we exemplify analsyses of a dataset containing spike-in genes, such as data generated using the Fluidigm\@ C1 system, as well as a droplet-based dataset for which reads of spike-in RNA is not available.
+We will first introduce simple analyses to find highly and lowly variable genes, decompose the overall variability into a technical and biological part while later on focus on testing changes in mean expression and expression variability.
+The later allows the detection of global as well as gene-specific changes in variability and we exemplify a comparison that reveals heterogeneously induced genes hinting at possible, early cell fate commitment processes.  
+
+#Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.
 keywords: Please list up to eight keywords to help readers interested in your article find it more easily.
 bibliography: BASiCSworkflow.bib
 output: BiocWorkflowTools::f1000_article
