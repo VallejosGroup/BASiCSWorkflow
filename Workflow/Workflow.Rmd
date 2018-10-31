@@ -168,7 +168,6 @@ We introduce them at this point as convinience and will link to this section whe
 
 ```{r libraries}
 library(BASiCS)
-library(data.table)
 library(scater)
 library(SingleCellExperiment)
 library(scran)
@@ -208,33 +207,83 @@ Furthermore, Grün **et al.** sequenced serum grown mESCs to assess differences 
 This dataset contains ERCC spike-in genes [@Rna2005] which BASiCS uses to quantify technical noise.
 In this section, we will use mESCs grown in serum conditions to dissect their heterogeneity in expression.
 
-## Obtaining the data
+## Running BASiCS
 
-The full dataset can be obtain from Gene Expression Omnibus (GEO) under the accessor: GSE54695
+In the first insatnce, the data needs to be processed and filtered before running the BASiCS model.
+For this, a counts matrix needs to be generated and the added spike-in counts need to be  calculated.
+
+### Obtaining the data
+
+The full dataset can be obtain from Gene Expression Omnibus (GEO) under the accessor: GSE54695.
 
 ```{r Grun-data}
-if(!file.exists("Grun_rawCounts.zip")){
-  download.file("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE54695", 
-                destfile = "Grun_rawCounts.zip")
-  unzip(zipfile = "Grun_rawCounts.zip", exdir = "./")
+library(R.utils)
+library(data.table)
+if(!file.exists("mESC_raw.txt")){
+  download.file("ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE54nnn/GSE54695/suppl/GSE54695_data_transcript_counts.txt.gz", 
+                destfile = "mESC_raw.txt.gz")
+  gunzip("mESC_raw.txt.gz")
 }
-rawCounts <- as.matrix(fread("Grun_rawCounts.tsv", sep = "\t", header = FALSE, 
+mESC.raw <- as.matrix(fread("mESC_raw.txt", sep = "\t", header = TRUE, 
                    data.table = FALSE))
 ```
 
-## Filtering the data
+### Preprocessing the data
 
-## Caluclating the molecule count for ERCC spike ins
+This section generates the count matrix and collects metadata such as the batch information and growth condition.
+The genenames are stored in the first column of the matrix. 
+
+```{r Grun_preprocessing}
+# Store genenames
+rownames(mESC.raw) <- mESC.raw$GENENAME
+input <- input[,-1]
+
+# Batch info
+Batch <- c(rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40))
+
+# Generate raw UMI counts
+UMICount <- function(MoleculeCount, UMILength)
+{
+  # MoleculeCount is the normalized count
+  M = 4^UMILength
+  UMICount = M*(1-exp(-MoleculeCount/M))
+  return(UMICount)
+}
+CountsUMI = round(UMICount(input, 4))
+
+# Quality control - remove low Nanog cells
+Pou5f1.per.cell <- as.numeric(CountsUMI["Pou5f1",])
+
+CountsUMI_1 <- CountsUMI[,Pou5f1.per.cell >= 10]
+CountsUMI.bio <- CountsUMI_1[!grepl("ERCC", rownames(CountsUMI_1)), ]
+ERCC <- CountsUMI_1[grepl("ERCC", rownames(CountsUMI_1)), ]
+
+CountsUMI.bio <- CountsUMI.bio[rowMeans(CountsUMI.bio) > 0.5,]
+ERCC <- ERCC[rowMeans(ERCC) > 0,]
+Batch <- Batch[Pou5f1.per.cell >= 10]
+
+Data <- rbind(CountsUMI.bio, ERCC)
+colnames(Data) <- paste(sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[1]}),
+                        sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[2]}),
+                        Batch, "_", 
+                        sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[3]}), sep = "")
+```
+
+### Filtering the data
+
+### Caluclating the molecule count for ERCC spike ins
 
 Use one of the condition in Grun
 
-## Creating the BASiCS Data object
+### Creating the BASiCS Data object
 
-## Running the MCMC
+### Running the MCMC
 
 ## Downstream analysis
 
 ### Lowly-highly variable genes
+
+### Comparison to DM (scran package)
 
 # Differential testing using mESCs in two conditions (two group example)
 
