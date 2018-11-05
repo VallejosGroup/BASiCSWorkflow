@@ -277,8 +277,8 @@ Batch <- rep(rep(c(1,2), each = 40), 4)
 
 ### Filtering the data
 
-The filtering is done based on the filtering strategy in the original publication (see [Sample GSM1322278](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1322278)).
-Furthermore, samples with less than 10 transcripts of Oct4 (Pou5f1) were removed to exclude differentiating cells or samples with low sequencing efficiency.
+It is crucial to remove any unwanted variation in the data before running the BASiCS model. 
+As in the original publication  (see [Sample GSM1322278](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1322278)), we removed samples with less than 10 transcripts of Oct4 (Pou5f1) to exclude differentiating cells or samples with low sequencing efficiency.
 
 ```{r QC}
 # Quality control - remove low Oct4 cells
@@ -288,9 +288,51 @@ CountsUMI <- CountsUMI[,as.numeric(CountsUMI["Pou5f1",]) >= 10]
 Batch <- Batch[Pou5f1.per.cell >= 10]
 ```
 
-### Caluclating the molecule count for ERCC spike ins
+### Calculating the molecule count for spike-in genes
 
-Use one of the condition in Grun
+BASiCS requires the actual molecule count of the spike-in genes that were added per well.
+For this, a table of the spike-in concentrations can be downloaded from: [ERCC spike-in](https://www.thermofisher.com/order/catalog/product/4456740).
+The file contains the concentrations of 2 ERCC spike-in mixes.
+The authors added 1\mu{}l of a 1:2,500,000 dilution of the ERCC mix 1 into each well.
+
+```{r spike-in_download}
+# Read in the spike-in concentrations
+ERCC.conc <- read.table(url("https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt"), 
+                         sep = "\t", header = TRUE)
+```
+
+The concentration is given in units of attomoles per \mu{}l. 
+We will first calculate the concentration in moles per \mu{}l
+
+```{r}
+# Moles per micro litre
+ERCC.mmul <- ERCC.conc$concentration.in.Mix.1..attomoles.ul.*(10^(-18))
+```
+
+From this, we can calculate the molecule count per \mu{}l.
+1 mole is equals to 6.02214076*(10^23) molecules.
+
+```{r}
+ERCC.countmul <- ERCC.mmul*(6.02214076*(10^23))
+```
+
+The authors diluted this mix by 1:2,500,000.
+The actual molecule number of spike-ins can therefore be calculated per well:
+
+```{r}
+ERCC.count <- ERCC.countmul/2500000
+```
+
+We can now use the molecule count to prepare the BASiCS data object.
+
+```{r spike-info}
+# Prepare the data.frame
+ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
+                         count =ERCC.count)
+
+# Select the ERCC spike-ins of the dataset
+SpikeInput <- ERCC.count[rownames(CountsUMI)[grepl("ERCC", rownames(CountsUMI))],]
+```
 
 ### Creating the BASiCS Data object
 
