@@ -207,8 +207,6 @@ Furthermore, Grün **et al.** sequenced serum grown mESCs to assess differences 
 This dataset contains ERCC spike-in genes [@Rna2005] which BASiCS uses to quantify technical noise.
 In this section, we will use mESCs grown in serum conditions to dissect their heterogeneity in expression.
 
-## Running BASiCS
-
 In the first insatnce, the data needs to be processed and filtered before running the BASiCS model.
 For this, a counts matrix needs to be generated and the added spike-in counts need to be  calculated.
 
@@ -227,7 +225,7 @@ if(!file.exists("mESC_raw.txt")){
 mESC.raw <- read.table("mESC_raw.txt", sep = "\t", header = TRUE)
 ```
 
-### Preprocessing the data
+## Preprocessing the data
 
 This section generates the count matrix and collects metadata such as the batch information and growth condition.
 The genenames are stored in the first column of the matrix. 
@@ -275,19 +273,6 @@ This information is stored in a batch vector.
 Batch <- rep(rep(c(1,2), each = 40), 4)
 ```
 
-### Filtering the data
-
-It is crucial to remove any unwanted variation in the data before running the BASiCS model. 
-As in the original publication  (see [Sample GSM1322278](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1322278)), we removed samples with less than 10 transcripts of Oct4 (Pou5f1) to exclude differentiating cells or samples with low sequencing efficiency.
-
-```{r QC}
-# Quality control - remove low Oct4 cells
-Pou5f1.per.cell <- as.numeric(CountsUMI["Pou5f1",])
-
-CountsUMI <- CountsUMI[,as.numeric(CountsUMI["Pou5f1",]) >= 10]
-Batch <- Batch[Pou5f1.per.cell >= 10]
-```
-
 ### Calculating the molecule count for spike-in genes
 
 BASiCS requires the actual molecule count of the spike-in genes that were added per well.
@@ -324,21 +309,86 @@ ERCC.count <- ERCC.countmul/2500000
 ```
 
 We can now use the molecule count to prepare the BASiCS data object.
+To use this object within the `SingleCellExperiment` object that BASiCS requires, the first column must contain the names associated to the spike-in genes. 
+The second column must contain the input number of molecules for the spike-in genes (amount per well).
 
 ```{r spike-info}
 # Prepare the data.frame
 ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
+                         Names = ERCC.conc$ERCC.ID,
                          count =ERCC.count)
-
-# Select the ERCC spike-ins of the dataset
-SpikeInput <- ERCC.count[rownames(CountsUMI)[grepl("ERCC", rownames(CountsUMI))],]
 ```
 
-### Creating the BASiCS Data object
+## Creating the BASiCS Data object
+
+In this section, we focus on the cells grown in serum condition to dissect their transcriptional heterogeneity.
+
+```{r serum-cells}
+# Select serum cells grown in serum media
+serum.cells <- CountsUMI[,grepl("SC_serum", colnames(CountsUMI))]
+
+# Select the serum batch vector
+serum.batch <- Batch[grepl("SC_serum", colnames(CountsUMI))]
+```
+
+The BASiCS Data object is an object of the class `SingleCellExperiment` [@Lun2018SCE].
+The `newBASiCS_Data` function can be used to create the required SingleCellExperiment object based on the following information:
+
+* Counts: a matrix of raw expression counts with dimensions $q$ times $n$ where $q$ is the number of genes (technical + biological) and $n$ is the number of cells. Gene names must be stored as row names of the counts matrix.
+
+* Tech: a vector of TRUE/FALSE elements with length $q$. If Tech[i] = FALSE the gene i is biological; otherwise the gene is spike-in. This vector must be specified in the same order of genes as in the counts matrix.
+
+* SpikeInfo: a data.frame with $q-q_0$ rows where $q0$ is the number of biological genes. First column must contain the names associated to the spike-in genes. The second column must contain the input number of molecules for the spike-in genes (amount per cell).
+
+* BatchInfo (optional argument): vector of length $n$ to indicate batch structure in situations where cells have been processed using multiple batches.
+
+### Filtering the data
+
+It is crucial to remove any unwanted variation in the data before running the BASiCS model. 
+As in the original publication  (see [Sample GSM1322278](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1322278)), we removed samples with less than 10 transcripts of Oct4 (Pou5f1) to exclude differentiating cells or samples with low sequencing efficiency.
+Furthermore, we remove genes that are not expressed with at least a single transcript in at least two cells.
+
+```{r QC}
+# Quality control - remove low Oct4 cells
+Pou5f1.per.cell <- as.numeric(serum.cells["Pou5f1",])
+
+serum.cells <- serum.cells[,Pou5f1.per.cell >= 10]
+serum.batch <- serum.batch[Pou5f1.per.cell >= 10]
+
+# Remove lowly expressed genes
+no.cells <- apply(serum.cells, 1, function(n){sum(n >= 1)})
+serum.cells <- serum.cells[no.cells >= 2,]
+```
+
+Using these filtered counts, we can now generate the BASiCS Data object.
+For this, the `newBASiCS_Data` function can be used. 
+If spike-in genes are not available, it is quicker to generate the `SingleCellExperiment`
+object from scratch.
+
+```{r serum-cells}
+# Select the ERCC spike-ins of the dataset
+SpikeInput <- ERCC.count[rownames(serum.cells)[grepl("ERCC", rownames(serum.cells))],]
+
+Data.serum <- newBASiCS_Data(Counts = serum.cells, 
+                       Tech = grepl("ERCC", rownames(serum.cells)), 
+                       SpikeInfo = SpikeInput, 
+                       BatchInfo = serum.batch)
+Data.serum
+```
 
 ### Running the MCMC
 
+```{r MCMC}
+MCMC.serum <- BASiCS_MCMC(Data = Data.serum, 
+                          N=40000, Thin = 20, Burn = 20000, 
+                          Regression = TRUE)
+```
+
 ## Downstream analysis
+
+### Normalization
+
+### Variance decomposition
 
 ### Lowly-highly variable genes
 
@@ -695,7 +745,7 @@ These include:
 * More variable in PSM, highly expressed in PSM
 * More variable in PSM, lowly expressed in SM
 
-```{r gene-lists-mean}
+```{r}
 gene.groups <- data.frame(Genename = Droplet.Test$TableResDisp$GeneName,
                           Symbol = genenames[Droplet.Test$TableResDisp$GeneName,2],
                           MeanLog2FC = Droplet.Test$TableMean$MeanLog2FC,
