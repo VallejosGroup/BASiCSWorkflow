@@ -239,6 +239,7 @@ mESC.raw <- mESC.raw[,-1]
 ```
 
 The rows contain biological and technical genes while the columns contain cells or pooled RNA of different conditions.
+All genes that were not expressed with at least a single transcript in at least two cells and two pooled RNA samples were discared before creating the final counts matrix.
 Columns that contain individual cells are labeled with `SC` while columns that contain pooled RNA are labeled with `RNA`. 
 The two conditions are labeled as `2i` and `serum`.
 
@@ -266,35 +267,26 @@ UMICount <- function(MoleculeCount, UMILength)
 CountsUMI = round(UMICount(mESC.raw, 4))
 ```
 
-The data were processed in 2 batches per condition, each containing 40 cells.
+The data were processed in 2 batches per condition, each containing 40 cells or pooled RNA samples.
 This information is stored in a batch vector.
 
 ```{r batches}
 # Batch info
-Batch <- c(rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40))
+Batch <- rep(rep(c(1,2), each = 40), 4)
 ```
 
 ### Filtering the data
 
+The filtering is done based on the filtering strategy in the original publication (see [Sample GSM1322278](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1322278)).
+Furthermore, samples with less than 10 transcripts of Oct4 (Pou5f1) were removed to exclude differentiating cells or samples with low sequencing efficiency.
+
 ```{r QC}
-# Quality control - remove low Nanog cells
+# Quality control - remove low Oct4 cells
 Pou5f1.per.cell <- as.numeric(CountsUMI["Pou5f1",])
 
-CountsUMI_1 <- CountsUMI[,Pou5f1.per.cell >= 10]
-CountsUMI.bio <- CountsUMI_1[!grepl("ERCC", rownames(CountsUMI_1)), ]
-ERCC <- CountsUMI_1[grepl("ERCC", rownames(CountsUMI_1)), ]
-
-CountsUMI.bio <- CountsUMI.bio[rowMeans(CountsUMI.bio) > 0.5,]
-ERCC <- ERCC[rowMeans(ERCC) > 0,]
+CountsUMI <- CountsUMI[,as.numeric(CountsUMI["Pou5f1",]) >= 10]
 Batch <- Batch[Pou5f1.per.cell >= 10]
-
-Data <- rbind(CountsUMI.bio, ERCC)
-colnames(Data) <- paste(sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[1]}),
-                        sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[2]}),
-                        Batch, "_", 
-                        sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[3]}), sep = "")
 ```
-
 
 ### Caluclating the molecule count for ERCC spike ins
 
