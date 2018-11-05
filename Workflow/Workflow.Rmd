@@ -224,8 +224,7 @@ if(!file.exists("mESC_raw.txt")){
                 destfile = "mESC_raw.txt.gz")
   gunzip("mESC_raw.txt.gz")
 }
-mESC.raw <- as.matrix(fread("mESC_raw.txt", sep = "\t", header = TRUE, 
-                   data.table = FALSE))
+mESC.raw <- read.table("mESC_raw.txt", sep = "\t", header = TRUE)
 ```
 
 ### Preprocessing the data
@@ -236,11 +235,26 @@ The genenames are stored in the first column of the matrix.
 ```{r Grun_preprocessing}
 # Store genenames
 rownames(mESC.raw) <- mESC.raw$GENENAME
-input <- input[,-1]
+mESC.raw <- mESC.raw[,-1]
+```
 
-# Batch info
-Batch <- c(rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40))
+The rows contain biological and technical genes while the columns contain cells or pooled RNA of different conditions.
+Columns that contain individual cells are labeled with `SC` while columns that contain pooled RNA are labeled with `RNA`. 
+The two conditions are labeled as `2i` and `serum`.
 
+```{r data-overview}
+# Biological and technical gene names
+head(rownames(mESC.raw))
+which(grepl("ERCC", rownames(mESC.raw)))
+
+# Cell names
+colnames(mESC.raw)
+```
+
+The counts matrix consists of transcript counts that were calculated based on binomial statistics from UMI counts (see [Sample GSM1322278](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1322278)).
+To convert the transcript counts to raw UMI counts, the following function can be used.
+
+```{r UMI-conversion}
 # Generate raw UMI counts
 UMICount <- function(MoleculeCount, UMILength)
 {
@@ -249,8 +263,20 @@ UMICount <- function(MoleculeCount, UMILength)
   UMICount = M*(1-exp(-MoleculeCount/M))
   return(UMICount)
 }
-CountsUMI = round(UMICount(input, 4))
+CountsUMI = round(UMICount(mESC.raw, 4))
+```
 
+The data were processed in 2 batches per condition, each containing 40 cells.
+This information is stored in a batch vector.
+
+```{r batches}
+# Batch info
+Batch <- c(rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40))
+```
+
+### Filtering the data
+
+```{r QC}
 # Quality control - remove low Nanog cells
 Pou5f1.per.cell <- as.numeric(CountsUMI["Pou5f1",])
 
@@ -269,7 +295,6 @@ colnames(Data) <- paste(sapply(colnames(Data), function(n){unlist(strsplit(n, "_
                         sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[3]}), sep = "")
 ```
 
-### Filtering the data
 
 ### Caluclating the molecule count for ERCC spike ins
 
