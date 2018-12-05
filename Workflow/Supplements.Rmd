@@ -1,0 +1,123 @@
+---
+title: "A BASiCS workflow for expression variability analysis using scRNA-Seq data"
+author:
+- name: Nils Eling
+  affiliation: 
+  - &EBI European Molecular Biology Laboratory, European Bioinformatics Institute (EMBL-EBI), Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+  - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+- name: John C. Marioni
+  affiliation: 
+  - *EBI
+  - *CRUK
+- name: Catalina A. Vallejos
+  affiliation: 
+  - The Alan Turing Institute, British Library, 96 Euston Road, London NW1 2DB, UK
+  - Department of Statistical Science, University College London, 1-19 Torrington Place, London WC1E 7HB, UK
+  email: INSERT.EMAIL
+abstract: Heterogeneity in cellular responses is an inherent feature of biological systems. Stochastic and deterministic differences between individual cells on the transcriptional level introduce expression variability in cell populations. Single-cell RNA sequencing (scRNA-Seq) has been introduced to quantify expression variability across hundreds to thousands of cells.While scRNA-Seq is prone to high degrees of technical noise, the addition of external spike-in RNA or repetitions of experiments can be used to quantify technical noise. Here, we introduce a computational workflow to quantify and test for changes in biological variability in gene expression from scRNA-Seq data using the BASiCS package. The outlined analysis highlights possible confounding effects on variability measures, such as expression level and technical noise, and gives detailed analysis how to avoid these confounders. Furthermore, we exemplify analsyses of a dataset containing spike-in genes, such as data generated using the Fluidigm\@ C1 system, as well as a droplet-based dataset for which reads of spike-in RNA is not available. We will first introduce simple analyses to find highly and lowly variable genes, decompose the overall variability into a technical and biological part while later on focus on testing changes in mean expression and expression variability. The later allows the detection of global as well as gene-specific changes in variability and we exemplify a comparison that reveals heterogeneously induced genes hinting at possible, early cell fate commitment processes.  
+
+#Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.
+keywords: Single-cell RNA sequencing, expression variability, noise, differential expression testing
+bibliography: BASiCSworkflow.bib
+output: BiocWorkflowTools::f1000_article
+#output:
+# BiocStyle::html_document:
+#   fig_caption: true
+#   self_contained: yes
+#vignette: >
+#  %\VignetteIndexEntry{A BASiCS workflow for expression variability analysis using scRNAseq data}
+#  %\VignetteEngine{knitr::rmarkdown}
+#  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup_knitr, include = FALSE, cache = FALSE}
+#library(BiocStyle)
+## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
+#on.bioc <- TRUE
+#library(knitr)
+# Use fig.width = 7 for html and fig.width = 6 for pdf
+#fig.width <- ifelse(on.bioc, 7, 6)
+#knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE,
+#  cache.path = "cache/", fig.path = "figure/", fig.width = fig.width)
+```
+
+# Methods
+
+## The BASiCS model
+
+The BASiCS package features a hierarchical Bayesian model in which the transcript count of gene $i$ of cell $j$ is represented as a random variable $X_{ij}$. 
+For all technical genes, counts can be modelled as Poisson distributed with a random effect capturing unexplained technical noise:
+
+$$
+\begin{aligned}
+X_{ij}|\mu_i,\nu_j&\sim{}\text{Poisson}(\nu_j\mu_i)\\
+\nu_j|s_j,\theta&\sim{}\text{Gamma}(1/\theta,1/(s_j\theta))
+\end{aligned}
+$$
+
+where $\mu_i$ explains the gene's mean expression, $\nu_j$ the technical effect dominated by the mRNA capture efficiency $s_j$ and the unexplained technical noise parameter $\theta$. 
+
+This technical influence effects all biological genes in the same manner. 
+In addition to technical variations, cell-to-cell differences of biological gene expression can be cause by biological processes as explained above. 
+To model an additional random effect that captures biological cell-to-cell variability, the random variable $X_{ij}$ is modelled as: 
+
+$$
+\begin{aligned}
+X_{ij}|\mu_i,\phi_j,\nu_j,\rho_{ij}&\sim{}\text{Poisson}(\phi_j\nu_j\mu_i\rho_{ij})\\
+\rho_{ij}|\delta_i&\sim{}\text{Gamma}(1/\delta_i,1/\delta_i)
+\end{aligned}
+$$
+
+where $\phi_j$ is the cell-specifc size factor and $\rho_{ij}$ the biological random effect incoroporating the over-dispersion hyper-parameter $\delta_i$.
+
+In the further analysis, $\mu_i$ represents the mean expression and $\delta_i$ the biological over-dispersion of each gene.
+
+### Testing for changes in mean expression and over-dispersion
+
+Differential mean and differential over-dispersion testing is done by computing the tail posterior propabilities of the difference in mean expression or over-dispersion between two conditions ($A$ and $B$) being larger than an evidence threshold $\tau_0$ or $\omega_0$ [@Bochkina2007, @Vallejos2016]:
+
+$$
+\begin{aligned}
+&\text{P}(\log(\mu_i^{(A)}/\mu_i^{(B)}))>\tau_0|\text{Data})>\alpha_m\\
+&\text{P}(\log(\delta_i^{(A)}/\delta_i^{(B)}))>\omega_0|\text{Data})>\alpha_d
+\end{aligned}
+$$
+
+If the tail posterior probability is larger than a given propability threshold $\alpha_m$ or $\alpha_d$, the gene is considered to be differentially expressed or differentially over-dispersed [@Vallejos2016]. 
+The evidence threshold is usually fixed \emph{a priori} and the probability threshold is defined to control the expected false discovery rate (EFDR) to (e.g. 10%) [@Newton2004, Vallejos2016].
+
+As described in Vallejos \emph{et al.}, 2016 [@Vallejos2016], estimates of the over-dispersion parameters $\delta_i$ are negatively correlated to mean expression $\mu_i$. 
+This indicates that in homogeneous populations of cells, highly expressed genes tend to be less noisy than lowly expressed genes. 
+Differential over-dispersion testing is therefor confounded by mean expression changes. 
+When assessing changes in over-dispersion $\delta_i$, only genes with no changes in mean expression are considered (see Vallejos \emph{et al.}, 2016 [@Vallejos2016]).
+
+### Correcting the mean-variability confounding effect
+
+In Eling \emph{et al.}, 2018 [@Eling2018], we extended BASiCS to account for the confounding effect between mean expression and expression variability. 
+For this purpose, we captured the relationship between mean and over-dispersion parameters by introducing the following joint prior distribution for $(\mu_i, \delta_i)'$: 
+
+$$
+\mu_i \sim \text{log-Normal}\left(0, s^2_{\mu}\right), \hspace{0.5cm}
+\delta_i | \mu_i \sim \text{log-t}_{\eta}\left( \text{f}(\mu_i), \sigma^2 \right).
+$$
+
+The latter is equivalent to the non-linear regression model:
+
+$$
+\log(\delta_i) = \text{f}(\mu_i)+\epsilon_i, \hspace{0.5cm} \epsilon_i \sim{}\text{t}_{\eta}(0,\sigma^2), 
+$$
+
+where $\mbox{f}(\mu_i)$ represents the over-dispersion (on the log-scale) that is predicted by the global trend (across all genes) for a given mean expression $\mu_i$. 
+Therefore, $\epsilon_i$ can be interpreted as a gene-specific \emph{residual over-dispersion} parameter. 
+Positive values for $\epsilon_i$ indicate more variation than expected for genes with similar expression level. 
+Similarly, negative values of $\epsilon_i$ suggest less variation than expected [@Eling2018].
+
+In line with the probabilistic approach described above, we identified statistically significant differences in residual over-dispersion for those genes where the tail posterior probability of observing a large difference between $\epsilon_i^A$ and $\epsilon_i^B$ exceeds a certain threshold:
+
+$$
+\text{P}(\mid\epsilon_i^{A}-\epsilon_i^{B}\mid >\psi_0 \mid \text{Data} ) >\alpha_R,
+$$
+where $\psi_0 > 0$ defines the minimum tolerance threshold. 
+As a default choice, we assume $\psi_0 = \log_2(1.5) / \log_2(e) \approx 0.41$ which translates into a 50% increase in over-dispersion. 
+The posterior probability threshold $\alpha_R$ is chosen to control the EFDR (e.g. 10%) [@Newton2004]. 
+To support interpretability of the results, we exclude genes that are not expressed in at least 2 cells per condition from differential variability testing.
