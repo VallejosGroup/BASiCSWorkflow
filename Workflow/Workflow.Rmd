@@ -131,34 +131,46 @@ genelength <- unlist(lapply(exons.list,function(x){sum(width(reduce(x)))}))
 
 # Analysis of serum grown mESCs (single group example)
 
-**Change this section to Olas data**
-https://www.ebi.ac.uk/teichmann-srv/espresso/static/counttable_es.csv
-
-In the first case, we use scRNA-Seq data of mouse embryonic stem cells (mESCs) [@Grun2014] which were processed using the Cel-Seq protocol [@Hashimshony2012] while labelling individual transcripts using unique molecular identifiers (UMIs, [@Kivioja2011]). 
-Cells grown in the 2i medium were sequenced to derive a method to accurately quantify technical and biological variability across the population on mESCs. 
-Furthermore, Grün **et al.** sequenced serum grown mESCs to assess differences in expression variability between cells grown in 2i or serum conditions. 
+In the first case, we use scRNA-Seq data of mouse embryonic stem cells (mESCs) [@Kolodziejczyk2015] which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
+Cells were grown in three different media (serum + leukemia inhibitory factor (LIF), 2i + LIF and a2i + LIF).
+For simplicity, we refer to the different growth media as: serum, 2i and a2i.
+The 2i and a2i media were developed to maintain a so called "ground state pluripotency" in mESCs in contrast to the serum condition [@Wray2011, @Li2011], in which cells display heterogeneity within their pluripotent/differentiation state [@Kolodziejczyk2015].
+The authors designed the study to dissect transcriptional heterogeneity within mESCs cultered in these three condition.
+Furthermore, cells from each condition were captured and processed in multiple replicates (also referred to as batches).
+The batch structure of the full dataset is as follows: 3 batches for serum grown cells, 4 batches for 2i grown cells and two replicates for a2i grown cells.
 This dataset contains ERCC spike-in genes [@Rna2005] which BASiCS uses to quantify technical noise.
-In this section, we will use mESCs grown in serum conditions to dissect their heterogeneity in expression.
 
-In the first insatnce, the data needs to be processed and filtered before running the BASiCS model.
-For this, a counts matrix needs to be generated and the added spike-in counts need to be  calculated.
+In the first instance, the data needs to be obtained, processed and filtered before running the BASiCS model.
+
+## Creating the input data
 
 ### Obtaining the data
 
-The full dataset can be obtain from Gene Expression Omnibus (GEO) under the accessor: GSE54695.
+The raw counts of the full dataset can be obtain from the [ESpresso](https://www.ebi.ac.uk/teichmann-srv/espresso/) database.
 
-```{r Grun-data}
-library(R.utils)
-library(data.table)
-if(!file.exists("mESC_raw.txt")){
-  download.file("ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE54nnn/GSE54695/suppl/GSE54695_data_transcript_counts.txt.gz", 
-                destfile = "mESC_raw.txt.gz")
-  gunzip("mESC_raw.txt.gz")
+```{r mESC-data}
+if(!file.exists("mESC_raw.csv")){
+  download.file("https://www.ebi.ac.uk/teichmann-srv/espresso/static/counttable_es.csv", 
+                destfile = "mESC_raw.csv")
 }
-mESC.raw <- read.table("mESC_raw.txt", sep = "\t", header = TRUE)
+mESC.raw <- read.table("mESC_raw.csv", header = TRUE)
 ```
 
-## Creating the input data
+In this section, we highlight the single-condition analysis that can be performed using `BASiCS`.
+For this, we will use mESCs grown in serum conditions to dissect their heterogeneity in expression.
+The column names contain the necessary meta-information regarding the culture consition and batch.
+
+```{r selecting-serum-cells}
+head(colnames(mESC.raw))
+
+# Select serum conditions - also referred to as 'lif' in the column names
+mESC.serum <- mESC.raw[,grepl("lif", colnames(mESC.raw))]
+dim(mESC.serum)
+```
+
+We now obtained 250 mESCs cultured in serum, which were processed across 3 batches. 
+
+### Quality control and filtering
 
 This section generates the count matrix and collects metadata such as the batch information and growth condition.
 The genenames are stored in the first column of the matrix. 
