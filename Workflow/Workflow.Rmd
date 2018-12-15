@@ -208,11 +208,15 @@ rownames(mESC.raw)[grepl("ERCC", rownames(mESC.raw))]
 
 In this section, we highlight the single-condition analysis that can be performed using `BASiCS`.
 For this, we will use mESCs grown in serum conditions to dissect their heterogeneity in expression.
+For further use, we store the batch information of the cells in a separate vector.
 
 ```{r selecting-serum-cells}
 # Select serum conditions - also referred to as 'lif' in the column names
 mESC.serum <- mESC.raw[,grepl("lif", colnames(mESC.raw))]
 dim(mESC.serum)
+
+# Storing the batch information
+batch.serum <- sapply(colnames(mESC.serum), function(n){unlist(strsplit(n, "_"))[4]})
 ```
 
 We now obtained 250 mESCs cultured in serum, which were processed across 3 batches. 
@@ -263,7 +267,7 @@ The second column must contain the input number of molecules for the spike-in ge
 # Prepare the data.frame
 ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
                          Names = ERCC.conc$ERCC.ID,
-                         count =ERCC.count)
+                         count = ERCC.count)
 ```
 
 ## Creating the SingleCellExperiment object
@@ -275,18 +279,18 @@ The `newBASiCS_Data` function can be used to create the required SingleCellExper
 
 * Tech: a vector of TRUE/FALSE elements with length $q$. If Tech[i] = FALSE the gene i is biological; otherwise the gene is spike-in. This vector must be specified in the same order of genes as in the counts matrix.
 
-* SpikeInfo: a data.frame with $q-q_0$ rows where $q0$ is the number of biological genes. First column must contain the names associated to the spike-in genes. The second column must contain the input number of molecules for the spike-in genes (amount per cell).
+* SpikeInfo: a data.frame with $q-q_0$ rows where $q_0$ is the number of biological genes. First column must contain the names associated to the spike-in genes. The second column must contain the input number of molecules for the spike-in genes (amount per cell).
 
 * BatchInfo (optional argument): vector of length $n$ to indicate batch structure in situations where cells have been processed using multiple batches.
 
 ```{r serum-cells}
 # Select the ERCC spike-ins of the dataset
-SpikeInput <- ERCC.count[rownames(serum.cells)[grepl("ERCC", rownames(serum.cells))],]
+SpikeInput <- ERCC.count[rownames(mESC.serum)[grepl("ERCC", rownames(mESC.serum))],]
 
-Data.serum <- newBASiCS_Data(Counts = serum.cells, 
-                       Tech = grepl("ERCC", rownames(serum.cells)), 
+Data.serum <- newBASiCS_Data(Counts = mESC.serum, 
+                       Tech = grepl("ERCC", rownames(mESC.serum)), 
                        SpikeInfo = SpikeInput, 
-                       BatchInfo = serum.batch)
+                       BatchInfo = batch.serum)
 Data.serum
 ```
 
