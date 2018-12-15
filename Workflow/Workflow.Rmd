@@ -187,6 +187,9 @@ In the first instance, the data needs to be obtained, processed and filtered bef
 ### Obtaining the data
 
 The raw counts of the full dataset can be obtain from the [ESpresso](https://www.ebi.ac.uk/teichmann-srv/espresso/) database.
+The column names contain the necessary meta-information regarding the culture consition and batch.
+The row names of the matrix store the individual gene names. 
+The dataset contains reads mapping to ERCC spike-in genes [@Rna2005], which `BASiCS` uses to estimate and remove technical noise.
 
 ```{r mESC-data}
 if(!file.exists("mESC_raw.csv")){
@@ -194,15 +197,19 @@ if(!file.exists("mESC_raw.csv")){
                 destfile = "mESC_raw.csv")
 }
 mESC.raw <- read.table("mESC_raw.csv", header = TRUE)
+
+# Show row and column names
+head(colnames(mESC.raw))
+head(rownames(mESC.raw))
+
+# ERCC spike-in genes
+rownames(mESC.raw)[grepl("ERCC", rownames(mESC.raw))]
 ```
 
 In this section, we highlight the single-condition analysis that can be performed using `BASiCS`.
 For this, we will use mESCs grown in serum conditions to dissect their heterogeneity in expression.
-The column names contain the necessary meta-information regarding the culture consition and batch.
 
 ```{r selecting-serum-cells}
-head(colnames(mESC.raw))
-
 # Select serum conditions - also referred to as 'lif' in the column names
 mESC.serum <- mESC.raw[,grepl("lif", colnames(mESC.raw))]
 dim(mESC.serum)
@@ -210,60 +217,15 @@ dim(mESC.serum)
 
 We now obtained 250 mESCs cultured in serum, which were processed across 3 batches. 
 
-### Quality control and filtering
-
-This section generates the count matrix and collects metadata such as the batch information and growth condition.
-The genenames are stored in the first column of the matrix. 
-
-```{r Grun_preprocessing}
-# Store genenames
-rownames(mESC.raw) <- mESC.raw$GENENAME
-mESC.raw <- mESC.raw[,-1]
-```
-
-The rows contain biological and technical genes while the columns contain cells or pooled RNA of different conditions.
-All genes that were not expressed with at least a single transcript in at least two cells and two pooled RNA samples were discared before creating the final counts matrix.
-Columns that contain individual cells are labeled with `SC` while columns that contain pooled RNA are labeled with `RNA`. 
-The two conditions are labeled as `2i` and `serum`.
-
-```{r data-overview}
-# Biological and technical gene names
-head(rownames(mESC.raw))
-which(grepl("ERCC", rownames(mESC.raw)))
-
-# Cell names
-colnames(mESC.raw)
-```
-
-The counts matrix consists of transcript counts that were calculated based on binomial statistics from UMI counts (see [Sample GSM1322278](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1322278)).
-To convert the transcript counts to raw UMI counts, the following function can be used.
-
-```{r UMI-conversion}
-# Generate raw UMI counts
-UMICount <- function(MoleculeCount, UMILength)
-{
-  # MoleculeCount is the normalized count
-  M = 4^UMILength
-  UMICount = M*(1-exp(-MoleculeCount/M))
-  return(UMICount)
-}
-CountsUMI = round(UMICount(mESC.raw, 4))
-```
-
-The data were processed in 2 batches per condition, each containing 40 cells or pooled RNA samples.
-This information is stored in a batch vector.
-
-```{r batches}
-# Batch info
-Batch <- rep(rep(c(1,2), each = 40), 4)
-```
-
 ### Calculating the molecule count for spike-in genes
 
 BASiCS requires the actual molecule count of the spike-in genes that were added per well.
 For this, a table of the spike-in concentrations can be downloaded from: [ERCC spike-in](https://www.thermofisher.com/order/catalog/product/4456740).
 The file contains the concentrations of 2 ERCC spike-in mixes.
-The authors added 1\mu{}l of a 1:2,500,000 dilution of the ERCC mix 1 into each well.
+
+**Add the dilution factor for Olas data**
+
+The authors added 1\mu{}l of a 1: dilution of the ERCC mix 1 into each well.
 
 ```{r spike-in_download}
 # Read in the spike-in concentrations
@@ -286,7 +248,7 @@ From this, we can calculate the molecule count per \mu{}l.
 ERCC.countmul <- ERCC.mmul*(6.02214076*(10^23))
 ```
 
-The authors diluted this mix by 1:2,500,000.
+The authors diluted this mix by **1:2,500,000**.
 The actual molecule number of spike-ins can therefore be calculated per well:
 
 ```{r}
@@ -294,7 +256,7 @@ ERCC.count <- ERCC.countmul/2500000
 ```
 
 We can now use the molecule count to prepare the BASiCS data object.
-To use this object within the `SingleCellExperiment` object that BASiCS requires, the first column must contain the names associated to the spike-in genes. 
+To incorporate the ERCC molecule counts within the `SingleCellExperiment` object that BASiCS requires, the first column must contain the names associated to the spike-in genes. 
 The second column must contain the input number of molecules for the spike-in genes (amount per well).
 
 ```{r spike-info}
@@ -305,16 +267,6 @@ ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
 ```
 
 ## Creating the SingleCellExperiment object
-
-In this section, we focus on the cells grown in serum condition to dissect their transcriptional heterogeneity.
-
-```{r serum-cells}
-# Select serum cells grown in serum media
-serum.cells <- CountsUMI[,grepl("SC_serum", colnames(CountsUMI))]
-
-# Select the serum batch vector
-serum.batch <- Batch[grepl("SC_serum", colnames(CountsUMI))]
-```
 
 The BASiCS Data object is an object of the class `SingleCellExperiment` [@Lun2018SCE].
 The `newBASiCS_Data` function can be used to create the required SingleCellExperiment object based on the following information:
@@ -327,7 +279,25 @@ The `newBASiCS_Data` function can be used to create the required SingleCellExper
 
 * BatchInfo (optional argument): vector of length $n$ to indicate batch structure in situations where cells have been processed using multiple batches.
 
+```{r serum-cells}
+# Select the ERCC spike-ins of the dataset
+SpikeInput <- ERCC.count[rownames(serum.cells)[grepl("ERCC", rownames(serum.cells))],]
+
+Data.serum <- newBASiCS_Data(Counts = serum.cells, 
+                       Tech = grepl("ERCC", rownames(serum.cells)), 
+                       SpikeInfo = SpikeInput, 
+                       BatchInfo = serum.batch)
+Data.serum
+```
+
 ### Filtering the data
+
+It is crucial to perform thorough quality-control before running the BASiCS model. 
+This includes removing low-quality cells as well as non-informative genes such as the ones with low expression. 
+The authors removed empty capture sites and sites which contained multiple cells or debris as observed by visual inspection. 
+Furthermore, they removed cells which had fewer than 500,000 reads that mapped to exons or cells that had more than 10% of mitochondrial reads [@Kolodziejczyk2015].
+The `scater` package has been created to visualize and calcualte quality measures from scRNA-Seq experiments.
+Here, we visualize further quality measures using `scater`.
 
 **Use scater for data visaulization and QC**
 
