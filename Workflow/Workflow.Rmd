@@ -169,9 +169,9 @@ exons.list <- exonsBy(EnsDb.Mmusculus.v79,by="gene")
 genelength <- unlist(lapply(exons.list,function(x){sum(width(reduce(x)))}))
 ```
 
-# Analysis of serum grown mESCs (single group example)
+# Analysis of naive CD4+ T cells (single group example)
 
-In the first case, we use scRNA-Seq data of mouse embryonic stem cells (mESCs) [@Kolodziejczyk2015] which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
+In the first case, we use scRNA-Seq data of naive CD4+ T cells [@Martinez-jimenez2017] which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
 Cells were grown in three different media (serum + leukemia inhibitory factor (LIF), 2i + LIF and a2i + LIF).
 For simplicity, we refer to the different growth media as: serum, 2i and a2i.
 The 2i and a2i media were developed to maintain a so called "ground state pluripotency" in mESCs in contrast to the serum condition [@Wray2011, @Li2011], in which cells display heterogeneity within their pluripotent/differentiation state [@Kolodziejczyk2015].
@@ -186,24 +186,26 @@ In the first instance, the data needs to be obtained, processed and filtered bef
 
 ### Obtaining the data
 
-The raw counts of the full dataset can be obtain from the [ESpresso](https://www.ebi.ac.uk/teichmann-srv/espresso/) database.
-The column names contain the necessary meta-information regarding the culture consition and batch.
-The row names of the matrix store the individual gene names. 
+The raw counts of the full dataset can be obtain from ArrayExpress under the accession number [E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
+The column names contain the library identifier of the original experiment while the row names of the matrix store the individual gene names. 
 The dataset contains reads mapping to ERCC spike-in genes [@Rna2005], which `BASiCS` uses to estimate and remove technical noise.
 
 ```{r mESC-data}
-if(!file.exists("mESC_raw.csv")){
-  download.file("https://www.ebi.ac.uk/teichmann-srv/espresso/static/counttable_es.csv", 
-                destfile = "mESC_raw.csv")
+if(!file.exists("raw_data.txt")){
+  # Download raw counts file
+  download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/E-MTAB-4888.processed.1.zip", 
+                destfile = "raw_data.txt.zip")
+  # Unzip file
+  unzip("raw_data.txt.zip")
 }
-mESC.raw <- read.table("mESC_raw.csv", header = TRUE)
+CD4.raw <- read.table("raw_data.txt", header = TRUE, sep = "\t")
 
 # Show row and column names
-head(colnames(mESC.raw))
-head(rownames(mESC.raw))
+head(colnames(CD4.raw))
+head(rownames(CD4.raw))
 
 # ERCC spike-in genes
-rownames(mESC.raw)[grepl("ERCC", rownames(mESC.raw))]
+rownames(CD4.raw)[grepl("ERCC", rownames(CD4.raw))]
 ```
 
 In this section, we highlight the single-condition analysis that can be performed using `BASiCS`.
