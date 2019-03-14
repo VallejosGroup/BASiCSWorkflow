@@ -148,7 +148,7 @@ library(ggplot2)
 To obtain gene annotations used in thiw workflow, we used the `biomaRt` package.
 The **Mus musculus** gene ids and gene names can be directly accessed using the following code: 
 
-```{r obtain-gene-symbols, message=FALSE}
+```{r obtain-gene-symbols, message=FALSE, echo=FALSE, eval=FALSE}
 library(biomaRt)
 ensembl <- useMart("ensembl")
 ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", mart = ensembl)
@@ -160,7 +160,7 @@ rownames(genenames) <- genenames$ensembl_gene_id
 To perform gene ontology (GO) analysis, we collect the length for each gene.
 This can be extracted from the `EnsDb.Mmusculus.v79` package.
 
-```{r, message=FALSE}
+```{r, message=FALSE, echo=FALSE, eval=FALSE}
 library(EnsDb.Mmusculus.v79)
 exons.list <- exonsBy(EnsDb.Mmusculus.v79,by="gene")
 genelength <- unlist(lapply(exons.list,function(x){sum(width(reduce(x)))}))
@@ -405,7 +405,7 @@ metadata(Data.naive)$SpikeInput <- SpikeInput$count
 ### Running the MCMC
 
 ```{r MCMC-naive}
-MCMC.serum <- BASiCS_MCMC(Data = Data.naive, 
+MCMC.naive <- BASiCS_MCMC(Data = Data.naive, 
                           N=40000, Thin = 20, Burn = 20000, 
                           Regression = TRUE)
 ```
