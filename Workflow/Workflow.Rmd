@@ -166,16 +166,15 @@ exons.list <- exonsBy(EnsDb.Mmusculus.v79,by="gene")
 genelength <- unlist(lapply(exons.list,function(x){sum(width(reduce(x)))}))
 ```
 
-# Analysis of naive CD4+ T cells (single group example)
+# C1 Fluidigm data: Analysis of naive CD4^+^ T cells
 
-In the first case, we use scRNA-Seq data of naive CD4+ T cells [@Martinez-jimenez2017] which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
-Cells were grown in three different media (serum + leukemia inhibitory factor (LIF), 2i + LIF and a2i + LIF).
-For simplicity, we refer to the different growth media as: serum, 2i and a2i.
-The 2i and a2i media were developed to maintain a so called "ground state pluripotency" in mESCs in contrast to the serum condition [@Wray2011, @Li2011], in which cells display heterogeneity within their pluripotent/differentiation state [@Kolodziejczyk2015].
-The authors designed the study to dissect transcriptional heterogeneity within mESCs cultered in these three condition.
-Furthermore, cells from each condition were captured and processed in multiple replicates (also referred to as batches).
-The batch structure of the full dataset is as follows: 3 batches for serum grown cells, 4 batches for 2i grown cells and two replicates for a2i grown cells.
-This dataset contains ERCC spike-in genes [@Rna2005] which BASiCS uses to quantify technical noise.
+In the first case, we use scRNA-Seq data of CD4+ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
+Martinez-Jimenez _et al._ collected naive and activated CD4^+^ from young and old animals across two muse strains to profile changes in expression variability that occur during organismal ageing [@Martinez-jimenez2017].
+Naive or effector memory CD4^+^ T cells were extracted from spleens of young or old animals and filtered using either a MACS- or FACS-based approach (MACS-purified Naive, FACS-purified Naive or FACS-purified Effector Memory).
+Naive as well as CD4^+^ T cells that were activated by 3 hours of _in vitro_ antibody stimulation were processed using the C1 Fluidigm® system to capture and lyse cells, and to reverse transcript and amplify mRNA prior to sequencing.
+Cells were isolated from B6 (C57BL/6J, _Mus musculus domesticus_) and CAST (_Mus musculus castaneus_) animals to profile the evolutionary conservation of transcriptional dynamics during ageing.
+External spike-in RNA has been added to quantify technical variability across all cells.
+All experiments were performed in replicates (also referred to as batches) to control for batch effects.
 
 In the first instance, the data needs to be obtained, processed and filtered before running the BASiCS model.
 
@@ -187,13 +186,14 @@ The raw counts of the full dataset can be obtain from ArrayExpress under the acc
 The column names contain the library identifier of the original experiment while the row names of the matrix store the individual gene names. 
 The dataset contains reads mapping to ERCC spike-in genes [@Rna2005], which `BASiCS` uses to estimate and remove technical noise.
 
-```{r mESC-data}
+```{r naive-data}
 if(!file.exists("raw_data.txt")){
   # Download raw counts file
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/E-MTAB-4888.processed.1.zip", 
                 destfile = "raw_data.txt.zip")
   # Unzip file
   unzip("raw_data.txt.zip")
+  file.remove("raw_data.txt.zip")
 }
 CD4.raw <- read.table("raw_data.txt", header = TRUE, sep = "\t")
 
@@ -205,20 +205,51 @@ head(rownames(CD4.raw))
 rownames(CD4.raw)[grepl("ERCC", rownames(CD4.raw))]
 ```
 
-In this section, we highlight the single-condition analysis that can be performed using `BASiCS`.
-For this, we will use mESCs grown in serum conditions to dissect their heterogeneity in expression.
-For further use, we store the batch information of the cells in a separate vector.
+To link the library identifier to the experimental condition, the authors provide a metadata file that can be accessed online.
 
 ```{r selecting-serum-cells}
-# Select serum conditions - also referred to as 'lif' in the column names
-mESC.serum <- mESC.raw[,grepl("lif", colnames(mESC.raw))]
-dim(mESC.serum)
+if(!file.exists("metadata.txt")){
+  # Download raw counts file
+  download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/E-MTAB-4888.additional.1.zip", 
+                destfile = "metadata.txt.zip")
+  # Unzip file
+  unzip("metadata.txt.zip")
+  file.remove("metadata.txt.zip")
+}
+CD4.metadata <- read.table("metadata_file.txt", header = TRUE, sep = "\t")
+rownames(CD4.metadata) <- CD4.metadata$X
 
-# Storing the batch information
-batch.serum <- sapply(colnames(mESC.serum), function(n){unlist(strsplit(n, "_"))[4]})
+# Show metadata entries
+head(CD4.metadata)
 ```
 
-We now obtained 250 mESCs cultured in serum, which were processed across 3 batches. 
+### Filtering the data
+
+For further down-stream analysis, we select naive and activated CD4^+^ T cells from young B6 animals that were obtained using MACS-based cell selection.
+It is crucial that proper quality control (QC) and gene filtering is performed before running BASiCS, and, in general, before performing meaningful computational analysis on biological data.
+
+We will first select naive and activated CD4^+^ T cells.
+For convenience, we will generate a `SingleCellExperiment` [@Lun2018SCE] that contains all cells and that stores cell- and gene-specific metadata.
+
+```{r CD4-SCE-object}
+# Load library
+library(SingleCellExperiment)
+
+# Generate the SingleCellExperiment object
+sce.CD4_all <- SingleCellExperiment(assays = list(counts = as.matrix(CD4.raw)),
+                                    colData = CD4.metadata[colnames(CD4.raw),])
+
+# Select naive and activated CD4+ T cells of young B6 animals
+sce.naive_active <- sce.CD4_all[,sce.CD4_all$Strain == "Mus musculus domesticus" &
+                                  sce.CD4_all$Age == "Young" &
+                                  sce.CD4_all$Celltype == "MACS-purified Naive"]
+```
+
+Prior to quality control, we will remove all genes that are not expressed in at least 2 cells.
+
+```{r gene-selection}
+
+```
 
 ### Calculating the molecule count for spike-in genes
 
@@ -226,9 +257,7 @@ BASiCS requires the actual molecule count of the spike-in genes that were added 
 For this, a table of the spike-in concentrations can be downloaded from: [ERCC spike-in](https://www.thermofisher.com/order/catalog/product/4456740).
 The file contains the concentrations of 2 ERCC spike-in mixes.
 
-**Add the dilution factor for Olas data**
-
-The authors added 1\mu{}l of a 1: dilution of the ERCC mix 1 into each well.
+The lysis mix contains a 1:50,000 dilution of the ERCC mix 1 [@Martinez-jimenez2017].
 
 ```{r spike-in_download}
 # Read in the spike-in concentrations
@@ -251,11 +280,11 @@ From this, we can calculate the molecule count per \mu{}l.
 ERCC.countmul <- ERCC.mmul*(6.02214076*(10^23))
 ```
 
-The authors diluted this mix by **1:2,500,000**.
+The authors diluted this mix by 1:50,000.
 The actual molecule number of spike-ins can therefore be calculated per well:
 
 ```{r}
-ERCC.count <- ERCC.countmul/2500000
+ERCC.count <- ERCC.countmul/50000
 ```
 
 We can now use the molecule count to prepare the BASiCS data object.
@@ -284,8 +313,10 @@ The `newBASiCS_Data` function can be used to create the required SingleCellExper
 
 ```{r serum-cells}
 # Select the ERCC spike-ins of the dataset
-SpikeInput <- ERCC.count[rownames(mESC.serum)[grepl("ERCC", rownames(mESC.serum))],]
+SpikeInput <- ERCC.count[rownames(mESC.serum)[grepl("ERCC", 
+                                                    rownames(mESC.serum))],]
 
+# Generate the SingleCellExperiment object
 Data.serum <- newBASiCS_Data(Counts = mESC.serum, 
                        Tech = grepl("ERCC", rownames(mESC.serum)), 
                        SpikeInfo = SpikeInput, 
@@ -336,6 +367,10 @@ Data.serum <- newBASiCS_Data(Counts = serum.cells,
 Data.serum
 ```
 
+## Single condition example: Naive CD4^+^ T cells
+
+To highlight the use of BASiCS and the quantification of variability measures in the single-condition case, we select naive CD4^+^ T cells of young B6 animals.
+
 ### Running the MCMC
 
 ```{r MCMC}
@@ -355,6 +390,8 @@ MCMC.serum <- BASiCS_MCMC(Data = Data.serum,
 ### Lowly-highly variable genes
 
 ### Mean-variance trend
+
+### Comparison to CV2, Fano factor and variance
 
 ### Comparison to DM (scran package)
 
