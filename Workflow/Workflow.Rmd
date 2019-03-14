@@ -51,14 +51,14 @@ output: BiocWorkflowTools::f1000_article
 ---
 
 ```{r setup_knitr, include = FALSE, cache = FALSE}
-#library(BiocStyle)
+library(BiocStyle)
 ## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
-#on.bioc <- TRUE
-#library(knitr)
+on.bioc <- TRUE
+library(knitr)
 # Use fig.width = 7 for html and fig.width = 6 for pdf
-#fig.width <- ifelse(on.bioc, 7, 6)
-#knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE,
-#  cache.path = "cache/", fig.path = "figure/", fig.width = fig.width)
+fig.width <- ifelse(on.bioc, 7, 6)
+knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE,
+  cache.path = "cache/", fig.path = "figure/", fig.width = fig.width)
 ```
 
 # Introduction
@@ -229,7 +229,8 @@ For further down-stream analysis, we select naive and activated CD4^+^ T cells f
 It is crucial that proper quality control (QC) and gene filtering is performed before running BASiCS, and, in general, before performing meaningful computational analysis on biological data.
 
 We will first select naive and activated CD4^+^ T cells.
-For convenience, we will generate a `SingleCellExperiment` [@Lun2018SCE] that contains all cells and that stores cell- and gene-specific metadata.
+For convenience, we will generate a `Biocpkg("SingleCellExperiment")` [@Lun2018SCE] that contains all cells and that stores cell- and gene-specific metadata.
+Furthermore, this object stores gene-specific information whether or not a gene is of biological (endogeneous) or technical (spike-in) origin.
 
 ```{r CD4-SCE-object}
 # Load library
@@ -239,17 +240,70 @@ library(SingleCellExperiment)
 sce.CD4_all <- SingleCellExperiment(assays = list(counts = as.matrix(CD4.raw)),
                                     colData = CD4.metadata[colnames(CD4.raw),])
 
+# Store spike-in information
+isSpike(sce.CD4_all, "ERCC") <- which(grepl("ERCC", rownames(sce.CD4_all)))
+
 # Select naive and activated CD4+ T cells of young B6 animals
 sce.naive_active <- sce.CD4_all[,sce.CD4_all$Strain == "Mus musculus domesticus" &
                                   sce.CD4_all$Age == "Young" &
                                   sce.CD4_all$Celltype == "MACS-purified Naive"]
 ```
 
-Prior to quality control, we will remove all genes that are not expressed in at least 2 cells.
+Prior to quality control, we will remove all genes that are not detected in at least 2 cells.
 
 ```{r gene-selection}
-
+# Remove genes
+sce.naive_active <- sce.naive_active[apply(counts(sce.naive_active), 1, 
+                                           function(n){sum(n > 0)}) > 1,]
 ```
+
+In the next step, we will use the `Biocpkg("scran")` and `Biocpkg("scater")` for initial normalization and visualization.
+In line with the normalization strategy of BASiCS, we use the spike-in reads for normalization.
+
+```{r}
+# Load libraries
+library(scran)
+library(scater)
+
+# Pre-normalization of data for visualization purposes
+sce.naive_active <- computeSpikeFactors(sce.naive_active)
+sce.naive_active <- normalize(sce.naive_active)
+```
+
+The `Biocpkg("SimpleSingleCell")` workflow provides an extensive overview on important aspects of how to perform low-level analysis of scRNA-Seq data, including quality control.
+Since the CD4^+^ T cell data have been quality filtered in the original publication [@Martinez-jimenez2017], we will soley visualize metrics that can be used to distinguish low quality cells.
+These metrics include (among others): number of endogeneous genes detected per cell, total number of reads per cell, the fraction of reads mapping to spike-in and endogeneous genes.
+
+```{r}
+# Calculate quality metrics
+sce.naive_active <- calculateQCMetrics(sce.naive_active)
+
+# Calcualte PCA
+sce.naive_active <- runPCA(sce.naive_active)
+
+# Visualize the conditions and batch structure
+plotPCA(sce.naive_active, colour_by = "Stimulus")
+plotPCA(sce.naive_active, colour_by = "Individuals")
+
+# Visualize number of endogeneous genes detected
+plotPCA(sce.naive_active, colour_by = "total_features_by_counts_endogenous")
+
+# Visualize log10-transformed total number of counts
+plotPCA(sce.naive_active, colour_by = "log10_total_counts")
+
+# Plot the fraction of reads mapping to spike-ins 
+# versus the number of reads mapping to endogeneous genes
+ggplot(as.data.frame(colData(sce.naive_active))) +
+  geom_point(aes(log10_total_counts_endogenous, log10_total_counts_ERCC))
+
+# Remove two cells that appear to be outliers
+sce.naive_active <- sce.naive_active[,sce.naive_active$log10_total_counts_endogenous > 5.8]
+```
+
+The data splits into two conditions: naive and activated CD4^+^ T cells.
+Furthermore, we do not detect batch effects or outlier cells based on PCA visualization.
+Nevertheless, we removed two cells that showed unusually low number of reads mapping to endogeneous genes.
+It is crucial that an in-depth quality control is performed to remove low-quality or outlying cells, but also to understand where possible confounding effect arise that can influence the interpretation of variability measures.
 
 ### Calculating the molecule count for spike-in genes
 
