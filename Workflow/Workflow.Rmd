@@ -22,24 +22,18 @@ author:
   - The Alan Turing Institute, British Library, 96 Euston Road, London 
   NW1 2DB, UK
   email: catalina.vallejos@igmm.ed.ac.uk
-abstract: Cell-to-cell heterogeneity in gene expression is an inherent feature 
-of biological systems. Single-cell RNA sequencing can be used to quantify this 
-heterogeneity, but it is prone to strong technical noise. Here, we describe a 
-computational workflow that uses the BASiCS Bioconductor package to robustly 
-quantify cell-to-cell expression variability within and between known cell 
-populations (e.g.~experimental conditions or cell types). We illustrate how 
-BASiCS can identify highly and lowly variable genes within a cell population. 
-We also show how BASiCS can highlight changes in gene expression variability 
-between cell populations, while avoiding confounding effects related to 
-technical noise or changes in overall abundance. Using publicly available 
-datasets, we guide users through a complete pipeline which includes preliminary 
-steps for quality control and data exploration using the scater Bioconductor 
-package. Two case studies are described. The first uses data generated using the 
-Fluidigm\@ C1 system, in which spike-in RNA molecules are used in order to 
-quantify technical noise. The second dataset was generated using a droplet-based 
-system, for which spike-in RNA is not available. The latter analysis provides an 
-example in which differential variability testing reveals insights regarding a 
-possible early cell fate commitment process. 
+abstract: Cell-to-cell variability in gene expression is an inherent feature 
+of biological systems. 
+Single-cell RNA sequencing can be used to quantify this 
+heterogeneity, but it is prone to strong technical noise. 
+Here, we describe a computational workflow that uses the BASiCS Bioconductor package to robustly quantify cell-to-cell expression variability within and between known cell populations (e.g.~experimental conditions or cell types). 
+We illustrate how BASiCS can identify highly and lowly variable genes within a cell population. 
+Furthermore, we also show how BASiCS can highlight changes in gene expression variability between cell populations, while avoiding confounding effects related to technical noise or changes in overall abundance. 
+Using publicly available datasets, we guide users through a complete pipeline which includes preliminary steps for quality control and data exploration using the scater Bioconductor package. 
+Two case studies are described. 
+The first uses data generated using the Fluidigm\@ C1 system, in which spike-in RNA molecules are used in order to quantify technical noise.
+The second dataset was generated using a droplet-based system, for which spike-in RNA is not available. 
+The latter analysis provides an example in which differential variability testing reveals insights regarding a possible early cell fate commitment process. 
 
 #Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.
 keywords: Single-cell RNA sequencing, expression variability, noise, 
