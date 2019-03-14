@@ -7,15 +7,18 @@ author:
   Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
   - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
   Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+- name: Alan O'Callaghan
+  affiliation: 
+  - &MRC MRC Human Genetics Unit, Institute of Genetics & Molecular Medicine, 
+  University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh
+  EH4 2XU, UK
 - name: John C. Marioni
   affiliation: 
   - *EBI
   - *CRUK
 - name: Catalina A. Vallejos
   affiliation: 
-  - MRC Human Genetics Unit, Institute of Genetics & Molecular Medicine, 
-  University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh
-  EH4 2XU, UK
+  - *MRC 
   - The Alan Turing Institute, British Library, 96 Euston Road, London 
   NW1 2DB, UK
   email: catalina.vallejos@igmm.ed.ac.uk
