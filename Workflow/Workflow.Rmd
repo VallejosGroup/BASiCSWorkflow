@@ -257,7 +257,7 @@ sce.naive_active <- sce.naive_active[apply(counts(sce.naive_active), 1,
                                            function(n){sum(n > 0)}) > 1,]
 ```
 
-In the next step, we will use the `Biocpkg("scran")` and `Biocpkg("scater")` for initial normalization and visualization.
+In the next step, we will use the `Biocpkg("scran")` and `Biocpkg("scater")` for initial normalization and visualization [@Lun2016,@McCarthy2017].
 In line with the normalization strategy of BASiCS, we use the spike-in reads for normalization.
 
 ```{r}
@@ -270,8 +270,10 @@ sce.naive_active <- computeSpikeFactors(sce.naive_active)
 sce.naive_active <- normalize(sce.naive_active)
 ```
 
-The `Biocpkg("SimpleSingleCell")` workflow provides an extensive overview on important aspects of how to perform low-level analysis of scRNA-Seq data, including quality control.
-Since the CD4^+^ T cell data have been quality filtered in the original publication [@Martinez-jimenez2017], we will soley visualize metrics that can be used to distinguish low quality cells.
+The `Biocpkg("SimpleSingleCell")` workflow provides an extensive overview on important aspects of how to perform low-level analysis of scRNA-Seq data, including quality control [@Lun2016].
+In the original publication, the authors removed empty capture sites and sites which contained multiple cells or debris as observed by visual inspection. 
+Furthermore, they removed cells which had fewer than 1,000,000 total reads, cells where less than 20% of reads mapped to endogenous genes, cells in which less than 1,250 or more than 3,000 genes were detected and cells with more than 10% or less than 0.5% reads mapping to mitochondrial genes [@Martinez-jimenez2017].
+Since these data have been quality filtered in the original publication, we will soley visualize metrics that can be used to distinguish low quality cells.
 These metrics include (among others): number of endogeneous genes detected per cell, total number of reads per cell, the fraction of reads mapping to spike-in and endogeneous genes.
 
 ```{r}
@@ -342,7 +344,7 @@ ERCC.count <- ERCC.countmul/50000
 ```
 
 We can now use the molecule count to prepare the BASiCS data object.
-To incorporate the ERCC molecule counts within the `SingleCellExperiment` object that BASiCS requires, the first column must contain the names associated to the spike-in genes. 
+To incorporate the ERCC molecule counts within the `Biocpkg("SingleCellExperiment")` object that BASiCS requires, the first column must contain the names associated to the spike-in genes. 
 The second column must contain the input number of molecules for the spike-in genes (amount per well).
 
 ```{r spike-info}
@@ -352,10 +354,14 @@ ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
                          count = ERCC.count)
 ```
 
-## Creating the SingleCellExperiment object
+## Single condition example: Naive CD4^+^ T cells
 
-The BASiCS Data object is an object of the class `SingleCellExperiment` [@Lun2018SCE].
-The `newBASiCS_Data` function can be used to create the required SingleCellExperiment object based on the following information:
+To highlight the use of BASiCS and the quantification of variability measures in the single-condition case, we select naive CD4^+^ T cells of young B6 animals.
+
+### Preparing the BASiCS data object
+
+The BASiCS Data object is an object of the class `Biocpkg("SingleCellExperiment")` [@Lun2018SCE].
+The `newBASiCS_Data` function can be used to create the required `SingleCellExperiment` object based on the following information:
 
 * Counts: a matrix of raw expression counts with dimensions $q$ times $n$ where $q$ is the number of genes (technical + biological) and $n$ is the number of cells. Gene names must be stored as row names of the counts matrix.
 
@@ -365,70 +371,41 @@ The `newBASiCS_Data` function can be used to create the required SingleCellExper
 
 * BatchInfo (optional argument): vector of length $n$ to indicate batch structure in situations where cells have been processed using multiple batches.
 
-```{r serum-cells}
+We will first select the naive cells from the `SingleCellExperiment` object that was generated above.
+
+```{r SCE-naive}
+sce.naive <- sce.naive_active[,sce.naive_active$Stimulus == "Unstimulated"]
+```
+
+Next, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
+
+```{r Data-naive}
+# Here is the first time that we use BASiCS
+library(BASiCS)
+
 # Select the ERCC spike-ins of the dataset
-SpikeInput <- ERCC.count[rownames(mESC.serum)[grepl("ERCC", 
-                                                    rownames(mESC.serum))],]
+SpikeInput <- ERCC.count[rownames(sce.naive)[isSpike(sce.naive)],]
 
 # Generate the SingleCellExperiment object
-Data.serum <- newBASiCS_Data(Counts = mESC.serum, 
-                       Tech = grepl("ERCC", rownames(mESC.serum)), 
+Data.naive <- newBASiCS_Data(Counts = counts(sce.naive), 
+                       Tech = isSpike(sce.naive), 
                        SpikeInfo = SpikeInput, 
-                       BatchInfo = batch.serum)
-Data.serum
+                       BatchInfo = sce.naive$Individuals)
+Data.naive
 ```
 
-### Filtering the data
+Alternatively, when using data the contain spike-in genes, the original `SingleCellExperiment` object can be extended by simply specifying a `BatchInfo` slot in the `colData` object and by adding the `SpikeInfo` object to the `metadata` slot.
 
-It is crucial to perform thorough quality-control before running the BASiCS model. 
-This includes removing low-quality cells as well as non-informative genes such as the ones with low expression. 
-The authors removed empty capture sites and sites which contained multiple cells or debris as observed by visual inspection. 
-Furthermore, they removed cells which had fewer than 500,000 reads that mapped to exons or cells that had more than 10% of mitochondrial reads [@Kolodziejczyk2015].
-The `scater` package has been created to visualize and calcualte quality measures from scRNA-Seq experiments.
-Here, we visualize further quality measures using `scater`.
-
-**Use scater for data visaulization and QC**
-
-It is crucial to remove any unwanted variation in the data before running the BASiCS model. 
-As in the original publication  (see [Sample GSM1322278](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1322278)), we removed samples with less than 10 transcripts of Oct4 (Pou5f1) to exclude differentiating cells or samples with low sequencing efficiency.
-Furthermore, we remove genes that are not expressed with at least a single transcript in at least two cells.
-
-```{r QC}
-# Quality control - remove low Oct4 cells
-Pou5f1.per.cell <- as.numeric(serum.cells["Pou5f1",])
-
-serum.cells <- serum.cells[,Pou5f1.per.cell >= 10]
-serum.batch <- serum.batch[Pou5f1.per.cell >= 10]
-
-# Remove lowly expressed genes
-no.cells <- apply(serum.cells, 1, function(n){sum(n >= 1)})
-serum.cells <- serum.cells[no.cells >= 2,]
+```{r Data-naive-alternative}
+Data.naive <- sce.naive
+colData(Data.naive)$BatchInfo <- colData(sce.naive)$Individuals
+metadata(Data.naive)$SpikeInput <- SpikeInput$count
 ```
-
-Using these filtered counts, we can now generate the BASiCS Data object.
-For this, the `newBASiCS_Data` function can be used. 
-If spike-in genes are not available, it is quicker to generate the `SingleCellExperiment`
-object from scratch.
-
-```{r serum-cells}
-# Select the ERCC spike-ins of the dataset
-SpikeInput <- ERCC.count[rownames(serum.cells)[grepl("ERCC", rownames(serum.cells))],]
-
-Data.serum <- newBASiCS_Data(Counts = serum.cells, 
-                       Tech = grepl("ERCC", rownames(serum.cells)), 
-                       SpikeInfo = SpikeInput, 
-                       BatchInfo = serum.batch)
-Data.serum
-```
-
-## Single condition example: Naive CD4^+^ T cells
-
-To highlight the use of BASiCS and the quantification of variability measures in the single-condition case, we select naive CD4^+^ T cells of young B6 animals.
 
 ### Running the MCMC
 
-```{r MCMC}
-MCMC.serum <- BASiCS_MCMC(Data = Data.serum, 
+```{r MCMC-naive}
+MCMC.serum <- BASiCS_MCMC(Data = Data.naive, 
                           N=40000, Thin = 20, Burn = 20000, 
                           Regression = TRUE)
 ```
@@ -470,6 +447,8 @@ Shorter description as above
 ### Differential over-dispersion
 
 ### Differential residual over-dispersion
+
+*Check if cytokines are variably up-regulated* This is in line with Sarah Teichmann's recent paper.
 
 # Differential testing using differentiating cells (two group, droplet-based example)
 
