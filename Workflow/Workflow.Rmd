@@ -108,7 +108,7 @@ Additionally, we will use two examples (Cel-Seq [@Grun2014] and droplet-based sc
 # Methods
 
 - Explain BASiCS from a users perspective (4 different cases)
-- Coda package for MCMC visualization, MCMC convergency analysis, effective sample size
+- Coda package for Markov Chain Monte Carlo (MCMC) visualization, MCMC convergency analysis, effective sample size
 - Explain scater for preprocessing (highlight: QC, pre-normalization and visualization)
 - scran for alternative measures e.g. DM and CV2 calculation
 - GO analysis
@@ -206,9 +206,10 @@ rownames(CD4.raw)[grepl("ERCC", rownames(CD4.raw))]
 ```
 
 To link the library identifier to the experimental condition, the authors provide a metadata file that can be accessed online.
+We will remove the spaces in the `Individual` column since these will be used as batch information later on.
 
 ```{r selecting-serum-cells}
-if(!file.exists("metadata.txt")){
+if(!file.exists("metadata_file.txt")){
   # Download raw counts file
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/E-MTAB-4888.additional.1.zip", 
                 destfile = "metadata.txt.zip")
@@ -218,6 +219,10 @@ if(!file.exists("metadata.txt")){
 }
 CD4.metadata <- read.table("metadata_file.txt", header = TRUE, sep = "\t")
 rownames(CD4.metadata) <- CD4.metadata$X
+
+# Remove spaces
+CD4.metadata$Individuals <- sub(" ", "_", CD4.metadata$Individuals)
+CD4.metadata$Individuals <- sub(" ", "_", CD4.metadata$Individuals)
 
 # Show metadata entries
 head(CD4.metadata)
@@ -402,13 +407,32 @@ colData(Data.naive)$BatchInfo <- colData(sce.naive)$Individuals
 metadata(Data.naive)$SpikeInput <- SpikeInput$count
 ```
 
+In the next step, the MCMC sampler can be run to generate posterior estimates of model parameters
+
 ### Running the MCMC
 
-```{r MCMC-naive}
+It is recommended to run the `BASiCS_MCMC` sampler for at least 40,000 iterations to assure convergence.
+However, if datasets are large and each condition contains hundreds of cells from a homogeneous population, BASiCS can be run with fewer (e.g. 20,000) iterations.
+Furthermore, `BASiCS_MCMC` can be run with very few (e.g 1,000) iterations to test whether the sampler breaks.
+
+Here, we run the MCMC sampler for 40,000 iterations, using an initial 20,000 iterations as burn in an a thinning step of 20 iterations.
+Since the dataset contains spike-in genes, we run the sampler with `WithSpikes = TRUE` and we also want to correct for the mean-variance trend using `Regression = TRUE`.
+For further information see *link to Methods*
+
+```{r MCMC-naive, echo=FALSE}
 MCMC.naive <- BASiCS_MCMC(Data = Data.naive, 
-                          N=40000, Thin = 20, Burn = 20000, 
-                          Regression = TRUE)
+                          N=1000, Thin = 10, Burn = 500, 
+                          Regression = TRUE, WithSpikes = TRUE)
 ```
+
+This sampler runs for *XYZ minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM.
+For convenience, the MCMC chain can be obtained online at *Link to MCMC chains*
+
+```{r download-chain-naive}
+
+```
+
+In the next step, the convergence of the sampler needs to be assessed.
 
 ### Validating the MCMC convergence
 
@@ -438,7 +462,34 @@ Shorter description as above
 
 ## Creating the BASiCS Data objects
 
-## Running the MCMC
+```{r SCE-active}
+sce.active <- sce.naive_active[,sce.naive_active$Stimulus == "Active"]
+```
+
+Next, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
+
+```{r Data-naive}
+# Here is the first time that we use BASiCS
+library(BASiCS)
+
+# Select the ERCC spike-ins of the dataset
+SpikeInput <- ERCC.count[rownames(sce.active)[isSpike(sce.active)],]
+
+# Generate the SingleCellExperiment object
+Data.active <- newBASiCS_Data(Counts = counts(sce.active), 
+                       Tech = isSpike(sce.active), 
+                       SpikeInfo = SpikeInput, 
+                       BatchInfo = sce.active$Individuals)
+```
+
+### Running the MCMC
+
+```{r MCMC-naive}
+MCMC.active <- BASiCS_MCMC(Data = Data.active, 
+                          N=1000, Thin = 10, Burn = 500, 
+                          Regression = TRUE)
+
+```
 
 ## Downstream analysis
 
