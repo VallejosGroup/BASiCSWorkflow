@@ -485,6 +485,15 @@ Furthermore, we will compare the results in the individual steps with results ob
 
 ### Normalization
 
+Posterior estimates of cell-specific parameters can be used to normalize the data and correct for biases in mRNA content *ref Vallejos 2017*.
+To perform normalization, BASiCS provides the `BASiCS_DenoisedCounts` and the `BASiCS_DenoisedRates` functions. 
+*Not sure if we should talk about the DenoiseRates function here*.
+These functions take the `SingleCellExperiment` and `BASiCS_Chain` objects as inputs.
+
+```{r normalization-naive}
+counts.denoised <- BASiCS_DenoisedRates(Data = Data.naive, Chain = MCMC.naive)
+```
+
 ### Variance decomposition
 
 ### Lowly-highly variable genes
