@@ -4,3 +4,5 @@
 .Ruserdata
 *.txt
 *.csv
+Workflow/cache/*
+Workflow/figure/*
