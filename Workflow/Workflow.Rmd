@@ -494,9 +494,29 @@ These functions take the `SingleCellExperiment` and `BASiCS_Chain` objects as in
 counts.denoised <- BASiCS_DenoisedRates(Data = Data.naive, Chain = MCMC.naive)
 ```
 
+These normalized counts can be further used for dimensionality reduction and clustering as explained elsewhere *ref,ref*.
+
 ### Variance decomposition
 
+Similar to normalization, the posterior estimates can be used to decompose the overall variance of the data into a technical, biological and Poisson sampling noise component [@Vallejos2015BASiCS].
+For this, BASiCS offers the `BASiCS_VarianceDecomp` function that takes the `BASiCS_Chain` object and by default orders genes based on their value for biological variance.
+Furthermore, this function calculates the variance components per batch.
+
+```{r variance-decomposition-naive}
+# Perform variance decomposition
+VarDecomp <- BASiCS::BASiCS_VarianceDecomp(MCMC.naive)
+head(VarDecomp)
+
+# Plot the biological part of total variance
+ggplot(VarDecomp) +
+  geom_point(aes(seq(1,nrow(VarDecomp)), BioVarGlobal))
+```
+
+This analysis can be used to select genes with high biological variability for analysis such as clustering and dimensionality reduction *refs to HVG gene selection*.
+
 ### Lowly-highly variable genes
+
+As alternative to the analysis described a
 
 ### Mean-variance trend
 
