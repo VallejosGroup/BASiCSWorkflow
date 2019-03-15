@@ -425,7 +425,7 @@ MCMC.naive <- BASiCS_MCMC(Data = Data.naive,
                           Regression = TRUE, WithSpikes = TRUE)
 ```
 
-This sampler runs for *XYZ minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM.
+This sampler runs for *XYZ minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM and produces a `BASiCS_Chain` data object.
 For convenience, the MCMC chain can be obtained online at *Link to MCMC chains*
 
 ```{r download-chain-naive}
@@ -436,7 +436,52 @@ In the next step, the convergence of the sampler needs to be assessed.
 
 ### Validating the MCMC convergence
 
+There are multiple ways of how the convergence of the chains can be assessed *refs*.
+The `CRANpkg("coda")` contains diagnostic and plot functions for this task *ref*.
+Here, we opt for a simple visual assessment to highlight the convergenece of the chains.
+To select individual chains from the `BASiCS_Chain` onject, we use the `displayChainBASiCS` function.
+These chains need to be converted to an `mcmc` object for the use with `coda`.
+
+```{r convergence-naive}
+library(coda)
+
+# Convergence of mean expression parameters
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "mu")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "mu")[,1000]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "mu")[,10000]))
+
+# Convergence of over-dispersion parameters
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "delta")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "delta")[,1000]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "delta")[,10000]))
+
+# Convergence of residual over-dispersion parameters
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "epsilon")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "epsilon")[,1000]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "epsilon")[,10000]))
+
+# Convergence of mRNA capture efficiency parameters
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "s")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "s")[,10]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "s")[,50]))
+
+# Convergence of mRNA content parameters
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "phi")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "phi")[,10]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "phi")[,50]))
+
+# Convergence of batch-specific global noise parameters
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "theta")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "theta")[,2]))
+```
+
+The visual inspection shows that all chains converged, which is the prerequisite for further downstream analysis.
+
 ## Downstream analysis
+
+In this section, we will highlight the use of BASiCS when cells of a single condition are analysed.
+The downstream analysis includes: normalization, variance decomposition, detection of highly and lowly variable genes and the use of gene-specific parameters as interpretable variability measures.
+Furthermore, we will compare the results in the individual steps with results obtained using the `Biocpkg("scran")`.
 
 ### Normalization
 
