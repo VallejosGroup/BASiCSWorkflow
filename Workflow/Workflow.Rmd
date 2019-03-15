@@ -3,15 +3,11 @@ title: "A BASiCS workflow for expression variability analysis using scRNA-Seq da
 author:
 - name: Nils Eling
   affiliation: 
-  - &EBI European Molecular Biology Laboratory, European Bioinformatics 
-  Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
-  - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
-  Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+  - &EBI European Molecular Biology Laboratory, European Bioinformatics Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+  - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, Li Ka Shing Centre, Cambridge, CB2 0RE, UK
 - name: Alan O'Callaghan
   affiliation: 
-  - &MRC MRC Human Genetics Unit, Institute of Genetics & Molecular Medicine, 
-  University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh
-  EH4 2XU, UK
+  - &MRC MRC Human Genetics Unit, Institute of Genetics & Molecular Medicine, University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, EH4 2XU, UK
 - name: John C. Marioni
   affiliation: 
   - *EBI
@@ -19,25 +15,12 @@ author:
 - name: Catalina A. Vallejos
   affiliation: 
   - *MRC 
-  - The Alan Turing Institute, British Library, 96 Euston Road, London 
-  NW1 2DB, UK
+  - The Alan Turing Institute, British Library, 96 Euston Road, London, NW1 2DB, UK
   email: catalina.vallejos@igmm.ed.ac.uk
-abstract: Cell-to-cell variability in gene expression is an inherent feature 
-of biological systems. 
-Single-cell RNA sequencing can be used to quantify this 
-heterogeneity, but it is prone to strong technical noise. 
-Here, we describe a computational workflow that uses the BASiCS Bioconductor package to robustly quantify cell-to-cell expression variability within and between known cell populations (e.g.~experimental conditions or cell types). 
-We illustrate how BASiCS can identify highly and lowly variable genes within a cell population. 
-Furthermore, we also show how BASiCS can highlight changes in gene expression variability between cell populations, while avoiding confounding effects related to technical noise or changes in overall abundance. 
-Using publicly available datasets, we guide users through a complete pipeline which includes preliminary steps for quality control and data exploration using the scater Bioconductor package. 
-Two case studies are described. 
-The first uses data generated using the Fluidigm\@ C1 system, in which spike-in RNA molecules are used in order to quantify technical noise.
-The second dataset was generated using a droplet-based system, for which spike-in RNA is not available. 
-The latter analysis provides an example in which differential variability testing reveals insights regarding a possible early cell fate commitment process. 
+abstract: Cell-to-cell variability in gene expression is an inherent feature of biological systems. Single-cell RNA sequencing can be used to quantify this heterogeneity, but it is prone to strong technical noise. Here, we describe a computational workflow that uses the BASiCS Bioconductor package to robustly quantify cell-to-cell expression variability within and between known cell populations (e.g.~experimental conditions or cell types). We illustrate how BASiCS can identify highly and lowly variable genes within a cell population. Furthermore, we also show how BASiCS can highlight changes in gene expression variability between cell populations, while avoiding confounding effects related to technical noise or changes in overall abundance. Using publicly available datasets, we guide users through a complete pipeline which includes preliminary steps for quality control and data exploration using the scater Bioconductor package. Two case studies are described. The first uses data generated using the Fluidigm\@ C1 system, in which spike-in RNA molecules are used in order to quantify technical noise.The second dataset was generated using a droplet-based system, for which spike-in RNA is not available. The latter analysis provides an example in which differential variability testing reveals insights regarding a possible early cell fate commitment process. 
 
 #Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.
-keywords: Single-cell RNA sequencing, expression variability, noise, 
-differential expression testing
+keywords: Single-cell RNA sequencing, expression variability, noise, differential expression testing
 bibliography: BASiCSworkflow.bib
 output: BiocWorkflowTools::f1000_article
 #output:
@@ -419,7 +402,7 @@ Here, we run the MCMC sampler for 40,000 iterations, using an initial 20,000 ite
 Since the dataset contains spike-in genes, we run the sampler with `WithSpikes = TRUE` and we also want to correct for the mean-variance trend using `Regression = TRUE`.
 For further information see *link to Methods*
 
-```{r MCMC-naive, echo=FALSE}
+```{r MCMC-naive, echo=FALSE, eval=FALSE}
 MCMC.naive <- BASiCS_MCMC(Data = Data.naive, 
                           N=1000, Thin = 10, Burn = 500, 
                           Regression = TRUE, WithSpikes = TRUE)
@@ -560,6 +543,18 @@ All *XYZ* HVG genes of scran are among the HVGs identified by BASiCS.
 
 ### Mean-variance trend
 
+Numerous studies have highlighted the relationship between gene-specific variability measures such as the squared coefficient of variation and mean abundance *ref,ref,ref*.
+BASiCS provides the `BASiCS_showFit` function that plots the gene-specific over-dispersion parameters (delta) versus mean expression parameters (mu). 
+
+```{r}
+BASiCS_showFit(MCMC.naive)
+```
+
+Here, we observe that the over-dispersion estimates are negatively associated with mean expression.
+However, by performing the regression between over-dispersion and mean expression, we can correct for this trend and obtain variability measures that show no correlation with mean expression [@Eling2018].
+
+We can now compare the gene-specific variability measures (over-dispersion and residual over-dispersion) to previously used measures to quantify cell-to-cell expression variability [@Brennecke2013,Ola 2015].
+
 ### Comparison to CV2, Fano factor and variance
 
 ### Comparison to DM (scran package)
@@ -582,7 +577,7 @@ sce.active <- sce.naive_active[,sce.naive_active$Stimulus == "Active"]
 
 Next, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
 
-```{r Data-naive}
+```{r Data-active}
 # Here is the first time that we use BASiCS
 library(BASiCS)
 
@@ -598,7 +593,7 @@ Data.active <- newBASiCS_Data(Counts = counts(sce.active),
 
 ### Running the MCMC
 
-```{r MCMC-naive}
+```{r MCMC-active}
 MCMC.active <- BASiCS_MCMC(Data = Data.active, 
                           N=1000, Thin = 10, Burn = 500, 
                           Regression = TRUE)
@@ -907,7 +902,7 @@ PSM.GO$Genes <- all_genes
 
 To visualize the expression of individual genes, we can use the `scater` package.
 
-```{r violin-plots}
+```{r}
 # Expression of Fgf8 in both conditions
 plotExpression(droplet.sce, features = genenames[genenames$external_gene_name == "Fgf8",1], 
                x = "cellType", colour_by = "cellType")
