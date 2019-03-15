@@ -516,7 +516,47 @@ This analysis can be used to select genes with high biological variability for a
 
 ### Lowly-highly variable genes
 
-As alternative to the analysis described a
+As alternative to the analysis described above, BASiCS offers a function to select genes with large and small biological variance.
+The `BASiCS_DetectHVG` and `BASiCS_DetectLVG` functions take the `BASiCS_Chain` object and a threshold for the biological variance component as input. 
+As seen in Figure *link to privious plot*, the biological component of genes expressed in naive CD4^+^ T cells is large and we select a threshold of larger 99% to detect highly variable genes (HVG).
+To detect lowly variable genes, we chose a threshold of smaller 80% to find lowly variable genes.
+
+```{r naive-HVG-LVG}
+# Highly variable genes
+HVG <- BASiCS_DetectHVG(MCMC.naive, VarThreshold = 0.99)
+
+# Lowly variable genes
+LVG <- BASiCS_DetectLVG(MCMC.naive, VarThreshold = 0.8)
+```
+
+This analysis results in the detection of *XYZ* highly variable genes and *XYZ* lowly variable genes.
+
+The `Biocpkg("scran")` provides similar functions to detect HVGs and we can compare the results of both methods.
+`scran` first fits a smooth regression between the variance of the log-transformed expression of the spike-in transcripts and their mean abundance using the `trendVar` function.
+Afterwards, the `decomposeVar` function decomposes the gene-specific variance into a biological and technical component.
+
+```{r HVG-LVG-scran}
+# Fit the mean-variance trend
+var.fit <- scran::trendVar(sce.naive, use.spikes=TRUE) 
+
+# Variance decomposition
+var.out <- scran::decomposeVar(sce.naive, var.fit)
+```
+
+As proposed by the `SimpleSingleCell` workflow, the HVGs are described as displaying a biolgical variance component of larger than 0.5 while controlling the FDR to 5% [@Lun2016].
+*Make sure this is still in the current version of SimpleSingleCell*.
+We can then compare the the overlap of the HVG identified by scran and by BASiCS.
+
+```{r scran-HVG}
+hvg.out <- var.out[which(var.out$FDR <= 0.05 & var.out$bio >= 0.5),] 
+hvg.out <- hvg.out[order(hvg.out$bio, decreasing=TRUE),] 
+nrow(hvg.out)
+
+# Intersection between BASiCS and scran HVG
+length(intersect(rownames(hvg.out), HVG$Table$GeneName))
+```
+
+All *XYZ* HVG genes of scran are among the HVGs identified by BASiCS.
 
 ### Mean-variance trend
 
