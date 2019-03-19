@@ -204,8 +204,8 @@ CD4.metadata <- read.table("metadata_file.txt", header = TRUE, sep = "\t")
 rownames(CD4.metadata) <- CD4.metadata$X
 
 # Remove spaces
-CD4.metadata$Individuals <- sub(" ", "_", CD4.metadata$Individuals)
-CD4.metadata$Individuals <- sub(" ", "_", CD4.metadata$Individuals)
+#CD4.metadata$Individuals <- sub(" ", "_", CD4.metadata$Individuals)
+#CD4.metadata$Individuals <- sub(" ", "_", CD4.metadata$Individuals)
 
 # Show metadata entries
 head(CD4.metadata)
@@ -238,11 +238,13 @@ sce.naive_active <- sce.CD4_all[,sce.CD4_all$Strain == "Mus musculus domesticus"
 ```
 
 Prior to quality control, we will remove all genes that are not detected in at least 2 cells.
+We further remove genes that are not expressed with an average count of 1 across all cells.
 
 ```{r gene-selection}
 # Remove genes
 sce.naive_active <- sce.naive_active[apply(counts(sce.naive_active), 1, 
                                            function(n){sum(n > 0)}) > 1,]
+sce.naive_active <- sce.naive_active[rowMeans(counts(sce.naive_active)) >= 1,]
 ```
 
 In the next step, we will use the `Biocpkg("scran")` and `Biocpkg("scater")` for initial normalization and visualization [@Lun2016,@McCarthy2017].
@@ -416,6 +418,11 @@ For convenience, the MCMC chain can be obtained online at *Link to MCMC chains*
 ```
 
 In the next step, the convergence of the sampler needs to be assessed.
+To obtain a summary of the MCMC sampler, BASiCS provides the ``
+
+```{r Summary}
+Summary.naive <- Summary(MCMC.naive)
+```
 
 ### Validating the MCMC convergence
 
@@ -552,10 +559,70 @@ BASiCS_showFit(MCMC.naive)
 
 Here, we observe that the over-dispersion estimates are negatively associated with mean expression.
 However, by performing the regression between over-dispersion and mean expression, we can correct for this trend and obtain variability measures that show no correlation with mean expression [@Eling2018].
+The purple points in the plot indicate genes that are not expressed in at least 2 cells.
+BASiCS automatically excludes these genes due to challenges in interpreting variability estimates and changes in variability for genes that are only expressed in one cell.
 
 We can now compare the gene-specific variability measures (over-dispersion and residual over-dispersion) to previously used measures to quantify cell-to-cell expression variability [@Brennecke2013,Ola 2015].
 
 ### Comparison to CV2, Fano factor and variance
+
+Widely used measures of expression variability include the variance [@Shalek2014], the Fano factor (variance divided by mean expression) *refs* and the coefficient of variation (CV, variance divided by squared mean expression) *refs*. 
+Here, we will highlight the mean-variance realtionship for each variability measures.
+For this analysis, we exclude genes that are not expressed in at least 2 cells.
+These genes can be identified in the `displayChainBASiCS(MCMC.naive, Param = "epsilon")` to contain `NA`.
+
+```{r variability-measures}
+# Exclude genes
+counts.denoised <- counts.denoised[!is.na(displayChainBASiCS(
+  MCMC.naive, Param = "epsilon")[1,]),]
+
+# Variance
+var.genes <- apply(counts.denoised, 1, var)
+mean.genes <- apply(counts.denoised, 1, mean)
+
+ggplot(data.frame(variance = var.genes,
+                  mean = mean.genes)) +
+  geom_point(aes(log(mean), log(variance)))
+
+# Fano factor
+ggplot(data.frame(fano = var.genes/mean.genes,
+                  mean = mean.genes)) +
+  geom_point(aes(log(mean), log(fano)))
+
+# Squared coefficient of variation
+ggplot(data.frame(CV2 = var.genes/mean.genes^2,
+                  mean = mean.genes)) +
+  geom_point(aes(log(mean), log(CV2)))
+```
+
+We see that all measures correlate with mean expression.
+The same is true for the over-dispersion parameters as estimated by BASiCS as shown below.
+Again, for this comparison, we exclude genes that do not show expression in at least 2 cells
+
+```{r CV-comparison-BASiCS}
+# Remove genes
+mu.naive <- displaySummaryBASiCS(Summary.naive, Param = "mu")[
+  !is.na(displaySummaryBASiCS(Summary.naive, Param = "epsilon")[,"median"]),
+]
+delta.naive <- displaySummaryBASiCS(Summary.naive, Param = "delta")[
+  !is.na(displaySummaryBASiCS(Summary.naive, Param = "epsilon")[,"median"]),
+]
+
+# Over-dispersion versus mean expression
+ggplot(data.frame(mu = mu.naive[,"median"],
+                  delta = delta.naive[,"median"])) +
+  geom_point(aes(log(mu), log(delta)))
+
+# Compare delta to CV2
+ggplot(data.frame(CV2 = var.genes/mean.genes^2,
+                  delta = delta.naive[,"median"])) +
+  geom_point(aes(log(CV2), log(delta))) 
+```
+
+The over-dispersion parameter estimated using BASiCS shows correlation with the CV2. 
+Recently, we extended BASiCS to avoid the mean-variability relationship by performing an internal regression between the over-dispersion and mean expression parameters (as visualized in figure *Figure showFit*).
+Previously, Kolodziejczyk _et al._ used the distance to a rolling median along the mean-variability trend to correct for this confounding factor [@Kolodziejczyk2015cell].
+
 
 ### Comparison to DM (scran package)
 
