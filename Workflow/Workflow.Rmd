@@ -406,15 +406,15 @@ For further information see *link to Methods*
 
 ```{r MCMC-naive, echo=FALSE, eval=FALSE}
 MCMC.naive <- BASiCS_MCMC(Data = Data.naive, 
-                          N=1000, Thin = 10, Burn = 500, 
+                          N=40000, Thin = 20, Burn = 20000, 
                           Regression = TRUE, WithSpikes = TRUE)
 ```
 
 This sampler runs for *XYZ minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM and produces a `BASiCS_Chain` data object.
-For convenience, the MCMC chain can be obtained online at *Link to MCMC chains*
+For convenience, the MCMC chain can be obtained online at [https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018](https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018).
 
 ```{r download-chain-naive}
-
+MCMC.naive <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/MCMC_naive.rds"))
 ```
 
 In the next step, the convergence of the sampler needs to be assessed.
@@ -487,6 +487,8 @@ counts.denoised <- BASiCS_DenoisedRates(Data = Data.naive, Chain = MCMC.naive)
 These normalized counts can be further used for dimensionality reduction and clustering as explained elsewhere *ref,ref*.
 
 ### Variance decomposition
+
+*The results of the variance decomposition and HVG analysis appears a bit weird here...*
 
 Similar to normalization, the posterior estimates can be used to decompose the overall variance of the data into a technical, biological and Poisson sampling noise component [@Vallejos2015BASiCS].
 For this, BASiCS offers the `BASiCS_VarianceDecomp` function that takes the `BASiCS_Chain` object and by default orders genes based on their value for biological variance.
@@ -564,7 +566,7 @@ BASiCS automatically excludes these genes due to challenges in interpreting vari
 
 We can now compare the gene-specific variability measures (over-dispersion and residual over-dispersion) to previously used measures to quantify cell-to-cell expression variability [@Brennecke2013,Ola 2015].
 
-### Comparison to CV2, Fano factor and variance
+### Comparison to variance, Fano factor, CV2, and DM
 
 Widely used measures of expression variability include the variance [@Shalek2014], the Fano factor (variance divided by mean expression) *refs* and the coefficient of variation (CV, variance divided by squared mean expression) *refs*. 
 Here, we will highlight the mean-variance realtionship for each variability measures.
@@ -619,16 +621,54 @@ ggplot(data.frame(CV2 = var.genes/mean.genes^2,
   geom_point(aes(log(CV2), log(delta))) 
 ```
 
-The over-dispersion parameter estimated using BASiCS shows correlation with the CV2. 
+The over-dispersion parameters estimated using BASiCS show strong correlation with the CV2. 
 Recently, we extended BASiCS to avoid the mean-variability relationship by performing an internal regression between the over-dispersion and mean expression parameters (as visualized in figure *Figure showFit*).
-Previously, Kolodziejczyk _et al._ used the distance to a rolling median along the mean-variability trend to correct for this confounding factor [@Kolodziejczyk2015cell].
+Similarly, Kolodziejczyk _et al._ used the distance to a rolling median (DM) along the mean-variability trend to correct for this confounding factor [@Kolodziejczyk2015cell].
+Here, we highlight how to obtain the residual variability estimates using `BASiCS` and `scran`.
+
+```{r}
+# Residual over-dispersion estimates
+epsilon.naive <- displaySummaryBASiCS(Summary.naive, Param = "epsilon")[
+  !is.na(displaySummaryBASiCS(Summary.naive, Param = "epsilon")[,"median"]),
+]
+
+# Residual over-dispersion versus mean expression
+ggplot(data.frame(mu = mu.naive[,"median"],
+                  epsilon = epsilon.naive[,"median"])) +
+  geom_point(aes(log(mu), epsilon))
+
+# DM values
+DM.naive <- scran::DM(mean = mean.genes, cv2 = var.genes/mean.genes^2)
+
+# DM versus mean expression
+ggplot(data.frame(mean = mean.genes,
+                  DM = DM)) +
+  geom_point(aes(log(mean), DM))
+
+# Compare residual over-dispersion and DM
+ggplot(data.frame(epsilon = epsilon.naive,
+                  DM = DM)) + 
+  geom_point(aes(epsilon, DM))
+```
+
+Neither the DM nor the residual over-dispersion estimates show association with mean expression.
+Furthermore, the mean-independent variability measures display high correlation.
+These measures can be used to associate genomic features [@Morgan2018,@Faure2018] or transcriptional dynamics [@Antolovic2017] to gene expression variability.
+While the DM is calculated as a point estimate, BASiCS stores each posterior sample within the `BASiCS_Chain` object.
+They can be accessed using the `displayChain` function, which displays cell- or gene-specific samples in form of a matrix where each column contains cell- or gene-specific paramters and rows contain the MCMC samples.
+
+```{r individual-samples}
+displayChainBASiCS(MCMC.naive, Param = "epsilon")[1:10,1:10]
+```
+
+*Not sure if we need this*
+By testing a certain association (for example between CpG island length and variability [@Morgan2018]) for each MCMC sample, one can generate a _post-hoc_ posterior distribution of the test statistic. 
+
+The workflow so far highlights the use of BASiCS for analysing cells of a single condtion.
+In the following paragraphs, we will perform differential testing between naive CD4+ T cells (from this section) and activated CD4+ T cells.
 
 
-### Comparison to DM (scran package)
-
-**Compare delta to CV2 and epsilon to DM**
-
-# Differential testing using mESCs in two conditions (two group example)
+# Differential testing between naive and activated CD4+ T cells (two group example)
 
 ## Obtaining the data
 
