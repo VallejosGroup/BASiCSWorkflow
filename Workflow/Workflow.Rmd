@@ -642,12 +642,12 @@ DM.naive <- scran::DM(mean = mean.genes, cv2 = var.genes/mean.genes^2)
 
 # DM versus mean expression
 ggplot(data.frame(mean = mean.genes,
-                  DM = DM)) +
+                  DM = DM.naive)) +
   geom_point(aes(log(mean), DM))
 
 # Compare residual over-dispersion and DM
-ggplot(data.frame(epsilon = epsilon.naive,
-                  DM = DM)) + 
+ggplot(data.frame(epsilon = epsilon.naive[,"median"],
+                  DM = DM.naive)) + 
   geom_point(aes(epsilon, DM))
 ```
 
@@ -666,7 +666,6 @@ By testing a certain association (for example between CpG island length and vari
 
 The workflow so far highlights the use of BASiCS for analysing cells of a single condtion.
 In the following paragraphs, we will perform differential testing between naive CD4+ T cells (from this section) and activated CD4+ T cells.
-
 
 # Differential testing between naive and activated CD4+ T cells (two group example)
 
@@ -700,7 +699,7 @@ Data.active <- newBASiCS_Data(Counts = counts(sce.active),
 
 ### Running the MCMC
 
-```{r MCMC-active}
+```{r MCMC-active, eval=FALSE}
 MCMC.active <- BASiCS_MCMC(Data = Data.active, 
                           N=1000, Thin = 10, Burn = 500, 
                           Regression = TRUE)
@@ -729,6 +728,7 @@ For this, we compare cells of the presomitic mesoderm and somitic mesoderm using
 The full dataset is stored under the accession number E-MTAB-6153 on ArrayExpress and can be obtained via:
 
 ```{r load-droplet-data}
+library(data.table)
 if(!file.exists("rawCounts.zip")){
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.2.zip", 
                 destfile = "rawCounts.zip")
@@ -861,8 +861,8 @@ SM.MCMC <- BASiCS_MCMC(SM.Data, N = 20000, Thin = 10, Burn = 10000, Regression =
 Running these MCMC will take around 8-12 hours on a standard PC (2.6 GHz i5, 8 GB RAM, using 1 core). Here, we provide these chains to download from:
 
 ```{r droplet-chain-download}
-PSM.MCMC <- readRDS("../../../Desktop/PSM_MCMC.rds")
-SM.MCMC <- readRDS("../../../Desktop/SM_MCMC.rds")
+PSM.MCMC <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/PSM_MCMC.rds"))
+SM.MCMC <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/SM_MCMC.rds"))
 ```
 
 ## Validating the model fit
