@@ -49,21 +49,15 @@ knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE
 <!--- This paragraph: scRNA-Seq and the different types of heterogeneity --->
 <!--- Ref to clustering removed, as the focus is on the types of heterogeneity,
 not in the analysis. Check if @Rosenberg2018 reference is still relevant --> 
-Single-cell RNA-sequencing (scRNA-Seq) is the leading technology to study 
-genome-wide transcriptional heterogeneity in cell populations that remains 
-otherwise undetected in bulk experiments [@Stegle2015]. Its applications range 
-from uncovering novel cell types in immunity [@Lonnberg2017, @Villani2017] 
-and development [@Ibarra-Soria2018a, @Wagner2018] to dissecting the mechanism 
-for cell-to-cell differences in expression [@Goolam2016] or understanding 
-differentiation processes [@Proserpio2016]. Within a population of cells, 
-transcriptional heterogeneity can be due a mixture of possible causes. On the 
-broadest level, this heterogeneity can reflect the presence of cell subtypes 
-with distinct expression profiles [@Rosenberg2018]. More subtle variation within 
-a seemingly homogeneous cell population can be due to deterministic or 
-stochastic events, such as extrinsic or intrinsic transcriptional noise 
-[@Elowitz2002]. 
+Single-cell RNA-sequencing (scRNA-Seq) is the leading technology to study genome-wide transcriptional heterogeneity in cell populations that remains otherwise undetected in bulk experiments [@Stegle2015]. 
+Its applications range from uncovering novel cell types in immunity [@Lonnberg2017, @Villani2017] and development [@Ibarra-Soria2018a, @Wagner2018] to dissecting the mechanism 
+for cell-to-cell differences in expression [@Goolam2016] or understanding differentiation processes [@Proserpio2016]. 
+Within a population of cells, transcriptional heterogeneity can be due a mixture of possible causes. 
+On the broadest level, this heterogeneity can reflect the presence of cell subtypes with distinct expression profiles *I would cite Kieselev NRG here*.
+More subtle variation within a seemingly homogeneous cell population can be due to deterministic or stochastic events, the later being referred to as 'noise' [@Elowitz2002]. 
 <!--- edited until here ---> 
-Extrinsic noise is defined by differences in dynamic states (cell size, cell cycle, metabolism, intra- and inter-cellular signalling) while intrinsic noise effects single promoters via mutations, epigenetic modifications and nucleosome positioning [@Faure2017, @Eberwine2015].
+Classically, extrinsic noise is defined as fluctuations in ... differences in dynamic states (cell size, cell cycle, metabolism, intra- and inter-cellular signalling) while intrinsic noise effects single promoters via mutations, epigenetic modifications and nucleosome positioning [@Faure2017, @Eberwine2015].
+However, *Describe molecular phenotypic variability here...*
 
 <!--- This paragraph: technical noise, normalisation and hvg/lvg analyses ---> 
 Moreover, technical noise inflates the overall variability in gene expression [@Brennecke2013].
@@ -87,6 +81,8 @@ The analysis starts with a raw transcript counts matrix after removal of low-qua
 A full quality control process is explained elsewhere [@McCarthy2017].
 We will first focus on gene filtering, generating a SingleCellExpression object to use within BASiCS, and explain how to run and validate the convergence of Markov-Chain Monte Carlo simulations.
 Additionally, we will use two examples (Cel-Seq [@Grun2014] and droplet-based scRNAseq data [@Ibarra-Soria2018]) to exemplify statistical detection of highly variable, differentially expressed and differentially variable genes in different conditions. 
+
+*Discuss and cite similar workflows: scran, Mark Robinson, the chapter/workflow that Kim published*
 
 # Methods
 
