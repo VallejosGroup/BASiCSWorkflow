@@ -665,28 +665,28 @@ displayChainBASiCS(MCMC.naive, Param = "epsilon")[1:10,1:10]
 By testing a certain association (for example between CpG island length and variability [@Morgan2018]) for each MCMC sample, one can generate a _post-hoc_ posterior distribution of the test statistic. 
 
 The workflow so far highlights the use of BASiCS for analysing cells of a single condtion.
-In the following paragraphs, we will perform differential testing between naive CD4+ T cells (from this section) and activated CD4+ T cells.
 
-# Differential testing between naive and activated CD4+ T cells (two group example)
+# Differential testing between naive and activated CD4^+^ T cells (two group example)
 
-## Obtaining the data
+This section highlights the use of BASiCS to perform differential testing (mean and variability) between cells of two condtions. 
+For convenience, we will compare the naive CD4^+^ T cells, which were analysed in the previous section to activated CD4^+^ T cells of the same dataset [@Martinez-jimnenez2017].
+Naive CD4^+^ T cells were activated for 3 hours using plate-bound CD3e and CD28 antibodies.
+T cell activation is linked to strong transcriptional shifts and the up-regulation of lineage specific marker genes, such as Tbx21 and Gata1 *ref, ref*.
+To generate this data, the authors did not add cytokines, which are needed for T cell differentiations *ref*, meaning that any heterogeneity in the activated cell population does not arise from cells residing in different lineage-specific differentiation states.
+Prior to differential testing, and as explained above, we need to generate a `SingleCellExperiment` object that is compatible for processing using `BASiCS`.
 
-Shorter description as above
+### Creating the BASiCS Data objects
 
-## Filtering the data
-
-## Creating the BASiCS Data objects
+We have performed quality control on the naive and activated CD4^+^ T cells above *link to filtering section*. 
+Therefore, we can directly select the activated CD4^+^ T cells from the `sce.naive_active` object.
 
 ```{r SCE-active}
 sce.active <- sce.naive_active[,sce.naive_active$Stimulus == "Active"]
 ```
 
-Next, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
+Similar to the procedure described above *link to naive section*, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
 
 ```{r Data-active}
-# Here is the first time that we use BASiCS
-library(BASiCS)
-
 # Select the ERCC spike-ins of the dataset
 SpikeInput <- ERCC.count[rownames(sce.active)[isSpike(sce.active)],]
 
@@ -699,12 +699,24 @@ Data.active <- newBASiCS_Data(Counts = counts(sce.active),
 
 ### Running the MCMC
 
-```{r MCMC-active, eval=FALSE}
+BASiCS takes this `SingleCellExperiment` object and runs the MCMC sampler over 40,000 iterations. 
+
+```{r MCMC-active, echo=FALSE, eval=FALSE}
 MCMC.active <- BASiCS_MCMC(Data = Data.active, 
                           N=1000, Thin = 10, Burn = 500, 
-                          Regression = TRUE)
-
+                          Regression = TRUE, WithSpikes = TRUE)
 ```
+
+This sampler runs for *XYZ minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM and produces a `BASiCS_Chain` data object.
+For convenience, this MCMC chain can be again obtained online at [https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018](https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018).
+
+```{r download-chain-naive}
+MCMC.active <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/MCMC_active.rds"))
+```
+
+### Quality checks
+
+SImilar to the quality checks 
 
 ## Downstream analysis
 
