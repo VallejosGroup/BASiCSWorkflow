@@ -555,7 +555,7 @@ All *XYZ* HVG genes of scran are among the HVGs identified by BASiCS.
 Numerous studies have highlighted the relationship between gene-specific variability measures such as the squared coefficient of variation and mean abundance *ref,ref,ref*.
 BASiCS provides the `BASiCS_showFit` function that plots the gene-specific over-dispersion parameters (delta) versus mean expression parameters (mu). 
 
-```{r}
+```{r naive-fit}
 BASiCS_showFit(MCMC.naive)
 ```
 
@@ -716,15 +716,63 @@ MCMC.active <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publicati
 
 ### Quality checks
 
-SImilar to the quality checks 
+Similar to the `BASiCS_Chain` quality checks described above, we will again profile the convergence of the chain and if the regression captures the mean-variability dependency across the full range of data points.
 
-## Downstream analysis
+```{r convergence-active}
+# Convergence of mean expression parameters
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "mu")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "mu")[,1000]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "mu")[,10000]))
+
+# Convergence of over-dispersion parameters
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "delta")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "delta")[,1000]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "delta")[,10000]))
+
+# Convergence of residual over-dispersion parameters
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "epsilon")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "epsilon")[,1000]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "epsilon")[,10000]))
+
+# Convergence of mRNA capture efficiency parameters
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "s")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "s")[,10]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "s")[,50]))
+
+# Convergence of mRNA content parameters
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "phi")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "phi")[,10]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "phi")[,50]))
+
+# Convergence of batch-specific global noise parameters
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "theta")[,1]))
+plot(mcmc(displayChainBASiCS(MCMC.active, Param = "theta")[,2]))
+```
+
+To highlight the regression trend, we can use the `BASiCS_showFit` function.
+
+```{r active-fit}
+BASiCS_showFit(MCMC.active)
+```
+
+The MCMC sampler converged and the regression captured the full range of data points similar to the regression done on naive CD4^+^ T cells.
+We can therefore move on to perform differential testing between naive and activated CD4^+^ T cells.
+
+## Differential testing
 
 ### Differential mean expression
 
+Standard DE test, highlight genes associated to immune activation and perform GO analysis.
+
 ### Differential over-dispersion
 
+DV on logFC = 0 to highlight global changes in variability. 
+
 ### Differential residual over-dispersion
+
+First, gene-wise DV, GO analysis.
+
+Second, DE and DV analysis, GO analysis and:
 
 *Check if cytokines are variably up-regulated* This is in line with Sarah Teichmann's recent paper.
 
