@@ -199,10 +199,6 @@ if(!file.exists("metadata_file.txt")){
 CD4.metadata <- read.table("metadata_file.txt", header = TRUE, sep = "\t")
 rownames(CD4.metadata) <- CD4.metadata$X
 
-# Remove spaces
-#CD4.metadata$Individuals <- sub(" ", "_", CD4.metadata$Individuals)
-#CD4.metadata$Individuals <- sub(" ", "_", CD4.metadata$Individuals)
-
 # Show metadata entries
 head(CD4.metadata)
 ```
@@ -264,20 +260,20 @@ These metrics include (among others): number of endogeneous genes detected per c
 
 ```{r}
 # Calculate quality metrics
-sce.naive_active <- calculateQCMetrics(sce.naive_active)
+sce.naive_active <- scater::calculateQCMetrics(sce.naive_active)
 
 # Calcualte PCA
-sce.naive_active <- runPCA(sce.naive_active)
+sce.naive_active <- scater::runPCA(sce.naive_active)
 
 # Visualize the conditions and batch structure
-plotPCA(sce.naive_active, colour_by = "Stimulus")
-plotPCA(sce.naive_active, colour_by = "Individuals")
+scater::plotPCA(sce.naive_active, colour_by = "Stimulus")
+scater::plotPCA(sce.naive_active, colour_by = "Individuals")
 
 # Visualize number of endogeneous genes detected
-plotPCA(sce.naive_active, colour_by = "total_features_by_counts_endogenous")
+scater::plotPCA(sce.naive_active, colour_by = "total_features_by_counts_endogenous")
 
 # Visualize log10-transformed total number of counts
-plotPCA(sce.naive_active, colour_by = "log10_total_counts")
+scater::plotPCA(sce.naive_active, colour_by = "log10_total_counts")
 
 # Plot the fraction of reads mapping to spike-ins 
 # versus the number of reads mapping to endogeneous genes
@@ -407,6 +403,7 @@ MCMC.naive <- BASiCS_MCMC(Data = Data.naive,
 ```
 
 This sampler runs for *XYZ minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM and produces a `BASiCS_Chain` data object.
+This sampler runs for *XYZ minutes* on a 3.1 GHz Intel Core i7 procesor with 16GB RAM and produces a `BASiCS_Chain` data object.
 For convenience, the MCMC chain can be obtained online at [https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018](https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018).
 
 ```{r download-chain-naive}
@@ -414,7 +411,7 @@ MCMC.naive <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publicatio
 ```
 
 In the next step, the convergence of the sampler needs to be assessed.
-To obtain a summary of the MCMC sampler, BASiCS provides the ``
+To obtain a summary of the MCMC sampler, BASiCS provides the `Summary` function.
 
 ```{r Summary}
 Summary.naive <- Summary(MCMC.naive)
@@ -427,6 +424,8 @@ The `CRANpkg("coda")` contains diagnostic and plot functions for this task *ref*
 Here, we opt for a simple visual assessment to highlight the convergenece of the chains.
 To select individual chains from the `BASiCS_Chain` onject, we use the `displayChainBASiCS` function.
 These chains need to be converted to an `mcmc` object for the use with `coda`.
+*Change this to BASiCS::plot(MCMC.naive, Param = "mu", Gene = 1)*
+*Explain autocorrelation*
 
 ```{r convergence-naive}
 library(coda)
@@ -473,18 +472,21 @@ Furthermore, we will compare the results in the individual steps with results ob
 
 Posterior estimates of cell-specific parameters can be used to normalize the data and correct for biases in mRNA content *ref Vallejos 2017*.
 To perform normalization, BASiCS provides the `BASiCS_DenoisedCounts` and the `BASiCS_DenoisedRates` functions. 
-*Not sure if we should talk about the DenoiseRates function here*.
+*Add more details on the DenoisedCounts function*
 These functions take the `SingleCellExperiment` and `BASiCS_Chain` objects as inputs.
 
 ```{r normalization-naive}
-counts.denoised <- BASiCS_DenoisedRates(Data = Data.naive, Chain = MCMC.naive)
+counts.denoised <- BASiCS_DenoisedCounts(Data = Data.naive, Chain = MCMC.naive)
 ```
+
+Alternatively, *add the DenoisedRates*
 
 These normalized counts can be further used for dimensionality reduction and clustering as explained elsewhere *ref,ref*.
 
 ### Variance decomposition
 
 *The results of the variance decomposition and HVG analysis appears a bit weird here...*
+*Change this to find HVG via the epsilons*
 
 Similar to normalization, the posterior estimates can be used to decompose the overall variance of the data into a technical, biological and Poisson sampling noise component [@Vallejos2015BASiCS].
 For this, BASiCS offers the `BASiCS_VarianceDecomp` function that takes the `BASiCS_Chain` object and by default orders genes based on their value for biological variance.
@@ -548,6 +550,8 @@ All *XYZ* HVG genes of scran are among the HVGs identified by BASiCS.
 
 ### Mean-variance trend
 
+*Move this up*
+
 Numerous studies have highlighted the relationship between gene-specific variability measures such as the squared coefficient of variation and mean abundance *ref,ref,ref*.
 BASiCS provides the `BASiCS_showFit` function that plots the gene-specific over-dispersion parameters (delta) versus mean expression parameters (mu). 
 
@@ -570,6 +574,9 @@ For this analysis, we exclude genes that are not expressed in at least 2 cells.
 These genes can be identified in the `displayChainBASiCS(MCMC.naive, Param = "epsilon")` to contain `NA`.
 
 ```{r variability-measures}
+# Exclude ERCCs
+counts.denoised <- counts.denoised[!grepl("ERCC", rownames(counts.denoised)),]
+
 # Exclude genes
 counts.denoised <- counts.denoised[!is.na(displayChainBASiCS(
   MCMC.naive, Param = "epsilon")[1,]),]
@@ -621,6 +628,7 @@ The over-dispersion parameters estimated using BASiCS show strong correlation wi
 Recently, we extended BASiCS to avoid the mean-variability relationship by performing an internal regression between the over-dispersion and mean expression parameters (as visualized in figure *Figure showFit*).
 Similarly, Kolodziejczyk _et al._ used the distance to a rolling median (DM) along the mean-variability trend to correct for this confounding factor [@Kolodziejczyk2015cell].
 Here, we highlight how to obtain the residual variability estimates using `BASiCS` and `scran`.
+*Add density to these plots*
 
 ```{r}
 # Residual over-dispersion estimates
@@ -704,6 +712,7 @@ MCMC.active <- BASiCS_MCMC(Data = Data.active,
 ```
 
 This sampler runs for *XYZ minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM and produces a `BASiCS_Chain` data object.
+This sampler runs for *XYZ minutes* on a 3.1 GHz Intel Core i7 procesor with 16GB RAM and produces a `BASiCS_Chain` data object.
 For convenience, this MCMC chain can be again obtained online at [https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018](https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018).
 
 ```{r download-chain-naive}
