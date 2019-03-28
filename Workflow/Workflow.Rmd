@@ -329,6 +329,8 @@ We can now use the molecule count to prepare the BASiCS data object.
 To incorporate the ERCC molecule counts within the `Biocpkg("SingleCellExperiment")` object that BASiCS requires, the first column must contain the names associated to the spike-in genes. 
 The second column must contain the input number of molecules for the spike-in genes (amount per well).
 
+*Find a ref for 1ul wells*
+
 ```{r spike-info}
 # Prepare the data.frame
 ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
