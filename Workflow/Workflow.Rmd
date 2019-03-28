@@ -488,43 +488,23 @@ Alternatively, *add the DenoisedRates*
 
 These normalized counts can be further used for dimensionality reduction and clustering as explained elsewhere *ref,ref*.
 
-### Variance decomposition
+### Lowly and highly variable gene detection
 
-*The results of the variance decomposition and HVG analysis appears a bit weird here...*
-*Change this to find HVG via the epsilons*
-
-Similar to normalization, the posterior estimates can be used to decompose the overall variance of the data into a technical, biological and Poisson sampling noise component [@Vallejos2015BASiCS].
-For this, BASiCS offers the `BASiCS_VarianceDecomp` function that takes the `BASiCS_Chain` object and by default orders genes based on their value for biological variance.
-Furthermore, this function calculates the variance components per batch.
-
-```{r variance-decomposition-naive}
-# Perform variance decomposition
-VarDecomp <- BASiCS::BASiCS_VarianceDecomp(MCMC.naive)
-head(VarDecomp)
-
-# Plot the biological part of total variance
-ggplot(VarDecomp) +
-  geom_point(aes(seq(1,nrow(VarDecomp)), BioVarGlobal))
-```
-
-This analysis can be used to select genes with high biological variability for analysis such as clustering and dimensionality reduction *refs to HVG gene selection*.
-
-### Lowly-highly variable genes
-
-As alternative to the analysis described above, BASiCS offers a function to select genes with large and small biological variance.
-The `BASiCS_DetectHVG` and `BASiCS_DetectLVG` functions take the `BASiCS_Chain` object and a threshold for the biological variance component as input. 
-As seen in Figure *link to privious plot*, the biological component of genes expressed in naive CD4^+^ T cells is large and we select a threshold of larger 99% to detect highly variable genes (HVG).
-To detect lowly variable genes, we chose a threshold of smaller 80% to find lowly variable genes.
+BASiCS offers a function to select genes with large and small biological variance.
+When the MCMC sampler was run with `Regression = TRUE` (default), the `BASiCS_DetectHVG` and `BASiCS_DetectLVG` functions take the `BASiCS_Chain` object and a quantile threshold.
+Using the residual over-disperison parameters, genes are ranked by their variability and the `BASiCS_DetectHVG` function selects the (for example) top 10% of highly variable genes (`PercentileThreshold = 0.9`).
+Similarly, when detecting lowly variable genes, the `BASiCS_DetectLVG` selects the top 10% of lowly variable genes (`PercentileThreshold = 0.1`).
+The propability threshold for a gene showing higher variability than the percentile threshold is found by controling the EFDR to 10% (default).
 
 ```{r naive-HVG-LVG}
 # Highly variable genes
-HVG <- BASiCS_DetectHVG(MCMC.naive, VarThreshold = 0.99)
+HVG <- BASiCS_DetectHVG(MCMC.naive, PercentileThreshold = 0.9)
 
 # Lowly variable genes
-LVG <- BASiCS_DetectLVG(MCMC.naive, VarThreshold = 0.8)
+LVG <- BASiCS_DetectLVG(MCMC.naive, PercentileThreshold = 0.1)
 ```
 
-This analysis results in the detection of *XYZ* highly variable genes and *XYZ* lowly variable genes.
+This analysis results in the detection of *306* highly variable genes and *716* lowly variable genes.
 
 The `Biocpkg("scran")` provides similar functions to detect HVGs and we can compare the results of both methods.
 `scran` first fits a smooth regression between the variance of the log-transformed expression of the spike-in transcripts and their mean abundance using the `trendVar` function.
@@ -548,7 +528,22 @@ hvg.out <- hvg.out[order(hvg.out$bio, decreasing=TRUE),]
 nrow(hvg.out)
 
 # Intersection between BASiCS and scran HVG
-length(intersect(rownames(hvg.out), HVG$Table$GeneName))
+length(intersect(rownames(hvg.out), HVG$Table$GeneName[HVG$Table$HVG]))
+
+# Compare BASiCS and scran results
+HVG.res <- paste(HVG$Table$HVG, var.out[HVG$Table$GeneName,"FDR"] <= 0.05 & 
+                   var.out[HVG$Table$GeneName,"bio"] >= 0.5)
+
+ggplot() +
+  geom_point(data = data.frame(Mu = HVG$Table$Mu[HVG.res == "FALSE FALSE"],
+                  Epsilon = HVG$Table$Epsilon[HVG.res == "FALSE FALSE"],
+                  HVG = HVG.res[HVG.res == "FALSE FALSE"]),
+             aes(log(Mu), Epsilon, colour = HVG)) +
+  geom_point(data = data.frame(Mu = HVG$Table$Mu[HVG.res != "FALSE FALSE"],
+                  Epsilon = HVG$Table$Epsilon[HVG.res != "FALSE FALSE"],
+                  HVG = HVG.res[HVG.res != "FALSE FALSE"]),
+             aes(log(Mu), Epsilon, colour = HVG))
+
 ```
 
 All *XYZ* HVG genes of scran are among the HVGs identified by BASiCS.
@@ -712,7 +707,7 @@ BASiCS takes this `SingleCellExperiment` object and runs the MCMC sampler over 4
 
 ```{r MCMC-active, echo=FALSE, eval=FALSE}
 MCMC.active <- BASiCS_MCMC(Data = Data.active, 
-                          N=1000, Thin = 10, Burn = 500, 
+                          N=40000, Thin = 20, Burn = 20000, 
                           Regression = TRUE, WithSpikes = TRUE)
 ```
 
