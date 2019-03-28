@@ -423,43 +423,46 @@ Summary.naive <- Summary(MCMC.naive)
 
 There are multiple ways of how the convergence of the chains can be assessed *refs*.
 The `CRANpkg("coda")` contains diagnostic and plot functions for this task *ref*.
-Here, we opt for a simple visual assessment to highlight the convergenece of the chains.
-To select individual chains from the `BASiCS_Chain` onject, we use the `displayChainBASiCS` function.
-These chains need to be converted to an `mcmc` object for the use with `coda`.
-*Change this to BASiCS::plot(MCMC.naive, Param = "mu", Gene = 1)*
-*Explain autocorrelation*
+Here, we highlight two ways of assessing the convergence of the MCMC sampler by (i) plotting trace plots, sample densities and the chain autocorrelation, and (ii) plotting the the effective sample size across multiple parameters.
+Trace plots show the sampled parameter values over time. 
+A chain converged when the sample density (in form of a histogram) shows a unimodal distribution.
+The autocorrelation of an MCMC chain is defined as the Pearson correlation between the chain and a time-delayed version of the chain. 
+The difference in time-points is referred to as 'lag'.
+The chain converged if the autocorrelation (except for lag = 1) is small (e.g. < 0.25).
+*Explain effective sample size*
 
 ```{r convergence-naive}
-library(coda)
-
 # Convergence of mean expression parameters
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "mu")[,1]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "mu")[,1000]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "mu")[,10000]))
+# Trace plot, sample histogram and autocorrelation
+plot(MCMC.naive, Param = "mu", Gene = 1)
+plot(MCMC.naive, Param = "mu", Gene = 1000)
+
+# Effective sample size
+diagPlot(MCMC.naive, Param = "mu")
 
 # Convergence of over-dispersion parameters
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "delta")[,1]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "delta")[,1000]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "delta")[,10000]))
+# Trace plot, sample histogram and autocorrelation
+plot(MCMC.naive, Param = "delta", Gene = 100)
+plot(MCMC.naive, Param = "delta", Gene = 5000)
+
+# Effective sample size
+diagPlot(MCMC.naive, Param = "delta")
 
 # Convergence of residual over-dispersion parameters
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "epsilon")[,1]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "epsilon")[,1000]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "epsilon")[,10000]))
+# Trace plot, sample histogram and autocorrelation
+plot(MCMC.naive, Param = "epsilon", Gene = 200)
+plot(MCMC.naive, Param = "epsilon", Gene = 10000)
+
+# Effective sample size
+diagPlot(MCMC.naive, Param = "epsilon")
 
 # Convergence of mRNA capture efficiency parameters
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "s")[,1]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "s")[,10]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "s")[,50]))
+# Trace plot, sample histogram and autocorrelation
+plot(MCMC.naive, Param = "s", Cell = 10)
+plot(MCMC.naive, Param = "s", Cell = 50)
 
-# Convergence of mRNA content parameters
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "phi")[,1]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "phi")[,10]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "phi")[,50]))
-
-# Convergence of batch-specific global noise parameters
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "theta")[,1]))
-plot(mcmc(displayChainBASiCS(MCMC.naive, Param = "theta")[,2]))
+# Effective sample size
+diagPlot(MCMC.naive, Param = "s")
 ```
 
 The visual inspection shows that all chains converged, which is the prerequisite for further downstream analysis.
