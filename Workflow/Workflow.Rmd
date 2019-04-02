@@ -113,11 +113,6 @@ The following R packages and data objects are needed throughout the workflow.
 We introduce them at this point as convinience and will link to this section whenever these objects are used.
 
 ```{r libraries}
-library(BASiCS)
-library(scater)
-library(SingleCellExperiment)
-library(scran)
-library(coda)
 library(goseq)
 library(viridis)
 library(pheatmap)
@@ -147,10 +142,11 @@ genelength <- unlist(lapply(exons.list,function(x){sum(width(reduce(x)))}))
 
 # C1 Fluidigm data: Analysis of naive CD4^+^ T cells
 
-In the first case, we use scRNA-Seq data of CD4+ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
-Martinez-Jimenez _et al._ collected naive and activated CD4^+^ from young and old animals across two muse strains to profile changes in expression variability that occur during organismal ageing [@Martinez-jimenez2017].
+As the first example, we will use scRNA-Seq data of CD4+ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
+Martinez-Jimenez _et al._ collected naive CD4^+^ T cells from young and old animals across two mouse strains to profile changes in expression variability that occur during organismal ageing [@Martinez-jimenez2017].
 Naive or effector memory CD4^+^ T cells were extracted from spleens of young or old animals and filtered using either a MACS- or FACS-based approach (MACS-purified Naive, FACS-purified Naive or FACS-purified Effector Memory).
-Naive as well as CD4^+^ T cells that were activated by 3 hours of _in vitro_ antibody stimulation were processed using the C1 Fluidigm® system to capture and lyse cells, and to reverse transcript and amplify mRNA prior to sequencing.
+In addition to profiling naive CD4^+^ T cells, the authors activated half of the naive cells for 3 hours using _in vitro_ antibody stimulation.
+Naive as well as activated CD4^+^ T cells were processed using the C1 Fluidigm® system to capture and lyse cells, and to reverse transcribe and amplify mRNA prior to sequencing.
 Cells were isolated from B6 (C57BL/6J, _Mus musculus domesticus_) and CAST (_Mus musculus castaneus_) animals to profile the evolutionary conservation of transcriptional dynamics during ageing.
 External spike-in RNA has been added to quantify technical variability across all cells.
 All experiments were performed in replicates (also referred to as batches) to control for batch effects.
