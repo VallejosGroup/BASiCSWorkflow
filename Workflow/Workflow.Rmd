@@ -435,10 +435,16 @@ A chain converged when the sample density (in form of a histogram) shows a unimo
 The autocorrelation of an MCMC chain is defined as the Pearson correlation between the chain and a time-delayed version of the chain. 
 The difference in time-points is referred to as 'lag'.
 The chain converged if the autocorrelation (except for lag = 1) is small (e.g. < 0.25).
-*Explain effective sample size*
-*explain + cite ESS*
-*why does it fail for epsilon?*
-*examine which genes have low ESS, exclude from further analysis*
+
+Effective sample size is a measure of the number of independent samples 
+generated for a model parameter [@Gelman2014]. Simply, it is defined as
+the number of samples taken relative to the total autocorrelation.
+More formally, it is defined as follows:
+$$
+  \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
+$$
+where $n$ is the number of samples and $ρ(k)$ is the autocorrelation at lag 
+$k$. We can visualise this parameter using two 
 
 ```{r convergence-naive}
 # Convergence of mean expression parameters
@@ -448,6 +454,9 @@ plot(MCMC.naive, Param = "mu", Gene = 1000)
 
 # Effective sample size
 diagPlot(MCMC.naive, Param = "mu")
+
+# Histogram of sample size for mu, as some genes seem to have low values for mu.
+diagHist(MCMC.naive, Param = "mu")
 
 # Convergence of over-dispersion parameters
 # Trace plot, sample histogram and autocorrelation
@@ -474,17 +483,21 @@ plot(MCMC.naive, Param = "s", Cell = 50)
 diagPlot(MCMC.naive, Param = "s")
 ```
 
+We can see several genes show very low sample size for mu. We
+can identify these using some functions from coda.
 
-```{r convergence-ess}
-BASiCS_diagHist(MCMC.naive)
-
-BASiCS_diagHist(MCMC.naive, Param = "mu")
-BASiCS_diagHist(MCMC.naive, Param = "delta")
-
-BASiCS_diagPlot(MCMC.naive, Param = "mu")
-BASiCS_diagPlot(MCMC.naive, Param = "delta")
-
+```{r low-ess-genes}
+ess <- effectiveSize(mcmc(displayChainBASiCS(MCMC.naive, "mu")))
+low_ess_genes <- names(ess[ess < 100])
 ```
+
+Given that the sample has generated less than 100 effectively independent 
+samples for these genes, there may not be sufficient posterior information to 
+reliably calculate differences in mean expression, and it would be appropriate 
+to exclude these genes from downstream analysis.
+
+
+
 ## Downstream analysis
 
 In this section, we will highlight the use of BASiCS when cells of a single condition are analysed.
