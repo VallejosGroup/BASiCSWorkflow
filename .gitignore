@@ -2,7 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+*.rds
 *.txt
 *.csv
+*.fa
 Workflow/cache/*
 Workflow/figure/*
