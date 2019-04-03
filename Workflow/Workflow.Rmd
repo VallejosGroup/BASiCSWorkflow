@@ -103,37 +103,6 @@ Additionally, we will use two examples (Cel-Seq [@Grun2014] and droplet-based sc
 **Here we mention the version of R and Bioconductor that we are using.** 
 *Specifically name the Bioconductor packages that we are using**
 
-## Prerequisites 
-
-*Move this section into the code once the workflow is done*
-
-*And introduce each package that was used*
-
-The following R packages and data objects are needed throughout the workflow.
-We introduce them at this point as convinience and will link to this section whenever these objects are used.
-
-```{r libraries}
-library("BASiCS")
-library("scater")
-library("SingleCellExperiment")
-library("scran")
-library("coda")
-library("goseq")
-library("viridis")
-library("pheatmap")
-library("ggplot2")
-library("biomaRt")
-library("EnsDb.Mmusculus.v79")
-```
-
-To perform gene ontology (GO) analysis, we collect the length for each gene.
-This can be extracted from the `EnsDb.Mmusculus.v79` package.
-
-```{r, message=FALSE, echo=FALSE, eval=FALSE}
-exons.list <- exonsBy(EnsDb.Mmusculus.v79, by = "gene")
-genelength <- unlist(lapply(exons.list, function(x) sum(width(reduce(x)))))
-```
-
 # C1 Fluidigm data: Analysis of naive CD4^+^ T cells
 
 As the first example, we will use scRNA-Seq data of CD4+ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
@@ -327,6 +296,43 @@ The second column must contain the input number of molecules for the spike-in ge
 ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
                          Names = ERCC.conc$ERCC.ID,
                          count = ERCC.count)
+```
+
+### Gene-specific information
+
+For further downstream analyses, it is useful to obtain the gene symbols associated to gene IDs.
+For this, we used the `Biocpkg(biomaRt)` package to assess the **Mus musculus** gene ids and gene names: 
+
+```{r obtain-gene-symbols}
+library(biomaRt)
+# Initialize mart
+ensembl <- useMart("ensembl")
+
+# Select dataset
+ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", 
+                      mart = ensembl)
+
+# Select gene ID and gene name
+genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
+                   mart = ensembl)
+rownames(genenames) <- genenames$ensembl_gene_id
+```
+
+To perform gene ontology (GO) analysis, we further need the information on the length of each gene.
+This can be extracted from the `Biocpkg(EnsDb.Mmusculus.v79)` annotation package.
+
+```{r gene-length}
+library("EnsDb.Mmusculus.v79")
+
+# Build exon list
+exons.list <- exonsBy(EnsDb.Mmusculus.v79, by = "gene")
+
+# Calculate summed length of all exons
+genelength <- unlist(lapply(exons.list, 
+                            function(x){sum(width(reduce(x)))}))
+
+# Add gene length to gene names
+genenames$gene_length <- genelength[genenames$ensembl_gene_id]
 ```
 
 ## Single condition example: Naive CD4^+^ T cells
