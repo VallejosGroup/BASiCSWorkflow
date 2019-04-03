@@ -437,10 +437,10 @@ The autocorrelation of an MCMC chain is defined as the Pearson correlation betwe
 The difference in time-points is referred to as 'lag'.
 The chain converged if the autocorrelation (except for lag = 1) is small (e.g. < 0.25).
 
-Effective sample size is a measure of the number of independent samples 
-generated for a model parameter [@Gelman2014]. Simply, it is defined as
-the number of samples taken relative to the total autocorrelation.
+Effective sample size is a measure of the number of independent samples generated for a model parameter [@Gelman2014]. 
+Simply, it is defined as the number of samples taken relative to the total autocorrelation.
 More formally, it is defined as follows:
+
 $$
   \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
 $$
@@ -454,10 +454,10 @@ plot(MCMC.naive, Param = "mu", Gene = 1)
 plot(MCMC.naive, Param = "mu", Gene = 1000)
 
 # Effective sample size
-diagPlot(MCMC.naive, Param = "mu")
+BASiCS_diagPlot(MCMC.naive, Param = "mu")
 
 # Histogram of sample size for mu, as some genes seem to have low values for mu.
-diagHist(MCMC.naive, Param = "mu")
+BASiCS_diagHist(MCMC.naive, Param = "mu")
 
 # Convergence of over-dispersion parameters
 # Trace plot, sample histogram and autocorrelation
@@ -465,7 +465,7 @@ plot(MCMC.naive, Param = "delta", Gene = 100)
 plot(MCMC.naive, Param = "delta", Gene = 5000)
 
 # Effective sample size
-diagPlot(MCMC.naive, Param = "delta")
+BASiCS_diagPlot(MCMC.naive, Param = "delta")
 
 # Convergence of residual over-dispersion parameters
 # Trace plot, sample histogram and autocorrelation
@@ -473,7 +473,7 @@ plot(MCMC.naive, Param = "epsilon", Gene = 200)
 plot(MCMC.naive, Param = "epsilon", Gene = 10000)
 
 # Effective sample size
-diagPlot(MCMC.naive, Param = "epsilon")
+BASiCS_diagPlot(MCMC.naive, Param = "epsilon")
 
 # Convergence of mRNA capture efficiency parameters
 # Trace plot, sample histogram and autocorrelation
@@ -481,21 +481,17 @@ plot(MCMC.naive, Param = "s", Cell = 10)
 plot(MCMC.naive, Param = "s", Cell = 50)
 
 # Effective sample size
-diagPlot(MCMC.naive, Param = "s")
+BASiCS_diagPlot(MCMC.naive, Param = "s")
 ```
 
-We can see several genes show very low sample size for mu. We
-can identify these using some functions from coda.
+We can see several genes show very low sample size for mu. We can identify these using functions from the `CRANpkg(coda)`.
 
 ```{r low-ess-genes}
-ess <- effectiveSize(mcmc(displayChainBASiCS(MCMC.naive, "mu")))
+ess <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.naive, "mu")))
 low_ess_genes <- names(ess[ess < 100])
 ```
 
-Given that the sample has generated less than 100 effectively independent 
-samples for these genes, there may not be sufficient posterior information to 
-reliably calculate differences in mean expression, and it would be appropriate 
-to exclude these genes from downstream analysis.
+Given that the sample has generated less than 100 effectively independent samples for these genes, there may not be sufficient posterior information to reliably calculate differences in mean expression, and it would be appropriate to exclude these genes from downstream analysis.
 
 ## Downstream analysis
 
@@ -514,23 +510,6 @@ These functions take the `SingleCellExperiment` and `BASiCS_Chain` objects as in
 counts.denoised <- BASiCS_DenoisedCounts(Data = Data.naive, Chain = MCMC.naive)
 ```
 
-### Variance decomposition
-
-*The results of the variance decomposition and HVG analysis appears a bit weird here...*
-
-Similar to normalization, the posterior estimates can be used to decompose the overall variance of the data into a technical, biological and Poisson sampling noise component [@Vallejos2015BASiCS].
-For this, BASiCS offers the `BASiCS_VarianceDecomp` function that takes the `BASiCS_Chain` object and by default orders genes based on their value for biological variance.
-Furthermore, this function calculates the variance components per batch.
-
-```{r variance-decomposition-naive}
-# Perform variance decomposition
-VarDecomp <- BASiCS::BASiCS_VarianceDecomp(MCMC.naive)
-head(VarDecomp)
-
-# Plot the biological part of total variance
-ggplot(VarDecomp) +
-  geom_point(aes(seq(1, nrow(VarDecomp)), BioVarGlobal))
-```
 Alternatively, *add the DenoisedRates*
 
 These normalized counts can be further used for dimensionality reduction and clustering as explained elsewhere *ref,ref*.
@@ -729,7 +708,7 @@ Therefore, we can directly select the activated CD4^+^ T cells from the `sce.nai
 
 ```{r SCE-active}
 ind_active <- sce.naive_active$Stimulus == "Active"
-sce.active <- sce.naive_active[, ind_active]
+sce.active <- sce.naive_active[, sce.naive_active$Stimulus == "Active"]
 ```
 
 Similar to the procedure described above *link to naive section*, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
@@ -769,54 +748,45 @@ MCMC.active <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publicati
 
 ### Quality checks
 
-Similar to the `BASiCS_Chain` quality checks described above, we will again profile the convergence of the chain and if the regression captures the mean-variability dependency across the full range of data points.
+Similar to the `BASiCS_Chain` quality checks described above, we will again profile the convergence of the chain using a visual inspection of the trace plots, sample histograms and autocorrelation of individual chains.
+Furthermore, we will use the `BASiCS_diagPlot` function to assess the effective sample size of all chains per parameter class.
 
 ```{r convergence-active}
 # Convergence of mean expression parameters
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "mu")[, 1]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "mu")[, 1000]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "mu")[, 10000]))
+# Trace plot, sample histogram and autocorrelation
+plot(MCMC.active, Param = "mu", Gene = 1)
+plot(MCMC.active, Param = "mu", Gene = 1000)
+
+# Effective sample size
+BASiCS_diagPlot(MCMC.active, Param = "mu")
+
+# Histogram of effective sample size for mu, as some genes seem to have low values for mu.
+BASiCS_diagHist(MCMC.active, Param = "mu")
 
 # Convergence of over-dispersion parameters
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "delta")[, 1]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "delta")[, 1000]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "delta")[, 10000]))
+# Trace plot, sample histogram and autocorrelation
+plot(MCMC.active, Param = "delta", Gene = 100)
+plot(MCMC.active, Param = "delta", Gene = 5000)
 
-# Convergence of residual over-dispersion parameters
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "epsilon")[, 1]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "epsilon")[, 1000]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "epsilon")[, 10000]))
-
-# Convergence of mRNA capture efficiency parameters
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "s")[, 1]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "s")[, 10]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "s")[, 50]))
-
-# Convergence of mRNA content parameters
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "phi")[, 1]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "phi")[, 10]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "phi")[, 50]))
-
-# Convergence of batch-specific global noise parameters
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "theta")[, 1]))
-plot(mcmc(displayChainBASiCS(MCMC.active, Param = "theta")[, 2]))
-```
-
-Again, we can assess the quality of the samples generated by assessing 
-the effective sample size of the parameters. 
-
-*why does it fail for all parameters?*
-*examine which genes have low ESS, exclude from further analysis*
-
-```{r convergence-ess}
-BASiCS_diagHist(MCMC.active, Param = "mu")
-BASiCS_diagHist(MCMC.active, Param = "delta")
-
-BASiCS_diagPlot(MCMC.active, Param = "mu")
+# Effective sample size
 BASiCS_diagPlot(MCMC.active, Param = "delta")
 
-```
+# Convergence of residual over-dispersion parameters
+# Trace plot, sample histogram and autocorrelation
+plot(MCMC.active, Param = "epsilon", Gene = 200)
+plot(MCMC.active, Param = "epsilon", Gene = 10000)
 
+# Effective sample size
+BASiCS_diagPlot(MCMC.active, Param = "epsilon")
+
+# Convergence of mRNA capture efficiency parameters
+# Trace plot, sample histogram and autocorrelation
+plot(MCMC.active, Param = "s", Cell = 10)
+plot(MCMC.active, Param = "s", Cell = 50)
+
+# Effective sample size
+BASiCS_diagPlot(MCMC.active, Param = "s")
+```
 
 To highlight the regression trend, we can use the `BASiCS_showFit` function.
 
