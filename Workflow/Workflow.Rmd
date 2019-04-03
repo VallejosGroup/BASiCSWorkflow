@@ -126,17 +126,6 @@ library("biomaRt")
 library("EnsDb.Mmusculus.v79")
 ```
 
-To obtain gene annotations used in thiw workflow, we used the `biomaRt` package.
-The **Mus musculus** gene ids and gene names can be directly accessed using the following code: 
-
-```{r obtain-gene-symbols, message=FALSE, echo=FALSE, eval=FALSE}
-ensembl <- useMart("ensembl")
-ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", mart = ensembl)
-genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
-                   mart = ensembl)
-rownames(genenames) <- genenames$ensembl_gene_id
-```
-
 To perform gene ontology (GO) analysis, we collect the length for each gene.
 This can be extracted from the `EnsDb.Mmusculus.v79` package.
 
@@ -799,9 +788,117 @@ We can therefore move on to perform differential testing between naive and activ
 
 ## Differential testing
 
+In this section, we will highlight the use of `BASiCS` when comparing cells between two conditions.
+Here, we are interested in profiling how immune activation (i) changes transcription on the mean expression level, (ii) changes global transcriptional variability and (iii) affects changes in variability coupled to changes in mean expression.
+We will first test for changes in mean expression between naive and activated CD4^+^ T cells.
+Similar analysis can be performed with multiple Bioconductor packages such as `Biocpkg(scran)` or `Biocpkg(edgeR)` (reviewed in [@Soneson2018]).
+For differential testing, `BASiCS` offers the `BASiCS_TestDE` function that takes two `BASiCS_Chain` objects and compares posterior distributions of the mean expression parameters $\mu$, the over-dispersion parameters $\delta$ and the residual over-dispersion parameters $\epsilon$.
+
+This function returns a list consisting of:
+
+`TableMean`: A data frame that contains the results of the differential mean expression test.
+
+`TableDisp`: A data frame that contains the results of the differential over-dispersion test.
+
+`Table`: A data frame that contains the results of the differential residual over-dispersion test.
+
+Each of these tables contains the gene names (`GeneName`), the averaged mean expression of each genes (`MeanOverall`), the averaged measure that is being compared (e.g. `DispOverall`),
+the condition-specific measures (e.g. `Disp1`, `Disp2`), the change in this measure (e.g. `DispLog2FC` or `ResDispDistance`), as well as the posterior probability of this change being larger than the selected threshold (e.g. `ProbDiffDisp`) and the directionality of the test (e.g. `ResultDiffDisp`).
+
+Furthermore, the list contains:
+
+`DiffMeanSummary`, `DiffDispSummary`, `DiffResDispSummary`: contains the selected threshold for the posterior propability threshold, and for the EFDR and EFNR.
+
+`Chain2_offset`, `Chain2_offset`: the `BASiCS_Chain` objects that were corrected for differences in total mRNA content (offset).
+
+`OffsetChain`, `Offset`: A chain of offset values for each iteration (`OffsetChain`) and its median (`Offset`).
+
 ### Differential mean expression
 
-Standard DE test, highlight genes associated to immune activation and perform GO analysis.
+To perform robust differential mean expression testing, we will select those genes with small effective sample size for mean expression parameters and exclude them from testing.
+As explained above *Add link pointing at the first convergence section*, this can be done using functions from the `CRANpkg(coda)` package.
+We will select genes with low ESS from the `BASiCS_Chain` objects for naive and activated CD4^+^ T cells.
+
+```{r low-ESS-genes}
+# Naive CD4+ T cells
+ess.naive <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.naive, "mu")))
+low_ess_genes.naive <- names(ess.naive[ess.naive < 100])
+
+# Active CD4+ T cells
+ess.active <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.active, "mu")))
+low_ess_genes.active <- names(ess.active[ess.active < 100])
+
+# Genes to exclude
+to_exclude <- unique(c(low_ess_genes.naive, low_ess_genes.active))
+```
+
+In total, we exlude 1936 genes from testing due to low effective sample size when sampling the posterior distribution.
+
+The default settings for differential mean expression testing are as follows:
+
+`EpsilonM`: Log~2~ fold change (LFC) threshold for changes in mean expression: $\log_2(1.5)\approx0.41$
+`EFDR_M`: Expected false discovery rate: 10%
+`Plot`, `PlotOffset`: Boolean to control if results are plotted: TRUE
+
+```{r mean-expression-testing}
+# Boolean of selected genes
+genes_select <- !(colnames(displayChainBASiCS(MCMC.naive)) %in% to_exclude) 
+
+# Perform differential testing
+Test_DE <- BASiCS_TestDE(Chain1 = MCMC.naive, 
+                         Chain2 = MCMC.active, 
+                         EpsilonM = log2(1.5),
+                         GroupLabel1 = "Naive", 
+                         GroupLabel2 = "Active", 
+                         EFDR_M = 0.1,
+                         Plot = FALSE,
+                         PlotOffset = FALSE,
+                         GenesSelect = genes_select)
+```
+
+After running the test, we can now visaulize the results in form of a MA-plot (log ratio _versus_ mean average) and volcano plot (posterior probability _versus_ log ratio).
+
+```{r visualize-MA-plot}
+# Visualize MA plot
+ggplot(Test_DE$TableMean) + 
+  geom_point(aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean)) +
+  scale_color_manual(values = c("Naive+" = "dark blue",
+                                "Active+" = "dark red",
+                                "NoDiff" = "black",
+                                "ExcludedByUser" = "grey"))
+
+# Visualize MA plot
+ggplot(Test_DE$TableMean) + 
+  geom_point(aes(MeanLog2FC, ProbDiffMean, colour = ResultDiffMean)) +
+  scale_color_manual(values = c("Naive+" = "dark blue",
+                                "Active+" = "dark red",
+                                "NoDiff" = "black",
+                                "ExcludedByUser" = "grey"))
+```
+
+As we can see for the comparison of naive and activated CD4^+^ T cells, most genes show strong differences in mean expression.
+In such cases, it can be beneficial to increase the LFC threshold or to decrease the threshold for the EFDR.
+Here, we therfore set the LFC threshold to $\log_2(2)=1$ to detect genes with strong changes in mean expression.
+
+```{r mean-expression-testing-2}
+# Perform differential testing
+Test_DE <- BASiCS_TestDE(Chain1 = MCMC.naive, 
+                         Chain2 = MCMC.active, 
+                         EpsilonM = log2(2),
+                         GroupLabel1 = "Naive", 
+                         GroupLabel2 = "Active", 
+                         EFDR_M = 0.1,
+                         Plot = FALSE,
+                         PlotOffset = FALSE,
+                         GenesSelect = genes_select)
+```
+
+To understand the regulatory programmes that underlie T cell activation, a variety of downstream analyses can be peformed using the differentially expressed genes.
+Here, we will highlight the use of gene ontology (GO) analysis to group genes that are differentially expressed between naive and activated CD4^+^ T cells.
+
+
+
+highlight genes associated to immune activation and perform GO analysis.
 
 ### Differential over-dispersion
 
