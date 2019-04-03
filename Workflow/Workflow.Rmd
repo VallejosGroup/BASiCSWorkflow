@@ -400,7 +400,7 @@ MCMC.naive <- BASiCS_MCMC(Data = Data.naive,
                           Regression = TRUE, WithSpikes = TRUE)
 ```
 
-This sampler runs for *XYZ minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM and produces a `BASiCS_Chain` data object.
+This sampler runs for *167 minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM and produces a `BASiCS_Chain` data object.
 This sampler runs for *XYZ minutes* on a 3.1 GHz Intel Core i7 procesor with 16GB RAM and produces a `BASiCS_Chain` data object.
 For convenience, the MCMC chain can be obtained online at [https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018](https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018).
 
