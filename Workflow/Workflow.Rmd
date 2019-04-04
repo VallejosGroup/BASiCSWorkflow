@@ -737,7 +737,7 @@ This sampler runs for *98 minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB 
 This sampler runs for *XYZ minutes* on a 3.1 GHz Intel Core i7 procesor with 16GB RAM and produces a `BASiCS_Chain` data object.
 For convenience, this MCMC chain can be again obtained online at [https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018](https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018).
 
-```{r download-chain-naive}
+```{r download-chain-active}
 MCMC.active <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/MCMC_active.rds"))
 ```
 
@@ -1004,8 +1004,8 @@ if(!file.exists("rawCounts.zip")){
                 destfile = "rawCounts.zip")
   unzip(zipfile = "rawCounts.zip", exdir = "./")
 }
-rawCounts <- as.matrix(fread("rawCounts.tsv", sep = "\t", header = FALSE, 
-                   data.table = FALSE))
+rawCounts <- fread("rawCounts.tsv", sep = "\t", header = FALSE, 
+                   data.table = FALSE)
 
 # Genenames are stored in first column
 rownames(rawCounts) <- rawCounts[, 1]
@@ -1026,26 +1026,28 @@ if(!file.exists("cluster_labels.zip")){
 cluster_labels <- read.table("cellAnnotation.tsv", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 ```
 
-## Generating SingleCellExperiment object
-
-For pre-processing and visualization purposes, we load the data into a SingleCellExperiment object.
-The metadata will be stored in the `colData` slot.
-
-```{r droplet-sce}
-droplet.sce <- SingleCellExperiment(assays = list(counts = as(rawCounts, "dgCMatrix")))
-rm(rawCounts)
-colData(droplet.sce) <- DataFrame(cluster_labels, subCellType = sub("_.*", "", cluster_labels$cell))
-```
-
-## Select populations of interest and quality control
+## Select populations of interest
 
 We select the somitic and pre-somitic mesoderm cells to perform differential testing. 
 Prior to running the MCMC, we want to control for outlying cells and heterogeneous substructure in both cell populations. 
 
 ```{r droplet-cell-selection}
-ind_som <- <- which(colData(droplet.sce)$cellType == "presomiticMesoderm" | 
-        colData(droplet.sce)$cellType == "somiticMesoderm")
-droplet.sce <- droplet.sce[, ind_som]
+ind_som <- which(cluster_labels$cellType == "presomiticMesoderm" | 
+        cluster_labels$cellType == "somiticMesoderm")
+rawCounts <- rawCounts[, ind_som]
+cluster_labels <- cluster_labels[ind_som,]
+```
+
+## Generating SingleCellExperiment object and quality control
+
+For pre-processing and visualization purposes, we load the data into a SingleCellExperiment object.
+The metadata will be stored in the `colData` slot.
+
+```{r droplet-sce}
+droplet.sce <- SingleCellExperiment(assays = 
+                list(counts = as(as.matrix(rawCounts), "dgCMatrix")))
+rm(rawCounts)
+colData(droplet.sce) <- DataFrame(cluster_labels, subCellType = sub("_.*", "", cluster_labels$cell))
 ```
 
 For further processing steps, we remove lowly expressed genes.
