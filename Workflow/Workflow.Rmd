@@ -900,11 +900,49 @@ Test_DE <- BASiCS_TestDE(Chain1 = MCMC.naive,
 ```
 
 To understand the regulatory programmes that underlie T cell activation, a variety of downstream analyses can be peformed using the differentially expressed genes.
-Here, we will highlight the use of gene ontology (GO) analysis to group genes that are differentially expressed between naive and activated CD4^+^ T cells.
+Here, we highlight the use of gene ontology (GO) analysis to group genes that are differentially expressed between naive and activated CD4^+^ T cells.
+For this, we use the Bioconductor `Biocpkg(goseq)` package and the `Biocpkg(org.Mm.eg.db)` annotation package to test GO enrichment within genes specifically expressed by naive or activated CD4^+^ T cells
 
+```{r go-analysis-naive}
+library(goseq)
+library(org.Mm.eg.db)
 
+# Collect significan genes as 1 and all other as 0
+naive.genes <- as.integer(Test_DE$TableMean$ResultDiffMean == "Naive+")
+names(naive.genes) <- Test_DE$TableMean$GeneName
 
-highlight genes associated to immune activation and perform GO analysis.
+# Build a Null distribution by correcting the gene length bias
+pwf <- nullp(naive.genes, "mm10", "ensGene", 
+             bias.data = genenames[names(naive.genes), "gene_length"])
+GO.wall <- goseq(pwf, "mm10", "ensGene")
+ind_signif <- p.adjust(GO.wall$over_represented_pvalue, method = "fdr") < 0.01
+naive.GO <- DataFrame(GO.wall[ind_signif, ])
+
+# Add genenames to the GO categories
+all_genes <- vector(length = nrow(naive.GO))
+for(i in 1:nrow(naive.GO)){
+  allegs <- get(naive.GO$category[i], org.Mm.egGO2ALLEGS)
+  genes <- unique(unlist(mget(allegs, org.Mm.egENSEMBL)))
+  genes <- as.character(intersect(genes, 
+                                  Test_DE$TableMean$GeneName[naive.genes == 1]))
+  all_genes[i] <- paste(genenames[genes,"external_gene_name"], 
+                        collapse = ", ")
+}
+naive.GO$gene <- all_genes
+
+# Show GO categories
+naive.GO$term
+```
+
+Genes that are down-regulated during immune activation are enriched for cell surface receptor signalling related categories.
+This is in line with the well-known down-regulation of the T-cell receptor (TCR) complex upon activation [@Borroto2000].
+Here, we find components of the TCR complex (such as _Cd28_, _Cd3e_, _Cd3g_, _Cd4_; all part of the 'cell surface receptor signaling pathway' GO category) to show higher expression in naive cells compared to activated CD4^+^ T cells.
+
+We can also test the enrichment of GO categories among genes that show increased expression upon T cell activation.
+
+```{r}
+
+```
 
 ### Differential over-dispersion
 
