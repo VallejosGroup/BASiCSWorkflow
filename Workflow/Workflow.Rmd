@@ -941,8 +941,38 @@ Here, we find components of the TCR complex (such as _Cd28_, _Cd3e_, _Cd3g_, _Cd
 We can also test the enrichment of GO categories among genes that show increased expression upon T cell activation.
 
 ```{r}
+# Collect significan genes as 1 and all other as 0
+active.genes <- as.integer(Test_DE$TableMean$ResultDiffMean == "Active+")
+names(active.genes) <- Test_DE$TableMean$GeneName
 
+# Build a Null distribution by correcting the gene length bias
+pwf <- nullp(active.genes, "mm10", "ensGene", 
+             bias.data = genenames[names(active.genes), "gene_length"])
+GO.wall <- goseq(pwf, "mm10", "ensGene")
+ind_signif <- p.adjust(GO.wall$over_represented_pvalue, method = "fdr") < 0.01
+active.GO <- DataFrame(GO.wall[ind_signif, ])
+
+# Add genenames to the GO categories
+all_genes <- vector(length = nrow(active.GO))
+for(i in 1:nrow(active.GO)){
+  allegs <- get(active.GO$category[i], org.Mm.egGO2ALLEGS)
+  genes <- unique(unlist(mget(allegs, org.Mm.egENSEMBL)))
+  genes <- as.character(intersect(genes, 
+                                  Test_DE$TableMean$GeneName[active.genes == 1]))
+  all_genes[i] <- paste(genenames[genes,"external_gene_name"], 
+                        collapse = ", ")
+}
+active.GO$gene <- all_genes
+
+# Show GO categories
+head(active.GO$term)
 ```
+
+Genes that are up-regulated upon activation are dominated by GO categories that are associated to translational and metabolic processes. 
+It has been shown that within the first 24 hours of T cell activation, cells start to up-regulate components involved in translation, ribosome biogenesis and profileration [@Tan2017,@Araki2017]. 
+This signature can be recovered by performing differential mean expression analysis between naive and activated CD4^+^ T cells.
+
+While other computational tools exists to perform differential mean expression analysis, we next want to highlight the use of BASiCS for differential variability testing.
 
 ### Differential over-dispersion
 
