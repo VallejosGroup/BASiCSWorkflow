@@ -7,7 +7,7 @@ author:
   - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, Li Ka Shing Centre, Cambridge, CB2 0RE, UK
 - name: Alan O'Callaghan
   affiliation: 
-  - &MRC MRC Human Genetics Unit, Institute of Genetics & Molecular Medicine, University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, EH4 2XU, UK
+  - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, EH4 2XU, UK
 - name: John C. Marioni
   affiliation: 
   - *EBI
@@ -263,16 +263,16 @@ ERCC.conc <- read.table(url("https://assets.thermofisher.com/TFS-Assets/LSG/manu
                          sep = "\t", header = TRUE)
 ```
 
-The concentration is given in units of attomoles per \mu{}l. 
-We will first calculate the concentration in moles per \mu{}l
+The concentration is given in units of attomoles per $\mu{}l$. 
+We will first calculate the concentration in moles per $\mu{}l$
 
 ```{r}
 # Moles per micro litre
 ERCC.mmul <- ERCC.conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
 ```
 
-From this, we can calculate the molecule count per \mu{}l.
-1 mole is equal to 6.02214076\*(10^23) molecules.
+From this, we can calculate the molecule count per $\mu{}l$.
+1 mole is equal to $6.02214076\cdot10^{23}$ molecules.
 
 ```{r}
 ERCC.countmul <- ERCC.mmul*(6.02214076*(10^23))
@@ -439,7 +439,7 @@ More formally, it is defined as follows:
 $$
   \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
 $$
-where $n$ is the number of samples and $ρ(k)$ is the autocorrelation at lag 
+where $n$ is the number of samples and $\rho(k)$ is the autocorrelation at lag 
 $k$. We can visualise this parameter using two 
 
 ```{r convergence-naive}
@@ -1075,7 +1075,7 @@ We can now visualize the different factors stored in the `colData` slot.
 
 ```{r}
 # Cell types identified by clustering
-plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "subCellType", alpha = 1) + 
+plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "subCellType") + 
   scale_fill_manual(values = c("coral4", "steelblue", "limegreen"))
 ```
 
@@ -1149,6 +1149,7 @@ To assess whether the chains converged, we will visualize trace plots for some o
 The `mcmc` function of the `coda` package is suited to generate trace plots for each chain. 
 
 ```{r droplet-chain-convergence}
+library(coda)
 plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "mu")[, 120]), main = "mu[120]")
 plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "delta")[, 10]), main = "delta[10]")
 plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "epsilon")[, 20]), main = "epsilon[20]")
@@ -1302,6 +1303,7 @@ plotReducedDim(droplet.sce, use_dimred = "PCA",
 Visualize one category in form of heatmap.
 
 ```{r, fig.height = 7, fig.width = 5}
+library(pheatmap)
 genes <- unlist(strsplit(PSM.GO[1, "Genes"], ", "))
 for.heatmap <- logcounts(droplet.sce)[genes, ]
 colnames(for.heatmap) <- colData(droplet.sce)$cell
@@ -1356,7 +1358,7 @@ plotExpression(droplet.sce, features = genenames[ind_meox, 1],
                x = "cellType", colour_by = "cellType") + 
   scale_fill_manual(values = c("coral4", "limegreen"))
 plotReducedDim(droplet.sce, use_dimred = "PCA", 
-               colour_by = genenames[ind_meox, 1], alpha = 1)
+               colour_by = genenames[ind_meox, 1])
 ```
 
 # Discussion 
