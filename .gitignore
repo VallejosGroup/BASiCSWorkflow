@@ -8,3 +8,4 @@
 *.fa
 Workflow/cache/*
 Workflow/figure/*
+*.log
