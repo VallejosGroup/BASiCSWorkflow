@@ -1020,13 +1020,108 @@ With this analysis, we detect increased over-dispersion in naive CD4^+^ T cells 
 ### Differential residual over-dispersion
 
 While the analysis in the previous section is well suited to detect global changes in variability (e.g. detecting if one cell population overall displays higher expression variabilty), it does not allow the testing of changes in mean expression and expression variability in parallel.
-For this,
+For this, BASiCS compares the residual over-dispersion parameters, which do not scale with mean expression, between the two conditions.
+Here, we filter on genes that are lowly expressed in both conditions and, as explained above, remove genes for with the MCMC sampler leads to a low effective sample size:
 
-First, gene-wise DV, GO analysis.
+```{r res-over-disp-filtering}
+# Remove lowly expressed genes
+low_expr <- !(Test_DE$TableMean$Mean1 < 5 & Test_DE$TableMean$Mean2 < 5)
 
-Second, DE and DV analysis, GO analysis and:
+# Low ESS for mu
+ess.naive.mu <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.naive, "mu")))
+ind_ess.naive.mu <- ess.naive.mu > 100
+ess.active.mu <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.active, "mu")))
+ind_ess.active.mu <- ess.naive.mu > 100
 
-*Check if cytokines are variably up-regulated* This is in line with Sarah Teichmann's recent paper.
+# Low ESS for delta
+ess.naive.delta <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.naive, "delta")))
+ind_ess.naive.delta <- ess.naive.mu > 100
+ess.active.delta <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.active, "delta")))
+ind_ess.active.delta <- ess.naive.mu > 100
+
+# Genes to exclude
+to_exclude <- low_expr & ind_ess.naive.mu & 
+  ind_ess.active.mu & ind_ess.naive.delta & ind_ess.active.delta
+```
+
+We can now perform the differential testing as shown above.
+Again, we use a LFC threshold higher than the default to capture strong changes in mean expression.
+
+```{r DE-DV-testing}
+# Perform differential testing
+Test_DE <- BASiCS_TestDE(Chain1 = MCMC.naive, 
+                         Chain2 = MCMC.active, 
+                         EpsilonM = log2(2),
+                         GroupLabel1 = "Naive", 
+                         GroupLabel2 = "Active", 
+                         EFDR_M = 0.1,
+                         EFDR_D = 0.1,
+                         Plot = FALSE,
+                         PlotOffset = FALSE,
+                         GenesSelect = genes_select)
+```
+
+We can now visualize the changes in residual over-dispersion between naive and activated CD4^+^ T cells in form of a MA-plot.
+In this visualization, the difference between the posterior medians of the residual over-dispersion parameters $\epsilon$ is shown on the y-axis.
+Epsilon values for genes that are not expressed in at least 2 cells per conditions are marked as `NA` and are therefore not being displayed.
+
+```{r diff-res-plot}
+ggplot(Test_DE$TableResDisp) +
+  geom_point(aes(log(MeanOverall), ResDispDistance, 
+                 colour = ResultDiffResDisp)) + 
+  scale_color_manual(values = c("Naive+" = "dark blue",
+                                "Active+" = "dark red",
+                                "NoDiff" = "black",
+                                "ExcludedByUser" = "grey",
+                                "ExcludedFromTesting" = "grey50"))
+```
+
+While one could perform GO analysis (as explained above) on the genesets that change in residual over-dispersion, here, we want to highlight how to analyse changes in mean expression in parallel to changes in variability.
+For this, we will first combine the results of the differential mean expression and the differential residual over-dispersion test.
+We will further remove the genes that were excluded from the test and those that are not expressed in at least 2 cells in either condition.
+
+```{r combine-results}
+res.df <- cbind(Test_DE$TableMean, Test_DE$TableResDisp[,-c(1,2)])
+ind_exclude <- res.df$ResultDiffResDisp == "ExcludedByUser" |
+  res.df$ResultDiffResDisp == "ExcludedFromTesting"
+res.df <- res.df[!ind_exclude,]
+```
+
+Next, we can visualize the regulation of each individual gene based on its changes in mean expression and expression variability.
+
+```{r DV-DE-vis}
+ggplot(res.df) +
+  geom_point(aes(MeanLog2FC, ResDispDistance, 
+                 colour = interaction(ResultDiffMean, ResultDiffResDisp)))
+```
+
+While we can now test each of the nine genesets for functional enrichment, here, we are particularly interested in the set of genes that are up-regulated with increased variability upon immune actovation.
+Recently, it has been shown that specifically cytokines show heterogeneous expression in active immune cells and diverge between species [@Hagai2018].
+We are therefore interested which immune response genes show variable activation patterns in early CD4^+^ T cell activation.
+For this, we will first collect all immune response genes (GO category: `GO:0006955`) using the `goseq` package.
+
+```{r variable-immune-response}
+# Select immune response genes
+immun.allegs <- get("GO:0006955", org.Mm.egGO2ALLEGS)
+immun.genes <- unique(unlist(mget(cyt.allegs, org.Mm.egENSEMBL)))
+immun.names <- genenames[immun.genes,"external_gene_name"]
+```
+
+Finally, we will find the subset of immune response genes that are variably up-regulated upon early immune activation
+
+```{r overlap}
+# Variable response genes
+ind_var.response <- res.df$ResultDiffMean == "Active+" & 
+  res.df$ResultDiffResDisp == "Active+"
+var.response.genes <- genenames[res.df$GeneName[ind_var.response],
+                                "external_gene_name"]
+intersect(var.response.genes, immun.names)
+```
+
+We find the cytokines interleukine 2 (_Il2_) and tumor necrosis factor (_Tnf_) being up-regulated in a variable fashion. 
+In the case of _Il2_, it has been proposed that this heterogeneous up-regulation supports the tuning of a robust immune response [@Fuhrmann2016]  
+
+While immune activation induces large transcriptional shifts in CD4^+^ T cells, we will now exemplify the use of `BASiCS` on a system that shows more subtle transcriptional changes during differentiation.
 
 # Differential testing using differentiating cells (two group, droplet-based example)
 
