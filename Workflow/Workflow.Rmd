@@ -976,9 +976,51 @@ While other computational tools exists to perform differential mean expression a
 
 ### Differential over-dispersion
 
-DV on logFC = 0 to highlight global changes in variability. 
+Due to the negative association between the over-dispersion and mean expression parameters, only genes that do not show a change in mean expression.
+To avoid any mean expression confounding effect, we perform the differential testing by setting the LFC threshold on mean expression to `EpsilonM = 0` while using the default LFC threshold on changes in over-dispersion: `EpsilonD = log2(1.5)`.
+We furthermore, it is crucial to exclude lowly expressed genes from this analysis to avoid biases arising from non-informative genes.
+
+```{r over-dispersion-testing}
+# Select genes that show expression in both conditions
+genes_select <- (Test_DE$TableMean$Mean1 > 5 & Test_DE$TableMean$Mean2 > 5)
+
+Test_DE.LFC0 <- BASiCS_TestDE(Chain1 = MCMC.naive, 
+                              Chain2 = MCMC.active,
+                              EpsilonM = 0,
+                              GroupLabel1 = "Naive", 
+                              GroupLabel2 = "Active", 
+                              EFDR_M = 0.1,
+                              Plot = FALSE,
+                              PlotOffset = FALSE,
+                              GenesSelect = genes_select)
+```
+
+We first select the genes that remain similarly expressed between both conditions and highligh the differential over-dispersion results in form of MA- and boxplots.
+
+```{r over-dispersion-result}
+# Select genes with no changes in mean expression
+ind_nochange <- Test_DE.LFC0$TableMean$ResultDiffMean == "NoDiff"
+
+# MA plot
+ggplot(Test_DE.LFC0$TableDisp[ind_nochange,]) +
+  geom_point(aes(log(MeanOverall), DispLog2FC, 
+                 colour = ResultDiffDisp)) + 
+  scale_color_manual(values = c("Naive+" = "dark blue",
+                                "Active+" = "dark red",
+                                "NoDiff" = "black"))
+
+# Boxplot
+boxplot(list(Naive = Test_DE.LFC0$TableDisp[ind_nochange,"Disp1"],
+             Active = Test_DE.LFC0$TableDisp[ind_nochange,"Disp2"]),
+        ylab = "log(over-dispersion)", outline = FALSE, log = "y")
+```
+
+With this analysis, we detect increased over-dispersion in naive CD4^+^ T cells for genes that show similar expression levels between naive and activated CD4^+^ T cells.
 
 ### Differential residual over-dispersion
+
+While the analysis in the previous section is well suited to detect global changes in variability (e.g. detecting if one cell population overall displays higher expression variabilty), it does not allow the testing of changes in mean expression and expression variability in parallel.
+For this,
 
 First, gene-wise DV, GO analysis.
 
