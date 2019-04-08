@@ -22,7 +22,7 @@ abstract: Cell-to-cell variability in gene expression is an inherent feature of 
 
 #Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.
 keywords: Single-cell RNA sequencing, expression variability, transcriptional noise, differential expression testing
-bibliography: BASiCSworkflow.bib
+bibliography: library.bib
 output: BiocWorkflowTools::f1000_article
 #output:
 # BiocStyle::html_document:
@@ -41,26 +41,26 @@ on.bioc <- TRUE
 library("knitr")
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 fig.width <- ifelse(on.bioc, 7, 6)
-knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE,
+knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE, eval = FALSE,
   cache.path = "cache/", fig.path = "figure/", fig.width = fig.width)
 ```
 
 # Introduction
 
 <!--- scRNA-Seq and the different types of heterogeneity --->
-Single-cell RNA-sequencing (scRNA-Seq) is the leading technology to study genome-wide transcriptional heterogeneity in cell populations that remains otherwise undetected in bulk experiments [@Stegle2015,@Prakadan2017,@Patange2018]. 
-Its applications range from characterising cell types in immunity [@Lonnberg2017, @Villani2017,@Zheng2017] and development [@Ibarra-Soria2018a,@Wagner2018,@Pijuan-Sala2019] to dissecting the mechanism for cell fate commitment events [@Goolam2016,@Ohnishi2014] . 
+Single-cell RNA-sequencing (scRNA-Seq) is the leading technology to study genome-wide transcriptional heterogeneity in cell populations that remains otherwise undetected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
+Its applications range from characterising cell types in immunity [@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018a; @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanism for cell fate commitment events [@Goolam2016; @Ohnishi2014] . 
 Within a population of cells, transcriptional heterogeneity can be due a mixture of possible causes. 
 On the broadest level, this heterogeneity can reflect the presence of cell subtypes with distinct expression profiles.
 In such cases, clustering strategies can be used to select individual cell types and cell states for individual analyses [@Kiselev2019].
 More subtle variation within a seemingly homogeneous cell population can be due to deterministic or stochastic events, the later being referred to as 'noise' [@Elowitz2002]. 
 
 <!--- Transcriptional noise and molecular phenotypic variability--->
-Classically, extrinsic noise is defined as stochastic fluctuations in cellular components, which is induced by cells residing in different dynamic states (cell size, cell cycle, metabolism, intra- and inter-cellular signalling) [@Zopf2013,@Iwamoto2016,@Kiviet2014]. 
+Classically, extrinsic noise is defined as stochastic fluctuations in cellular components, which is induced by cells residing in different dynamic states (cell size, cell cycle, metabolism, intra- and inter-cellular signalling) [@Zopf2013; @Iwamoto2016; @Kiviet2014]. 
 Intrinsic noise on the other hand arises from stochastic effects on biochemical processes such as transcription and translation [@Elowitz2002]. 
-It can be modulated by genetic and epigenetic modifications (such as mutations, histone modifications, CpG island length and nucleosome positioning) [@Eberwine2015,@Faure2017,@Morgan2018] and is usually measured on the single-gene level [@Elowitz2002]. 
+It can be modulated by genetic and epigenetic modifications (such as mutations, histone modifications, CpG island length and nucleosome positioning) [@Eberwine2015; @Faure2017; @Morgan2018] and is usually measured on the single-gene level [@Elowitz2002]. 
 However, the observed cell-to-cell variability in gene expression or protein abundance arise from a combination of intrinsic and extrinsic noise, and determnisitic contributions to cell state differences in cell populations.
-Therefore, scRNA-Seq only allows to capture the molecular pehnotypic variability within cell populations, rather than the individual noise components [@Patange2018,@Ecker2017a]. 
+Therefore, scRNA-Seq only allows to capture the molecular pehnotypic variability within cell populations, rather than the individual noise components [@Patange2018; @Ecker2017a]. 
 Here, the molecular phenotype is defined via the absolute abundance of intracellular molecules, such as transcripts, proteins, metabolites, etc.
 
 <!--- Technical noise, normalisation and hvg/lvg analyses ---> 
@@ -73,25 +73,27 @@ Furthermore, spike-in molecules can be used to normalize gene expression for cel
 <!--- BASiCS --->
 To address these technical issues, the `Biocpkg("BASiCS")` Bioconductor package estimates gene- and cell-specific model parameters that can be used to, for example, normalize raw scRNA-Seq counts and to detect highly and lowly variabe genes [@Vallejos2015BASiCS]. 
 `BASiCS` is a hierarchical Bayesian framework that propagates statistical uncerstainty into down-stream analysis and allows the decomposition of total variance into a biological and technical part by incorporating spike-in reads [@Vallejos2015]. 
-Furthermore, `BASiCS` has been extended to perform differential mean expression and differential variability testing [@Vallejos2016a].
+Furthermore, `BASiCS` has been extended to perform differential mean expression and differential variability testing [@Vallejos2016].
 
 <!--- Differential analyses ---> 
-Since the era of RNA sequencing, methods for differential expression testing of transcript counts across two conditions have been developed [@Anders2010;@Robinson2009]. 
-Due to high technical variability and sparsity in scRNA-seq data, new approaches were developed for differential expression testing specifically for scRNA-seq data [@Katayama2013;@Kharchenko2014;@Delmans2016]. 
+Since the era of RNA sequencing, methods for differential expression testing of transcript counts across two conditions have been developed [@Anders2010; @Robinson2009]. 
+Due to high technical variability and sparsity in scRNA-seq data, new approaches were developed for differential expression testing specifically for scRNA-seq data [@Katayama2013; @Kharchenko2014; @Delmans2016]. 
 In contrast to bulk samples, scRNA-seq measures variations in gene expression across a population of cells and can therefore be used to test for changes in expression variability between two conditions. 
 For this, `BASiCS` compares the gene-specific over-dispersion parameters between two conditions. 
-These parameters are independent of technical noise and can be used as proxy for biolgocial variability [@Vallejos2016a]. 
-Similar to the mean-variability trend observed for normalized scRNA-Seq data [@Brennecke2015], the estimates for over-dispersion parameters decrease with mean expression [@Vallejos2016a].
+These parameters are independent of technical noise and can be used as proxy for biolgocial variability [@Vallejos2016]. 
+Similar to the mean-variability trend observed for normalized scRNA-Seq data [@Brennecke2013], the estimates for over-dispersion parameters decrease with mean expression [@Vallejos2016].
 To correct for this, BASiCS has been extended to model the mean-variability relationship and capture residual over-dispersion estimates that show no association to mean expression. 
 Therefore, this extension allows to test changes in mean expression in parallel to changes in variability [@Eling2018]. 
 
 <!--- Outline ---> 
-Here we present a computational workflow for differential expression and differential variability testing of scRNA-seq data using the previously published BASiCS package [@Vallejos2015;@Vallejos2016a;@Eling2017] implemented in the statistical computing language R. 
-We highlight the use of the `Biocpkg("scater")` and `Biocpkg("scran")` Bioconductor packages to perform initial quality control and low-level analysis [@McCarthy2017,@Lun2016], which is comparable to analyses performed using `BASiCS`.
+Here we present a computational workflow for differential expression and differential variability testing of scRNA-seq data using the previously published BASiCS package [@Vallejos2015; @Vallejos2016; @Eling2017] implemented in the statistical computing language R. 
+We highlight the use of the `Biocpkg("scater")` and `Biocpkg("scran")` Bioconductor packages to perform initial quality control and low-level analysis [@McCarthy2017; @Lun2016], which is comparable to analyses performed using `BASiCS`.
 Two case studies exemplify the use of `BASiCS` for non-UMI and UMI scRNA-Seq data.
 In the first case, `BASiCS` can be used to detect highly and lowly variable genes and to obtain robust, gene-specific estimates to assess biological variability in naive CD4^+^ T cells [@Martinez-jimenez2017] (for a similar workflow see [@Kim2019]).
 Furthermore, we compare naive to activated CD4^+^ T cells to highlight the use of `BASiCS` to test for changes in mean expression and expression variability.
 In the second case, we use droplet-based scRNA-Seq data to detect more subtle transcriptional changes during embryonic somitogenesis [@Ibarra-Soria2018]
+
+\newpage
 
 ## Outline
 
