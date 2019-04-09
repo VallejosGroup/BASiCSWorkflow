@@ -24,6 +24,7 @@ abstract: Cell-to-cell variability in gene expression is an inherent feature of 
 keywords: Single-cell RNA sequencing, expression variability, transcriptional noise, differential expression testing
 bibliography: library.bib
 output: BiocWorkflowTools::f1000_article
+urlcolor: orange
 #output:
 # BiocStyle::html_document:
 #   fig_caption: true
@@ -37,7 +38,7 @@ output: BiocWorkflowTools::f1000_article
 ```{r setup_knitr, include = FALSE, cache = FALSE}
 library("BiocStyle")
 ## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
-on.bioc <- TRUE
+on.bioc <- FALSE
 library("knitr")
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 fig.width <- ifelse(on.bioc, 7, 6)
@@ -45,23 +46,26 @@ knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE
   cache.path = "cache/", fig.path = "figure/", fig.width = fig.width)
 ```
 
+
 # Introduction
 
-<!--- scRNA-Seq and the different types of heterogeneity --->
+<!--- scRNA-Seq and the different types of heterogeneity ---> 
 Single-cell RNA-sequencing (scRNA-Seq) is the leading technology to study genome-wide transcriptional heterogeneity in cell populations that remains otherwise undetected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
-Its applications range from characterising cell types in immunity [@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018a; @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanism for cell fate commitment events [@Goolam2016; @Ohnishi2014] . 
+Its applications range from characterising cell types in immunity [@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018; @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanism for cell fate commitment events [@Goolam2016; @Ohnishi2014] . 
 Within a population of cells, transcriptional heterogeneity can be due a mixture of possible causes. 
 On the broadest level, this heterogeneity can reflect the presence of cell subtypes with distinct expression profiles.
 In such cases, clustering strategies can be used to select individual cell types and cell states for individual analyses [@Kiselev2019].
 More subtle variation within a seemingly homogeneous cell population can be due to deterministic or stochastic events, the later being referred to as 'noise' [@Elowitz2002]. 
 
-<!--- Transcriptional noise and molecular phenotypic variability--->
+
+<!--- Transcriptional noise and molecular phenotypic variability ---> 
 Classically, extrinsic noise is defined as stochastic fluctuations in cellular components, which is induced by cells residing in different dynamic states (cell size, cell cycle, metabolism, intra- and inter-cellular signalling) [@Zopf2013; @Iwamoto2016; @Kiviet2014]. 
 Intrinsic noise on the other hand arises from stochastic effects on biochemical processes such as transcription and translation [@Elowitz2002]. 
 It can be modulated by genetic and epigenetic modifications (such as mutations, histone modifications, CpG island length and nucleosome positioning) [@Eberwine2015; @Faure2017; @Morgan2018] and is usually measured on the single-gene level [@Elowitz2002]. 
 However, the observed cell-to-cell variability in gene expression or protein abundance arise from a combination of intrinsic and extrinsic noise, and determnisitic contributions to cell state differences in cell populations.
 Therefore, scRNA-Seq only allows to capture the molecular pehnotypic variability within cell populations, rather than the individual noise components [@Patange2018; @Ecker2017a]. 
 Here, the molecular phenotype is defined via the absolute abundance of intracellular molecules, such as transcripts, proteins, metabolites, etc.
+
 
 <!--- Technical noise, normalisation and hvg/lvg analyses ---> 
 Moreover, technical noise inflates the observed cell-to-cell variability in gene expression [@Brennecke2013].
@@ -70,10 +74,12 @@ Fitting a regression trend between the variability and the mean abundance of the
 Genes that show larger variability compared to spike-in molecules or the average variability are often referred to as 'highly variable genes' (HVG) and are used in computational scRNA-Seq analysis to select biologically informative genes for down-stream analysis [@Lun2016].
 Furthermore, spike-in molecules can be used to normalize gene expression for cells with differences in total mRNA content.
 
-<!--- BASiCS --->
-To address these technical issues, the `Biocpkg("BASiCS")` Bioconductor package estimates gene- and cell-specific model parameters that can be used to, for example, normalize raw scRNA-Seq counts and to detect highly and lowly variabe genes [@Vallejos2015BASiCS]. 
+
+<!--- BASiCS ---> 
+To address these technical issues, the `r Biocpkg("BASiCS")` Bioconductor package estimates gene- and cell-specific model parameters that can be used to, for example, normalize raw scRNA-Seq counts and to detect highly and lowly variabe genes [@Vallejos2015BASiCS]. 
 `BASiCS` is a hierarchical Bayesian framework that propagates statistical uncerstainty into down-stream analysis and allows the decomposition of total variance into a biological and technical part by incorporating spike-in reads [@Vallejos2015]. 
 Furthermore, `BASiCS` has been extended to perform differential mean expression and differential variability testing [@Vallejos2016].
+
 
 <!--- Differential analyses ---> 
 Since the era of RNA sequencing, methods for differential expression testing of transcript counts across two conditions have been developed [@Anders2010; @Robinson2009]. 
@@ -85,9 +91,10 @@ Similar to the mean-variability trend observed for normalized scRNA-Seq data [@B
 To correct for this, BASiCS has been extended to model the mean-variability relationship and capture residual over-dispersion estimates that show no association to mean expression. 
 Therefore, this extension allows to test changes in mean expression in parallel to changes in variability [@Eling2018]. 
 
+
 <!--- Outline ---> 
 Here we present a computational workflow for differential expression and differential variability testing of scRNA-seq data using the previously published BASiCS package [@Vallejos2015; @Vallejos2016; @Eling2017] implemented in the statistical computing language R. 
-We highlight the use of the `Biocpkg("scater")` and `Biocpkg("scran")` Bioconductor packages to perform initial quality control and low-level analysis [@McCarthy2017; @Lun2016], which is comparable to analyses performed using `BASiCS`.
+We highlight the use of the `r Biocpkg("scater")` and `r Biocpkg("scran")` Bioconductor packages to perform initial quality control and low-level analysis [@McCarthy2017; @Lun2016], which is comparable to analyses performed using `BASiCS`.
 Two case studies exemplify the use of `BASiCS` for non-UMI and UMI scRNA-Seq data.
 In the first case, `BASiCS` can be used to detect highly and lowly variable genes and to obtain robust, gene-specific estimates to assess biological variability in naive CD4^+^ T cells [@Martinez-jimenez2017] (for a similar workflow see [@Kim2019]).
 Furthermore, we compare naive to activated CD4^+^ T cells to highlight the use of `BASiCS` to test for changes in mean expression and expression variability.
@@ -97,20 +104,20 @@ In the second case, we use droplet-based scRNA-Seq data to detect more subtle tr
 
 ## Outline
 
-The analysis starts with a raw transcript counts matrix after removal of low-quality cells. 
-We will first focus on gene filtering, generating a SingleCellExpression object to use within BASiCS, and explain how to run and validate the convergence of Markov-Chain Monte Carlo simulations.
-Additionally, we will use two examples (Cel-Seq [@Grun2014] and droplet-based scRNAseq data [@Ibarra-Soria2018]) to exemplify statistical detection of highly variable, differentially expressed and differentially variable genes in different conditions. 
+1. [Methods](#methods): We describe the main Bioconductor packages used in this worflow and specifically highlight different settings for the MCMC sampler implemented in the `BASiCS` Bioconductor package. 
 
+2. [C1 Fluidigm data](#Tcells): We describe an end-to-end workflow to obtain, process, quality filter raw expression counts of CD4^+^ T cells and how to perform analysis using `r Biocpkg("BASiCS")`. 
+This section is sub-divided into a [single group case](#Tcells-single), where `BASiCS` is used to normalize data and to detect highly and lowly variable genes, and a [two group case](#Tcells-two), for which we perform differential mean expression and differential variability testing.
 
-```{r overview, out.width='50%', fig.cap = 'Computational workflow highlighting the use of BASiCS to analyse single groups or two groups of cells. HVG: highly variable genes; LVG: lowly variable genes.', echo=FALSE}
+3. [10X Genomics data](#droplet-data): We highlight the use of `BASiCS` for scRNA-Seq data that do not contain technical spike-in transcript. 
+In this case, technical noise is estimated via experimental replication.
+Similar to the CD4^+^ T cells case, we perform differential mean expression and differential variability testing to detect early cell fate decision events in mammalian somitogenesis.
+
+```{r overview, out.width='50%', fig.cap = 'Computational workflow highlighting the use of BASiCS to analyse single groups or two groups of cells. HVG: highly variable genes; LVG: lowly variable genes.', echo=FALSE, fig.pos='h'}
 knitr::include_graphics('figure/Overview.png')
 ```
 
-**Mike Love, Charlotte Sonesone, Rob Patron**
-**We explain the workflow outline.**
-**This has to be very easy to understand.**
-
-# Methods
+# Methods {#methods}
 
 - Explain BASiCS from a users perspective (4 different cases)
 - Coda package for Markov Chain Monte Carlo (MCMC) visualization, MCMC convergency analysis, effective sample size
@@ -123,7 +130,7 @@ knitr::include_graphics('figure/Overview.png')
 **Here we mention the version of R and Bioconductor that we are using.** 
 *Specifically name the Bioconductor packages that we are using**
 
-# C1 Fluidigm data: Analysis of naive CD4^+^ T cells
+# C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
 
 As the first example, we will use scRNA-Seq data of CD4+ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
 Martinez-Jimenez _et al._ collected naive CD4^+^ T cells from young and old animals across two mouse strains to profile changes in expression variability that occur during organismal ageing [@Martinez-jimenez2017].
@@ -355,7 +362,7 @@ genelength <- unlist(lapply(exons.list,
 genenames$gene_length <- genelength[genenames$ensembl_gene_id]
 ```
 
-## Single condition example: Naive CD4^+^ T cells
+## Single condition example: Naive CD4^+^ T cells {#Tcells-single}
 
 To highlight the use of BASiCS and the quantification of variability measures in the single-condition case, we select naive CD4^+^ T cells of young B6 animals.
 
@@ -707,7 +714,7 @@ By testing a certain association (for example between CpG island length and vari
 
 The workflow so far highlights the use of BASiCS for analysing cells of a single condtion.
 
-# Differential testing between naive and activated CD4^+^ T cells (two group example)
+## Differential testing between naive and activated CD4^+^ T cells (two group example) {#Tcells-two}
 
 This section highlights the use of BASiCS to perform differential testing (mean and variability) between cells of two condtions. 
 For convenience, we will compare the naive CD4^+^ T cells, which were analysed in the previous section to activated CD4^+^ T cells of the same dataset [@Martinez-jimnenez2017].
@@ -1139,7 +1146,7 @@ In the case of _Il2_, it has been proposed that this heterogeneous up-regulation
 
 While immune activation induces large transcriptional shifts in CD4^+^ T cells, we will now exemplify the use of `BASiCS` on a system that shows more subtle transcriptional changes during differentiation.
 
-# Differential testing using differentiating cells (two group, droplet-based example)
+# Differential testing using differentiating cells (two group, droplet-based example) {#droplet-data}
 
 With the development of droplet-based scRNA-Seq [@Klein2015, @Makosco2015] lead to a strong increase in the number of cells that can be profiled per experiment. 
 With this, large-scale scRNA-Seq datasets have been generated to study development across multiple time-points and capturing musltiple tissues [@Ibarra-Soria2018, @Kernfeld2018]. 
