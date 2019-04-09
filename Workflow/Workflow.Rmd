@@ -119,6 +119,59 @@ knitr::include_graphics('figure/Overview.png')
 
 # Methods {#methods}
 
+In this workflow, we use a number of Bioconductor and CRAN packages for different parts of the analyses. 
+Here, we will briefly highlight the main functionalities of these packages from a users perspective.
+
+The `r Biocpkg("SingleCellExperiment")` Bioconductor package offers a S4 class container to store scRNA-Seq count data and their associated gene- and cell-specific metadata. 
+Throughout this workflow, we perform analyses using a `SingleCellExperiment` object that contains (at least) the raw expression counts, gene identifiers, batch information and cell identifiers.
+The `SingleCellExperiment` function uses a `r Biocpkg("SummarizedExperiment")` and takes a the raw expression counts in form of a list, and the cell- and gene-specific metadata in form of data frames. 
+
+The `r Biocpkg("scater")` Bioconductor package has been developed to facilitate the handling of scRNA-Seq data [@McCarthy2017].
+Its main functions include the calculation of quality control (QC) metrics, the visualization of such metrics and expression counts, and the normalization of expression counts.
+We will primarily use the `calculateQCMetrics` function to calculate cell- and gene-specific QC metrics, the `plotPCA` function to visualize QC metrics, metadata and gene expression, and the `normalize` function to pre-normalize expression data.
+
+The `r Biocpkg("scran")` Bioconductor package offers a variety of functions for low-level scRNA-Seq data analysis [@Lun2016].
+While it contains function for batch correction, doublet detection, estimation of cell cycle states, we will use it primarily for pre-normalization in junction with the `scater` package [@Lun2016pooling] and for modelling the mean-variance trend across all genes.
+
+The `r Biocpkg("BASiCS")` Bioconductor package contains an assembly of functions to estimate and analyse gene- and cell-specific model parameters [@Vallejos2015BASiCS;Vallejos2016;@Eling2018].
+`BASiCS` is build upon a hierarchical Baysian framework and as such samples posterior distribution for each model parameter.
+In mathematical terms, the gene expression count $X_{ij}$ for gene $i$ in cell $j$ is modelled as:
+
+$$
+\begin{aligned}
+X_{ij}|\mu_i,\nu_j&\sim{}\text{Poisson}(\nu_j\mu_i)\\
+\nu_j|s_j,\theta&\sim{}\text{Gamma}(1/\theta,1/(s_j\theta))\\
+\rho_{ij}|\delta_i&\sim{}\text{Gamma}(1/\delta_i,1/\delta_i)
+\end{aligned}
+$$
+
+where $\mu_i$ explains the gene's mean expression, $\nu_j$ the technical effect dominated by the mRNA capture efficiency $s_j$ and the unexplained technical noise parameter $\theta$. 
+Here, $\phi_j$ is the cell-specifc size factor and $\rho_{ij}$ the biological random effect incoroporating the over-dispersion hyper-parameter $\delta_i$.
+It is important to note that, in the further analysis, $\mu_i$ represents the mean expression and $\delta_i$ the biological over-dispersion of each gene.
+
+Due to a strong association between the mean expression and the biological over-dispersion, the model has been extended to correct for such confounding effect.
+To this end, the prior distribution for the over-dispersion paramters has been changed to:
+
+$$
+\delta_i | \mu_i \sim \text{log-t}_{\eta}\left( \text{f}(\mu_i), \sigma^2 \right).
+$$
+where $\text{f}(\mu_i)$ describes a smooth regression trend between the over-dispersion and the mean expression parameters.
+This extension introduced the residual over-dispersion parameters $\epsilon_i=\delta_i-\text{f}(\mu_i)$ that do not scale with mean expression [@Eling2018].
+
+From a data analysis perspective, the `BASiCS_MCMC` function is the heart of the `BASiCS` package and can be run in four different settings (see [Table 1](#tab:MCMC_settings)). 
+
+: {#tab:MCMC_settings} Four settings that can be used to run the `BASiCS_MCMC` function.
+
+|                        | No regression        | Regression           |
+| ---------------------- | :------------------: | -------------------: |
+| Using spike-in reads   | `WithSpikes = TRUE`  | `WithSpikes = TRUE`  |
+|                        | `Regression = FALSE` | `Regression = TRUE`  |
+| :--------------------: | :--------------------: | :--------------------: |
+| No spike-ins available | `WithSpikes = FALSE` | `WithSpikes = FALSE` |
+|                        | `Regression = FALSE` | `Regression = TRUE`  |
+
+
+
 - Explain BASiCS from a users perspective (4 different cases)
 - Coda package for Markov Chain Monte Carlo (MCMC) visualization, MCMC convergency analysis, effective sample size
 - Explain scater for preprocessing (highlight: QC, pre-normalization and visualization)
