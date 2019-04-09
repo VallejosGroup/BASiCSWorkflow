@@ -41,7 +41,7 @@ on.bioc <- TRUE
 library("knitr")
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 fig.width <- ifelse(on.bioc, 7, 6)
-knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE, eval = FALSE,
+knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE,
   cache.path = "cache/", fig.path = "figure/", fig.width = fig.width)
 ```
 
@@ -101,6 +101,11 @@ The analysis starts with a raw transcript counts matrix after removal of low-qua
 We will first focus on gene filtering, generating a SingleCellExpression object to use within BASiCS, and explain how to run and validate the convergence of Markov-Chain Monte Carlo simulations.
 Additionally, we will use two examples (Cel-Seq [@Grun2014] and droplet-based scRNAseq data [@Ibarra-Soria2018]) to exemplify statistical detection of highly variable, differentially expressed and differentially variable genes in different conditions. 
 
+
+```{r overview, out.width='50%', fig.cap = 'Computational workflow highlighting the use of BASiCS to analyse single groups or two groups of cells. HVG: highly variable genes; LVG: lowly variable genes.', echo=FALSE}
+knitr::include_graphics('figure/Overview.png')
+```
+
 **Mike Love, Charlotte Sonesone, Rob Patron**
 **We explain the workflow outline.**
 **This has to be very easy to understand.**
@@ -139,7 +144,7 @@ The raw counts of the full dataset can be obtain from ArrayExpress under the acc
 The column names contain the library identifier of the original experiment while the row names of the matrix store the individual gene names. 
 The dataset contains reads mapping to ERCC spike-in genes [@Rna2005], which `BASiCS` uses to estimate and remove technical noise.
 
-```{r naive-data}
+```{r naive-data, eval = FALSE}
 if(!file.exists("raw_data.txt")){
   # Download raw counts file
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/E-MTAB-4888.processed.1.zip", 
@@ -161,7 +166,7 @@ rownames(CD4.raw)[grepl("ERCC", rownames(CD4.raw))]
 To link the library identifier to the experimental condition, the authors provide a metadata file that can be accessed online.
 We will remove the spaces in the `Individual` column since these will be used as batch information later on.
 
-```{r selecting-serum-cells}
+```{r selecting-serum-cells, eval = FALSE}
 if(!file.exists("metadata_file.txt")){
   # Download raw counts file
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/E-MTAB-4888.additional.1.zip", 
@@ -186,7 +191,7 @@ We will first select naive and activated CD4^+^ T cells.
 For convenience, we will generate a `Biocpkg("SingleCellExperiment")` [@Lun2018SCE] that contains all cells and that stores cell- and gene-specific metadata.
 Furthermore, this object stores gene-specific information whether or not a gene is of biological (endogeneous) or technical (spike-in) origin.
 
-```{r CD4-SCE-object}
+```{r CD4-SCE-object, eval = FALSE}
 # Load library
 library("SingleCellExperiment")
 
@@ -206,7 +211,7 @@ sce.naive_active <- sce.CD4_all[, sce.CD4_all$Strain == "Mus musculus domesticus
 Prior to quality control, we will remove all genes that are not detected in at least 2 cells.
 We further remove genes that are not expressed with an average count of 1 across all cells.
 
-```{r gene-selection}
+```{r gene-selection, eval = FALSE}
 # Remove genes
 ind_expressed <- apply(counts(sce.naive_active), 1, function(n) sum(n > 0)) > 1 &
                   rowMeans(counts(sce.naive_active)) >= 1
@@ -216,7 +221,7 @@ sce.naive_active <- sce.naive_active[ind_expressed, ]
 In the next step, we will use the `Biocpkg("scran")` and `Biocpkg("scater")` for initial normalization and visualization [@Lun2016,@McCarthy2017].
 In line with the normalization strategy of BASiCS, we use the spike-in reads for normalization.
 
-```{r}
+```{r, eval = FALSE}
 # Load libraries
 library("scran")
 library("scater")
@@ -232,7 +237,7 @@ Furthermore, they removed cells which had fewer than 1,000,000 total reads, cell
 Since these data have been quality filtered in the original publication, we will soley visualize metrics that can be used to distinguish low quality cells.
 These metrics include (among others): number of endogeneous genes detected per cell, total number of reads per cell, the fraction of reads mapping to spike-in and endogeneous genes.
 
-```{r}
+```{r, eval = FALSE}
 # Calculate quality metrics
 sce.naive_active <- scater::calculateQCMetrics(sce.naive_active)
 
@@ -272,7 +277,7 @@ The file contains the concentrations of 2 ERCC spike-in mixes.
 
 The lysis mix contains a 1:50,000 dilution of the ERCC mix 1 [@Martinez-jimenez2017].
 
-```{r spike-in_download}
+```{r spike-in_download, eval = FALSE}
 # Read in the spike-in concentrations
 ERCC.conc <- read.table(url("https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt"), 
                          sep = "\t", header = TRUE)
@@ -281,7 +286,7 @@ ERCC.conc <- read.table(url("https://assets.thermofisher.com/TFS-Assets/LSG/manu
 The concentration is given in units of attomoles per $\mu{}l$. 
 We will first calculate the concentration in moles per $\mu{}l$
 
-```{r}
+```{r, eval = FALSE}
 # Moles per micro litre
 ERCC.mmul <- ERCC.conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
 ```
@@ -289,14 +294,14 @@ ERCC.mmul <- ERCC.conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
 From this, we can calculate the molecule count per $\mu{}l$.
 1 mole is equal to $6.02214076\cdot10^{23}$ molecules.
 
-```{r}
+```{r, eval = FALSE}
 ERCC.countmul <- ERCC.mmul*(6.02214076*(10^23))
 ```
 
 The authors diluted this mix by 1:50,000.
 The actual molecule number of spike-ins can therefore be calculated per well:
 
-```{r}
+```{r, eval = FALSE}
 ERCC.count <- ERCC.countmul / 50000
 ```
 
@@ -306,7 +311,7 @@ The second column must contain the input number of molecules for the spike-in ge
 
 *Find a ref for 1ul wells*
 
-```{r spike-info}
+```{r spike-info, eval = FALSE}
 # Prepare the data.frame
 ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
                          Names = ERCC.conc$ERCC.ID,
@@ -318,7 +323,7 @@ ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
 For further downstream analyses, it is useful to obtain the gene symbols associated to gene IDs.
 For this, we used the `Biocpkg(biomaRt)` package to assess the **Mus musculus** gene ids and gene names: 
 
-```{r obtain-gene-symbols}
+```{r obtain-gene-symbols, eval = FALSE}
 library(biomaRt)
 # Initialize mart
 ensembl <- useMart("ensembl")
@@ -336,7 +341,7 @@ rownames(genenames) <- genenames$ensembl_gene_id
 To perform gene ontology (GO) analysis, we further need the information on the length of each gene.
 This can be extracted from the `Biocpkg(EnsDb.Mmusculus.v79)` annotation package.
 
-```{r gene-length}
+```{r gene-length, eval = FALSE}
 library("EnsDb.Mmusculus.v79")
 
 # Build exon list
@@ -369,14 +374,14 @@ The `newBASiCS_Data` function can be used to create the required `SingleCellExpe
 
 We will first select the naive cells from the `SingleCellExperiment` object that was generated above.
 
-```{r SCE-naive}
+```{r SCE-naive, eval = FALSE}
 ind_stimulated <- sce.naive_active$Stimulus == "Unstimulated"
 sce.naive <- sce.naive_active[, ind_stimulated]
 ```
 
 Next, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
 
-```{r Data-naive}
+```{r Data-naive, eval = FALSE}
 # Here is the first time that we use BASiCS
 library("BASiCS")
 
@@ -394,7 +399,7 @@ Data.naive
 
 Alternatively, when using data the contain spike-in genes, the original `SingleCellExperiment` object can be extended by simply specifying a `BatchInfo` slot in the `colData` object and by adding the `SpikeInfo` object to the `metadata` slot.
 
-```{r Data-naive-alternative}
+```{r Data-naive-alternative, eval = FALSE}
 Data.naive <- sce.naive
 colData(Data.naive)$BatchInfo <- colData(sce.naive)$Individuals
 metadata(Data.naive)$SpikeInput <- SpikeInput$count
@@ -425,14 +430,14 @@ This sampler runs for *167 minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB
 This sampler runs for *XYZ minutes* on a 3.1 GHz Intel Core i7 procesor with 16GB RAM and produces a `BASiCS_Chain` data object.
 For convenience, the MCMC chain can be obtained online at [https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018](https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018).
 
-```{r download-chain-naive}
+```{r download-chain-naive, eval = FALSE}
 MCMC.naive <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/MCMC_naive.rds"))
 ```
 
 In the next step, the convergence of the sampler needs to be assessed.
 To obtain a summary of the MCMC sampler, BASiCS provides the `Summary` function.
 
-```{r Summary}
+```{r Summary, eval = FALSE}
 Summary.naive <- Summary(MCMC.naive)
 ```
 
@@ -457,7 +462,7 @@ $$
 where $n$ is the number of samples and $\rho(k)$ is the autocorrelation at lag 
 $k$. We can visualise this parameter using two 
 
-```{r convergence-naive}
+```{r convergence-naive, eval = FALSE}
 # Convergence of mean expression parameters
 # Trace plot, sample histogram and autocorrelation
 plot(MCMC.naive, Param = "mu", Gene = 1)
@@ -496,7 +501,7 @@ BASiCS_diagPlot(MCMC.naive, Param = "s")
 
 We can see several genes show very low sample size for mu. We can identify these using functions from the `CRANpkg(coda)`.
 
-```{r low-ess-genes}
+```{r low-ess-genes, eval = FALSE}
 ess <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.naive, "mu")))
 low_ess_genes <- names(ess[ess < 100])
 ```
@@ -516,7 +521,7 @@ To perform normalization, BASiCS provides the `BASiCS_DenoisedCounts` and the `B
 *Add more details on the DenoisedCounts function*
 These functions take the `SingleCellExperiment` and `BASiCS_Chain` objects as inputs.
 
-```{r normalization-naive}
+```{r normalization-naive, eval = FALSE}
 counts.denoised <- BASiCS_DenoisedCounts(Data = Data.naive, Chain = MCMC.naive)
 ```
 
@@ -532,7 +537,7 @@ Using the residual over-disperison parameters, genes are ranked by their variabi
 Similarly, when detecting lowly variable genes, the `BASiCS_DetectLVG` selects the top 10% of lowly variable genes (`PercentileThreshold = 0.1`).
 The propability threshold for a gene showing higher variability than the percentile threshold is found by controling the EFDR to 10% (default).
 
-```{r naive-HVG-LVG}
+```{r naive-HVG-LVG, eval = FALSE}
 # Highly variable genes
 HVG <- BASiCS_DetectHVG(MCMC.naive, PercentileThreshold = 0.9)
 
@@ -546,7 +551,7 @@ The `Biocpkg("scran")` provides similar functions to detect HVGs and we can comp
 `scran` first fits a smooth regression between the variance of the log-transformed expression of the spike-in transcripts and their mean abundance using the `trendVar` function.
 Afterwards, the `decomposeVar` function decomposes the gene-specific variance into a biological and technical component.
 
-```{r HVG-LVG-scran}
+```{r HVG-LVG-scran, eval = FALSE}
 # Fit the mean-variance trend
 var.fit <- scran::trendVar(sce.naive, use.spikes = TRUE) 
 
@@ -558,7 +563,7 @@ As proposed by the `SimpleSingleCell` workflow, the HVGs are described as displa
 *Make sure this is still in the current version of SimpleSingleCell*.
 We can then compare the the overlap of the HVG identified by scran and by BASiCS.
 
-```{r scran-HVG}
+```{r scran-HVG, eval = FALSE}
 ind_hvg <- which(var.out$FDR <= 0.05 & var.out$bio >= 0.5)
 hvg.out <- var.out[ind_hvg, ] 
 hvg.out <- hvg.out[order(hvg.out$bio, decreasing = TRUE), ] 
@@ -592,7 +597,7 @@ All *XYZ* HVG genes of scran are among the HVGs identified by BASiCS.
 Numerous studies have highlighted the relationship between gene-specific variability measures such as the squared coefficient of variation and mean abundance *ref,ref,ref*.
 BASiCS provides the `BASiCS_showFit` function that plots the gene-specific over-dispersion parameters (delta) versus mean expression parameters (mu). 
 
-```{r naive-fit}
+```{r naive-fit, eval = FALSE}
 BASiCS_showFit(MCMC.naive)
 ```
 
@@ -610,7 +615,7 @@ Here, we will highlight the mean-variance realtionship for each variability meas
 For this analysis, we exclude genes that are not expressed in at least 2 cells.
 These genes can be identified in the `displayChainBASiCS(MCMC.naive, Param = "epsilon")` to contain `NA`.
 
-```{r variability-measures}
+```{r variability-measures, eval = FALSE}
 # Exclude ERCCs
 counts.denoised <- counts.denoised[!grepl("ERCC", rownames(counts.denoised)),]
 
@@ -641,7 +646,7 @@ We see that all measures correlate with mean expression.
 The same is true for the over-dispersion parameters as estimated by BASiCS as shown below.
 Again, for this comparison, we exclude genes that do not show expression in at least 2 cells
 
-```{r CV-comparison-BASiCS}
+```{r CV-comparison-BASiCS, eval = FALSE}
 # Remove genes
 eps_not_na <- !is.na(displaySummaryBASiCS(Summary.naive, Param = "epsilon")[, "median"])
 mu.naive <- displaySummaryBASiCS(Summary.naive, Param = "mu")[eps_not_na, ]
@@ -664,7 +669,7 @@ Similarly, Kolodziejczyk _et al._ used the distance to a rolling median (DM) alo
 Here, we highlight how to obtain the residual variability estimates using `BASiCS` and `scran`.
 *Add density to these plots*
 
-```{r}
+```{r, eval = FALSE}
 # Residual over-dispersion estimates
 epsilon.naive <- displaySummaryBASiCS(Summary.naive, Param = "epsilon")[eps_not_na, ]
 
@@ -693,7 +698,7 @@ These measures can be used to associate genomic features [@Morgan2018,@Faure2018
 While the DM is calculated as a point estimate, BASiCS stores each posterior sample within the `BASiCS_Chain` object.
 They can be accessed using the `displayChain` function, which displays cell- or gene-specific samples in form of a matrix where each column contains cell- or gene-specific paramters and rows contain the MCMC samples.
 
-```{r individual-samples}
+```{r individual-samples, eval = FALSE}
 displayChainBASiCS(MCMC.naive, Param = "epsilon")[1:10, 1:10]
 ```
 
@@ -716,14 +721,14 @@ Prior to differential testing, and as explained above, we need to generate a `Si
 We have performed quality control on the naive and activated CD4^+^ T cells above *link to filtering section*. 
 Therefore, we can directly select the activated CD4^+^ T cells from the `sce.naive_active` object.
 
-```{r SCE-active}
+```{r SCE-active, eval = FALSE}
 ind_active <- sce.naive_active$Stimulus == "Active"
 sce.active <- sce.naive_active[, sce.naive_active$Stimulus == "Active"]
 ```
 
 Similar to the procedure described above *link to naive section*, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
 
-```{r Data-active}
+```{r Data-active, eval = FALSE}
 # Select the ERCC spike-ins of the dataset
 ind_spike <- rownames(sce.active)[isSpike(sce.active)]
 SpikeInput <- ERCC.count[ind_spike, ]
@@ -752,7 +757,7 @@ This sampler runs for *98 minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB 
 This sampler runs for *XYZ minutes* on a 3.1 GHz Intel Core i7 procesor with 16GB RAM and produces a `BASiCS_Chain` data object.
 For convenience, this MCMC chain can be again obtained online at [https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018](https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018).
 
-```{r download-chain-active}
+```{r download-chain-active, eval = FALSE}
 MCMC.active <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/MCMC_active.rds"))
 ```
 
@@ -761,7 +766,7 @@ MCMC.active <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publicati
 Similar to the `BASiCS_Chain` quality checks described above, we will again profile the convergence of the chain using a visual inspection of the trace plots, sample histograms and autocorrelation of individual chains.
 Furthermore, we will use the `BASiCS_diagPlot` function to assess the effective sample size of all chains per parameter class.
 
-```{r convergence-active}
+```{r convergence-active, eval = FALSE}
 # Convergence of mean expression parameters
 # Trace plot, sample histogram and autocorrelation
 plot(MCMC.active, Param = "mu", Gene = 1)
@@ -800,7 +805,7 @@ BASiCS_diagPlot(MCMC.active, Param = "s")
 
 To highlight the regression trend, we can use the `BASiCS_showFit` function.
 
-```{r active-fit}
+```{r active-fit, eval = FALSE}
 BASiCS_showFit(MCMC.active)
 ```
 
@@ -840,7 +845,7 @@ To perform robust differential mean expression testing, we will select those gen
 As explained above *Add link pointing at the first convergence section*, this can be done using functions from the `CRANpkg(coda)` package.
 We will select genes with low ESS from the `BASiCS_Chain` objects for naive and activated CD4^+^ T cells.
 
-```{r low-ESS-genes}
+```{r low-ESS-genes, eval = FALSE}
 # Naive CD4+ T cells
 ess.naive <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.naive, "mu")))
 low_ess_genes.naive <- names(ess.naive[ess.naive < 100])
@@ -861,7 +866,7 @@ The default settings for differential mean expression testing are as follows:
 `EFDR_M`: Expected false discovery rate: 10%
 `Plot`, `PlotOffset`: Boolean to control if results are plotted: TRUE
 
-```{r mean-expression-testing}
+```{r mean-expression-testing, eval = FALSE}
 # Boolean of selected genes
 genes_select <- !(colnames(displayChainBASiCS(MCMC.naive)) %in% to_exclude) 
 
@@ -879,7 +884,7 @@ Test_DE <- BASiCS_TestDE(Chain1 = MCMC.naive,
 
 After running the test, we can now visaulize the results in form of a MA-plot (log ratio _versus_ mean average) and volcano plot (posterior probability _versus_ log ratio).
 
-```{r visualize-MA-plot}
+```{r visualize-MA-plot, eval = FALSE}
 # Visualize MA plot
 ggplot(Test_DE$TableMean) + 
   geom_point(aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean)) +
@@ -901,7 +906,7 @@ As we can see for the comparison of naive and activated CD4^+^ T cells, most gen
 In such cases, it can be beneficial to increase the LFC threshold or to decrease the threshold for the EFDR.
 Here, we therfore set the LFC threshold to $\log_2(2)=1$ to detect genes with strong changes in mean expression.
 
-```{r mean-expression-testing-2}
+```{r mean-expression-testing-2, eval = FALSE}
 # Perform differential testing
 Test_DE <- BASiCS_TestDE(Chain1 = MCMC.naive, 
                          Chain2 = MCMC.active, 
@@ -917,7 +922,7 @@ To understand the regulatory programmes that underlie T cell activation, a varie
 Here, we highlight the use of gene ontology (GO) analysis to group genes that are differentially expressed between naive and activated CD4^+^ T cells.
 For this, we use the Bioconductor `Biocpkg(goseq)` package and the `Biocpkg(org.Mm.eg.db)` annotation package to test GO enrichment within genes specifically expressed by naive or activated CD4^+^ T cells
 
-```{r go-analysis-naive}
+```{r go-analysis-naive, eval = FALSE}
 library(goseq)
 library(org.Mm.eg.db)
 
@@ -954,7 +959,7 @@ Here, we find components of the TCR complex (such as _Cd28_, _Cd3e_, _Cd3g_, _Cd
 
 We can also test the enrichment of GO categories among genes that show increased expression upon T cell activation.
 
-```{r}
+```{r, eval = FALSE}
 # Collect significan genes as 1 and all other as 0
 active.genes <- as.integer(Test_DE$TableMean$ResultDiffMean == "Active+")
 names(active.genes) <- Test_DE$TableMean$GeneName
@@ -994,7 +999,7 @@ Due to the negative association between the over-dispersion and mean expression 
 To avoid any mean expression confounding effect, we perform the differential testing by setting the LFC threshold on mean expression to `EpsilonM = 0` while using the default LFC threshold on changes in over-dispersion: `EpsilonD = log2(1.5)`.
 We furthermore, it is crucial to exclude lowly expressed genes from this analysis to avoid biases arising from non-informative genes.
 
-```{r over-dispersion-testing}
+```{r over-dispersion-testing, eval = FALSE}
 # Select genes that show expression in both conditions
 genes_select <- (Test_DE$TableMean$Mean1 > 5 & Test_DE$TableMean$Mean2 > 5)
 
@@ -1010,7 +1015,7 @@ Test_DE.LFC0 <- BASiCS_TestDE(Chain1 = MCMC.naive,
 
 We first select the genes that remain similarly expressed between both conditions and highligh the differential over-dispersion results in form of MA- and boxplots.
 
-```{r over-dispersion-result}
+```{r over-dispersion-result, eval = FALSE}
 # Select genes with no changes in mean expression
 ind_nochange <- Test_DE.LFC0$TableMean$ResultDiffMean == "NoDiff"
 
@@ -1036,7 +1041,7 @@ While the analysis in the previous section is well suited to detect global chang
 For this, BASiCS compares the residual over-dispersion parameters, which do not scale with mean expression, between the two conditions.
 Here, we filter on genes that are lowly expressed in both conditions and, as explained above, remove genes for with the MCMC sampler leads to a low effective sample size:
 
-```{r res-over-disp-filtering}
+```{r res-over-disp-filtering, eval = FALSE}
 # Remove lowly expressed genes
 low_expr <- !(Test_DE$TableMean$Mean1 < 5 & Test_DE$TableMean$Mean2 < 5)
 
@@ -1060,7 +1065,7 @@ genes_select <- low_expr & ind_ess.naive.mu &
 We can now perform the differential testing as shown above.
 Again, we use a LFC threshold higher than the default to capture strong changes in mean expression.
 
-```{r DE-DV-testing}
+```{r DE-DV-testing, eval = FALSE}
 # Perform differential testing
 Test_DE <- BASiCS_TestDE(Chain1 = MCMC.naive, 
                          Chain2 = MCMC.active, 
@@ -1076,7 +1081,7 @@ We can now visualize the changes in residual over-dispersion between naive and a
 In this visualization, the difference between the posterior medians of the residual over-dispersion parameters $\epsilon$ is shown on the y-axis.
 Epsilon values for genes that are not expressed in at least 2 cells per conditions are marked as `NA` and are therefore not being displayed.
 
-```{r diff-res-plot}
+```{r diff-res-plot, eval = FALSE}
 ggplot(Test_DE$TableResDisp) +
   geom_point(aes(log(MeanOverall), ResDispDistance, 
                  colour = ResultDiffResDisp)) + 
@@ -1091,7 +1096,7 @@ While one could perform GO analysis (as explained above) on the genesets that ch
 For this, we will first combine the results of the differential mean expression and the differential residual over-dispersion test.
 We will further remove the genes that were excluded from the test and those that are not expressed in at least 2 cells in either condition.
 
-```{r combine-results}
+```{r combine-results, eval = FALSE}
 res.df <- cbind(Test_DE$TableMean, Test_DE$TableResDisp[,-c(1,2)])
 ind_exclude <- res.df$ResultDiffResDisp == "ExcludedByUser" |
   res.df$ResultDiffResDisp == "ExcludedFromTesting"
@@ -1100,7 +1105,7 @@ res.df <- res.df[!ind_exclude,]
 
 Next, we can visualize the regulation of each individual gene based on its changes in mean expression and expression variability.
 
-```{r DV-DE-vis}
+```{r DV-DE-vis, eval = FALSE}
 ggplot(res.df) +
   geom_point(aes(MeanLog2FC, ResDispDistance, 
                  colour = interaction(ResultDiffMean, ResultDiffResDisp)))
@@ -1111,7 +1116,7 @@ Recently, it has been shown that specifically cytokines show heterogeneous expre
 We are therefore interested which immune response genes show variable activation patterns in early CD4^+^ T cell activation.
 For this, we will first collect all immune response genes (GO category: `GO:0006955`) using the `goseq` package.
 
-```{r variable-immune-response}
+```{r variable-immune-response, eval = FALSE}
 # Select immune response genes
 immun.allegs <- get("GO:0006955", org.Mm.egGO2ALLEGS)
 immun.genes <- unique(unlist(mget(immun.allegs, org.Mm.egENSEMBL)))
@@ -1120,7 +1125,7 @@ immun.names <- genenames[immun.genes,"external_gene_name"]
 
 Finally, we will find the subset of immune response genes that are variably up-regulated upon early immune activation
 
-```{r overlap}
+```{r overlap, eval = FALSE}
 # Variable response genes
 ind_var.response <- res.df$ResultDiffMean == "Active+" & 
   res.df$ResultDiffResDisp == "Active+"
@@ -1145,7 +1150,7 @@ For this, we compare cells of the presomitic mesoderm and somitic mesoderm using
 
 The full dataset is stored under the accession number E-MTAB-6153 on ArrayExpress and can be obtained via:
 
-```{r load-droplet-data}
+```{r load-droplet-data, eval = FALSE}
 library("data.table")
 if(!file.exists("rawCounts.zip")){
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.2.zip", 
@@ -1164,7 +1169,7 @@ rawCounts <- rawCounts[, -1]
 
 The cluster labels of the original publication ca be obtained via:
 
-```{r cluster-labels-droplet}
+```{r cluster-labels-droplet, eval = FALSE}
 if(!file.exists("cluster_labels.zip")){
   download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.3.zip", 
                 destfile = "cluster_labels.zip")
@@ -1179,7 +1184,7 @@ cluster_labels <- read.table("cellAnnotation.tsv", sep = "\t", header = TRUE, st
 We select the somitic and pre-somitic mesoderm cells to perform differential testing. 
 Prior to running the MCMC, we want to control for outlying cells and heterogeneous substructure in both cell populations. 
 
-```{r droplet-cell-selection}
+```{r droplet-cell-selection, eval = FALSE}
 ind_som <- which(cluster_labels$cellType == "presomiticMesoderm" | 
         cluster_labels$cellType == "somiticMesoderm")
 rawCounts <- rawCounts[, ind_som]
@@ -1191,7 +1196,7 @@ cluster_labels <- cluster_labels[ind_som,]
 For pre-processing and visualization purposes, we load the data into a SingleCellExperiment object.
 The metadata will be stored in the `colData` slot.
 
-```{r droplet-sce}
+```{r droplet-sce, eval = FALSE}
 droplet.sce <- SingleCellExperiment(assays = 
                 list(counts = as(as.matrix(rawCounts), "dgCMatrix")))
 rm(rawCounts)
@@ -1200,14 +1205,14 @@ colData(droplet.sce) <- DataFrame(cluster_labels, subCellType = sub("_.*", "", c
 
 For further processing steps, we remove lowly expressed genes.
 
-```{r}
+```{r, eval = FALSE}
 ind_expressed <- Matrix::rowMeans(counts(droplet.sce)) > 0.1
 droplet.sce <- droplet.sce[ind_expressed, ]
 ```
 
 To visualize possible sub-structure in the data, we normalize both cell populations using the `scran` package.
 
-```{r}
+```{r, eval = FALSE}
 droplet.sce <- computeSumFactors(droplet.sce, 
                                  clusters=colData(droplet.sce)$subCellType)
 droplet.sce <- normalize(droplet.sce)
@@ -1215,13 +1220,13 @@ droplet.sce <- normalize(droplet.sce)
 
 Next, we compute a PCA using the `scater` package. 
 
-```{r}
+```{r, eval = FALSE}
 droplet.sce <- runPCA(droplet.sce)
 ```
 
 We can now visualize the different factors stored in the `colData` slot.
 
-```{r}
+```{r, eval = FALSE}
 # Cell types identified by clustering
 plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "subCellType") + 
   scale_fill_manual(values = c("coral4", "steelblue", "limegreen"))
@@ -1230,7 +1235,7 @@ plotReducedDim(droplet.sce, use_dimred = "PCA", colour_by = "subCellType") +
 The first PC separates the two different cell types while the second PC captures outlying cells.
 We will remove these outliers and the intermediate cell population from down-stream analysis.
 
-```{r}
+```{r, eval = FALSE}
 ind_retain <- reducedDims(droplet.sce)$PCA[, 2] > -5 &
     colData(droplet.sce)$subCellType != "presomiticMesoderm.b"
 droplet.sce <- droplet.sce[, ind_retain]
@@ -1247,7 +1252,7 @@ In the case of the somitic and pre-somoitic mesoderm cells, embryos of two mice 
 Cells isolated from the first embryo were split into two batches and processed independently.
 To capture cell-type extrinsic, biological variation between the two mice, we pool cells from the two batches of the first animal and only considere cells from mouse 1 and mouse 2 as replicates.
 
-```{r BASiCS-droplet-data}
+```{r BASiCS-droplet-data, eval = FALSE}
 # Presomitic mesoderm
 ind_presom <-colData(droplet.sce)$cellType == "presomiticMesoderm"
 cur_counts <- droplet.sce[, ind_presom]
@@ -1275,7 +1280,7 @@ We next estimate model parameters by running the MCMC cell-type specifically.
 Due to the high cell number (1150 for the pre-somitic mesoderm and 739 for the somitic mesoderm), we set the number of iterations to 20000. 
 In this case, we used the regression BASiCS model to additionally estimate residual over-dispersion parameters.
 
-```{r, eval = FALSE}
+```{r, eval = FALSE, eval = FALSE}
 # Presomitic mesoderm cells
 PSM.MCMC <- BASiCS_MCMC(PSM.Data, N = 20000, Thin = 10, Burn = 10000, Regression = TRUE)
 
@@ -1285,7 +1290,7 @@ SM.MCMC <- BASiCS_MCMC(SM.Data, N = 20000, Thin = 10, Burn = 10000, Regression =
 
 Running these MCMC will take around 8-12 hours on a standard PC (2.6 GHz i5, 8 GB RAM, using 1 core). Here, we provide these chains to download from:
 
-```{r droplet-chain-download}
+```{r droplet-chain-download, eval = FALSE}
 PSM.MCMC <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/PSM_MCMC.rds"))
 SM.MCMC <- readRDS(file = url("https://jmlab-gitlab.cruk.cam.ac.uk/publications/BASiCSWorkflow2018/raw/master/MCMCs/SM_MCMC.rds"))
 ```
@@ -1296,7 +1301,7 @@ Next, we visualize the results of the MCMC sampler by visualizing the different 
 To assess whether the chains converged, we will visualize trace plots for some of the parameters. 
 The `mcmc` function of the `coda` package is suited to generate trace plots for each chain. 
 
-```{r droplet-chain-convergence}
+```{r droplet-chain-convergence, eval = FALSE}
 library(coda)
 plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "mu")[, 120]), main = "mu[120]")
 plot(mcmc(displayChainBASiCS(PSM.MCMC, Param = "delta")[, 10]), main = "delta[10]")
@@ -1319,7 +1324,7 @@ We observe that the chains for all chosen paramteres converged.
 Furthermore, to validate that the model fitted the mean-variability trend correctly, we plot posterior estimates for over-dispersion paramters $\delta_i$ against posterior estimates of mean expression parameters $\mu_i$.
 For this, the `BASiCS_showFit` function can be used.
 
-```{r droplet-regression-trend}
+```{r droplet-regression-trend, eval = FALSE}
 BASiCS_showFit(PSM.MCMC)
 BASiCS_showFit(SM.MCMC)
 ```
@@ -1332,7 +1337,7 @@ Next, we test for changes in mean expression and expression variability between 
 First, we are interested in assessing global changes in expression variability between the two conditions.
 For this, over-dispersion paramters $\delta_i$ for genes that are similarly expressed in both conditions are compared.
 
-```{r}
+```{r, eval = FALSE}
 Droplet.Test.logFC0 <- BASiCS_TestDE(PSM.MCMC, SM.MCMC, EpsilonM = 0, 
                                      GroupLabel1 = "PSM", GroupLabel2 = "SM")
 for.plot <- Droplet.Test.logFC0$TableDisp[Droplet.Test.logFC0$TableDisp$ResultDiffDisp != "ExcludedFromTesting",
@@ -1349,7 +1354,7 @@ With this analysis, we do not detect global changes in expression variability.
 We next profile changes in mean expression and expression variability on a gene-specific level.
 For this, we use a log~2~ fold change threshold of 1 for mean expression testing and the default threshold of $\psi_0\approx0.41$ for differential variability testing.
 
-```{r droplet-gene-specific-testing}
+```{r droplet-gene-specific-testing, eval = FALSE}
 Droplet.Test <- BASiCS_TestDE(PSM.MCMC, SM.MCMC, EpsilonM = 1, 
                               GroupLabel1 = "PSM", GroupLabel2 = "SM", 
                               Plot = FALSE, PlotOffset = FALSE)
@@ -1374,7 +1379,7 @@ ggplot(Droplet.Test$TableResDisp) +
 We can now list the genes that were detected as differenitally expressed and differentially variable ordered by their difference in mean expression/variability.
 We first focus on genes that are differentially expressed between the two cell types.
 
-```{r gene-lists-mean}
+```{r gene-lists-mean, eval = FALSE}
 # Highly expressed in somitic mesoderm
 ind_sm <- Droplet.Test$TableMean$ResultDiffMean == "SM+"
 SM.mean <- Droplet.Test$TableMean[ind_sm, ]
@@ -1391,7 +1396,7 @@ PSM.mean$Symbol <- genenames[PSM.mean$GeneName, 2]
 We can next perform GO analysis on up- or down-regulated genes. 
 First, we will perform GO analysis on somitic mesoderm specific genes.
 
-```{r GO-analysis-mean-SM}
+```{r GO-analysis-mean-SM, eval = FALSE}
 # Collect significan genes as 1 and all other as 0
 SM.genes <- as.integer(Droplet.Test$TableMean$ResultDiffMean == "SM+")
 names(SM.genes) <- Droplet.Test$TableMean$GeneName
@@ -1415,7 +1420,7 @@ SM.GO$Genes <- all_genes
 
 Now, we perform GO analysis on pre-somitic mesoderm specific genes
 
-```{r GO-analysis-mean-PSM}
+```{r GO-analysis-mean-PSM, eval = FALSE}
 # Collect significan genes as 1 and all other as 0
 PSM.genes <- as.integer(Droplet.Test$TableMean$ResultDiffMean == "PSM+")
 names(PSM.genes) <- Droplet.Test$TableMean$GeneName
@@ -1439,7 +1444,7 @@ PSM.GO$Genes <- all_genes
 
 To visualize the expression of individual genes, we can use the `scater` package.
 
-```{r}
+```{r, eval = FALSE}
 # Expression of Fgf8 in both conditions
 ind_fgf <- genenames$external_gene_name == "Fgf8"
 plotExpression(droplet.sce, features = genenames[ind_fgf, 1], 
@@ -1450,7 +1455,7 @@ plotReducedDim(droplet.sce, use_dimred = "PCA",
 
 Visualize one category in form of heatmap.
 
-```{r, fig.height = 7, fig.width = 5}
+```{r, fig.height = 7, fig.width = 5, eval = FALSE}
 library(pheatmap)
 genes <- unlist(strsplit(PSM.GO[1, "Genes"], ", "))
 for.heatmap <- logcounts(droplet.sce)[genes, ]
@@ -1482,7 +1487,7 @@ These include:
 * More variable in PSM, highly expressed in PSM
 * More variable in PSM, lowly expressed in SM
 
-```{r}
+```{r, eval = FALSE}
 gene.groups <- data.frame(Genename = Droplet.Test$TableResDisp$GeneName,
                           Symbol = genenames[Droplet.Test$TableResDisp$GeneName, 2],
                           MeanLog2FC = Droplet.Test$TableMean$MeanLog2FC,
@@ -1499,7 +1504,7 @@ gene.groups[gene.groups$Regulation == "SM+_SM+", ]
 
 We can visualize individual genes using `scater`.
 
-```{r violin-plots}
+```{r violin-plots, eval = FALSE}
 # Expression of Meox2 in both conditions
 ind_meox <- genenames$external_gene_name == "Meox2"
 plotExpression(droplet.sce, features = genenames[ind_meox, 1], 
@@ -1514,7 +1519,7 @@ This section is required if the paper does not include novel data or analyses.  
 
 # Session Info
 
-```{r, session-info}
+```{r, session-info, eval = FALSE}
 devtools::session_info()
 ```
 
