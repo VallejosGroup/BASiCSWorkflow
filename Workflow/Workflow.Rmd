@@ -132,8 +132,10 @@ We will primarily use the `calculateQCMetrics` function to calculate cell- and g
 
 The `r Biocpkg("scran")` Bioconductor package offers a variety of functions for low-level scRNA-Seq data analysis [@Lun2016].
 While it contains function for batch correction, doublet detection, estimation of cell cycle states, we will use it primarily for pre-normalization in junction with the `scater` package [@Lun2016pooling] and for modelling the mean-variance trend across all genes.
+Using the `trendVar` and `decomposeVar` functions will be used to fit a mean-dependent trend to the gene-specific variances before decomposing the overall variance into technical and biological components. 
+Furthermore, we will use the `DM` function to calculate the distance of gene-specific squared coefficients of variation (CV2) to a rolling median along mean expression [@Kolodziejczyk2015cell].
 
-The `r Biocpkg("BASiCS")` Bioconductor package contains an assembly of functions to estimate and analyse gene- and cell-specific model parameters [@Vallejos2015BASiCS;Vallejos2016;@Eling2018].
+The `r Biocpkg("BASiCS")` Bioconductor package contains an assembly of functions to estimate and analyse gene- and cell-specific model parameters [@Vallejos2015BASiCS; @Vallejos2016; @Eling2018].
 `BASiCS` is build upon a hierarchical Baysian framework and as such samples posterior distribution for each model parameter.
 In mathematical terms, the gene expression count $X_{ij}$ for gene $i$ in cell $j$ is modelled as:
 
@@ -158,30 +160,44 @@ $$
 where $\text{f}(\mu_i)$ describes a smooth regression trend between the over-dispersion and the mean expression parameters.
 This extension introduced the residual over-dispersion parameters $\epsilon_i=\delta_i-\text{f}(\mu_i)$ that do not scale with mean expression [@Eling2018].
 
-From a data analysis perspective, the `BASiCS_MCMC` function is the heart of the `BASiCS` package and can be run in four different settings (see [Table 1](#tab:MCMC_settings)). 
+From a data analysis perspective, the `BASiCS_MCMC` function is the heart of the `BASiCS` package and can be run in four different settings (see Table 1). 
 
-: {#tab:MCMC_settings} Four settings that can be used to run the `BASiCS_MCMC` function.
+: Four settings that can be used to run the `BASiCS_MCMC` function.
 
-|                        | No regression        | Regression           |
-| ---------------------- | :------------------: | -------------------: |
-| Using spike-in reads   | `WithSpikes = TRUE`  | `WithSpikes = TRUE`  |
-|                        | `Regression = FALSE` | `Regression = TRUE`  |
-| :--------------------: | :--------------------: | :--------------------: |
-| No spike-ins available | `WithSpikes = FALSE` | `WithSpikes = FALSE` |
-|                        | `Regression = FALSE` | `Regression = TRUE`  |
+                        No regression         Regression           
+----------------------- --------------------  -------------------
+Using spike-in reads    `WithSpikes = TRUE`   `WithSpikes = TRUE`  
+                        `Regression = FALSE`  `Regression = TRUE` 
+No spike-ins available  `WithSpikes = FALSE`  `WithSpikes = FALSE` 
+                        `Regression = FALSE`  `Regression = TRUE`
+----------------------- --------------------  -------------------
 
+If spike-in counts are availabe and should be used to estimate technical noise, the parameter `WithSpikes` is set to `TRUE` (default).
+If the regression between mean expression and over-dispersion should be perfomed, the `Regression` parameters is set to `TRUE` (default).
+If the user decides to set `Regression = FALSE`, `BASiCS` will not estimate the regression trend and does not supply the residual over-dispersion parameters $\epsilon_i$.
 
+The `BASiCS_MCMC` function returns a `BASiCS_Chain` object, which can be used for further doenstream analysis as indicated in this workflow.
 
-- Explain BASiCS from a users perspective (4 different cases)
-- Coda package for Markov Chain Monte Carlo (MCMC) visualization, MCMC convergency analysis, effective sample size
-- Explain scater for preprocessing (highlight: QC, pre-normalization and visualization)
-- scran for alternative measures e.g. DM and CV2 calculation
-- GO analysis
+The `r CRANpkg("coda")` CRAN package contains a variety of functions to assess the convergence of a sampled MCMC chain. 
+To use `coda` functions, the individual chains returned by `BASiCS` need to be transformed into a MCMC object that `coda` recognises using the `coda::mcmc` function.
+`BASiCS` offers a number of functions to visualize the convergence of MCMC chains.
+Nevertheless, we will use the `effectiveSize` function from `coda` to compute the effective sample size of individual MCMC chains.
+
+The `r Biocpkg("goseq")` Bioconductor package offers functions to detect the enrichment of gene ontologies (GOs) among user-specified gene sets [@Young2010].
+Furthermore, `goseq` corrects for gene length biases, which is useful for full length scRNA-Seq data as highlighted in the first section. 
+In this workflow, we will use `goseq` to detect GO enrichment among differentially expressed sets of genes.
 
 ## Operation
 
-**Here we mention the version of R and Bioconductor that we are using.** 
-*Specifically name the Bioconductor packages that we are using**
+The following R, Bioconductor and package version were used for this workflow:
+
+**R version**: `r R.version.string`
+
+**Bioconductor version**: `r BiocManager::version()`
+
+**Packages**: BASiCS `r packageVersion("BASiCS")`, scran `r packageVersion("scran")`, scater `r packageVersion("scater")`, coda `r packageVersion("coda")`, goseq `r packageVersion("goseq")`    
+
+For the full list of packages used, please see the [Session Info](#session-info)
 
 # C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
 
@@ -1577,7 +1593,7 @@ plotReducedDim(droplet.sce, use_dimred = "PCA",
 # Discussion 
 This section is required if the paper does not include novel data or analyses.  It allows authors to briefly summarize the key points from the article.
 
-# Session Info
+# Session Info {#session-info}
 
 ```{r, session-info, eval = FALSE}
 devtools::session_info()
