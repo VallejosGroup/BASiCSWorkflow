@@ -311,14 +311,12 @@ This metadata file contains the library identifiers (*X*), the strain informatio
 
 ## Filtering the data
 
-For further down-stream analysis, we select naive and activated CD4^+^ T cells from young B6 animals that were obtained using MACS-based cell selection.
-It is crucial that proper quality control (QC) and gene filtering is performed before running BASiCS, and, in general, before performing meaningful computational analysis on biological data.
+In the next step, we will first generate a `r Biocpkg("SingleCellExperiment")` (SCE) object that contains all cells and that stores cell- and gene-specific metadata.
+This data class offers convenient ways to subset, and to set and retrieve cell- and gene-specific information.  
+We will also store information on the spike-in molecules using the `isSpike` accessor. 
+Therefore, the SCE object stores gene-specific information whether or not a gene is of biological (endogeneous) or technical (spike-in) origin.
 
-We will first select naive and activated CD4^+^ T cells.
-For convenience, we will generate a `Biocpkg("SingleCellExperiment")` [@Lun2018SCE] that contains all cells and that stores cell- and gene-specific metadata.
-Furthermore, this object stores gene-specific information whether or not a gene is of biological (endogeneous) or technical (spike-in) origin.
-
-```{r CD4-SCE-object, eval = FALSE}
+```{r CD4-SCE-object}
 # Load library
 library("SingleCellExperiment")
 
@@ -329,26 +327,34 @@ sce.CD4_all <- SingleCellExperiment(assays = list(counts = as.matrix(CD4.raw)),
 # Store spike-in information
 isSpike(sce.CD4_all, "ERCC") <- which(grepl("ERCC", rownames(sce.CD4_all)))
 
-# Select naive and activated CD4+ T cells of young B6 animals
-sce.naive_active <- sce.CD4_all[, sce.CD4_all$Strain == "Mus musculus domesticus" &
-                                  sce.CD4_all$Age == "Young" &
-                                  sce.CD4_all$Celltype == "MACS-purified Naive"]
 ```
 
-Prior to quality control, we will remove all genes that are not detected in at least 2 cells.
-We further remove genes that are not expressed with an average count of 1 across all cells.
+For further downstream analysis, we select naive and activated CD4^+^ T cells from young B6 animals that were obtained using the MACS-based cell selection.
+It is crucial that proper quality control (QC) and gene filtering is performed before running BASiCS, and, in general, before performing meaningful computational analysis on biological data.
 
-```{r gene-selection, eval = FALSE}
+```{r naive-activated-CD4-SCE-object}
+ind_select <- sce.CD4_all$Strain == "Mus musculus domesticus" &
+  sce.CD4_all$Age == "Young" &
+  sce.CD4_all$Celltype == "MACS-purified Naive"
+sce.naive_active <- sce.CD4_all[,ind_select]
+```
+
+Prior to cell-specific quality control, we will remove all genes that are not detected in at least 2 cells across both conditions.
+Furthermore, we remove genes that are not expressed with an average count of 1 across all cells.
+These thresholds need to be set dataset-specifically and careful gene-specific quality metrics need to be closely examined as suggested by the `r Biocpkg("SimpleSingleCell")` Bioconductor workflow [@Lun2016].
+
+```{r gene-selection}
 # Remove genes
 ind_expressed <- apply(counts(sce.naive_active), 1, function(n) sum(n > 0)) > 1 &
                   rowMeans(counts(sce.naive_active)) >= 1
 sce.naive_active <- sce.naive_active[ind_expressed, ]
 ```
 
-In the next step, we will use the `Biocpkg("scran")` and `Biocpkg("scater")` for initial normalization and visualization [@Lun2016,@McCarthy2017].
+In the next step, we will use the `r Biocpkg("scran")` and `r Biocpkg("scater")` Bioconductor packages for initial normalization and visualization of quality metrics [@Lun2016,@McCarthy2017].
+The normalization at this point is needed to avoid biases in the visualization due to differences in the mRNA content between cells.
 In line with the normalization strategy of BASiCS, we use the spike-in reads for normalization.
 
-```{r, eval = FALSE}
+```{r pre-normalization}
 # Load libraries
 library("scran")
 library("scater")
@@ -358,29 +364,50 @@ sce.naive_active <- computeSpikeFactors(sce.naive_active)
 sce.naive_active <- normalize(sce.naive_active)
 ```
 
-The `Biocpkg("SimpleSingleCell")` workflow provides an extensive overview on important aspects of how to perform low-level analysis of scRNA-Seq data, including quality control [@Lun2016].
-In the original publication, the authors removed empty capture sites and sites which contained multiple cells or debris as observed by visual inspection. 
-Furthermore, they removed cells which had fewer than 1,000,000 total reads, cells where less than 20% of reads mapped to endogenous genes, cells in which less than 1,250 or more than 3,000 genes were detected and cells with more than 10% or less than 0.5% reads mapping to mitochondrial genes [@Martinez-jimenez2017].
-Since these data have been quality filtered in the original publication, we will soley visualize metrics that can be used to distinguish low quality cells.
-These metrics include (among others): number of endogeneous genes detected per cell, total number of reads per cell, the fraction of reads mapping to spike-in and endogeneous genes.
+The `Biocpkg("SimpleSingleCell")` Bioconductor workflow provides an extensive overview on important aspects of how to perform low-level analysis of scRNA-Seq data, including quality control [@Lun2016].
+The `calculateQCMetrics` function of the `scater` package can be used to calculate a number of cell- and gene-specific quality metrics.
+Furthermore, `scater` offers the `runPCA` function to compute a principal component analysis (PCA) across all cells.
 
-```{r, eval = FALSE}
+```{r scater-QC-metrics}
 # Calculate quality metrics
 sce.naive_active <- scater::calculateQCMetrics(sce.naive_active)
 
 # Calcualte PCA
 sce.naive_active <- scater::runPCA(sce.naive_active)
+```
 
+For the CD4^+^ T cell dataset, the authors removed empty capture sites and sites which contained multiple cells or debris as observed by visual inspection. 
+Furthermore, they removed cells which had fewer than 1,000,000 total reads, cells where less than 20% of reads mapped to endogenous genes, cells in which less than 1,250 or more than 3,000 genes were detected and cells with more than 10% or less than 0.5% reads mapping to mitochondrial genes [@Martinez-jimenez2017].
+
+Since these data have been quality filtered in the original publication, we will only visualize the distribution of quality metrics across the cells.
+The highlighted quality metrics can otherwise be used to identify low quality cells.
+These metrics include (among others): number of endogeneous genes detected per cell, total number of reads per cell, the fraction of reads mapping to spike-in and endogeneous genes.
+The main aim is to identify broken or dying cells, and possibly empty wells.
+For an extenive discussion on quality metrics for scRNA-Seq data, see Ilicic *et al.* [@Ilicic2016].
+
+The activation status and batch information for each individual cell of the selected dataset can be seen in Figure \@ref(fig:visualiztion-stimulus-batch).
+
+```{r visualiztion-stimulus-batch,fig.height=2, fig.cap="Visualization of the cell stimulus (left) and the batch information per cell (right). Cells from two animals were captured either in the naive or activated state.", fig.pos='h'}
 # Visualize the conditions and batch structure
-scater::plotPCA(sce.naive_active, colour_by = "Stimulus")
-scater::plotPCA(sce.naive_active, colour_by = "Individuals")
+p.stimulus <- scater::plotPCA(sce.naive_active, colour_by = "Stimulus")
+p.batch <- scater::plotPCA(sce.naive_active, colour_by = "Individuals")
+multiplot(p.stimulus, p.batch, cols = 2)
+```
 
+The data splits into two conditions: naive and activated CD4^+^ T cells.
+Furthermore, we do not detect batch effects or outlier cells based on PCA visualization.
+
+In the next step, we 
+
+```{r}
 # Visualize number of endogeneous genes detected
-scater::plotPCA(sce.naive_active, colour_by = "total_features_by_counts_endogenous")
+p.total_features <- scater::plotPCA(sce.naive_active, colour_by = "total_features_by_counts_endogenous")
 
 # Visualize log10-transformed total number of counts
 scater::plotPCA(sce.naive_active, colour_by = "log10_total_counts")
+```
 
+```{r}
 # Plot the fraction of reads mapping to spike-ins 
 # versus the number of reads mapping to endogeneous genes
 ggplot(as.data.frame(colData(sce.naive_active))) +
