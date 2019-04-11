@@ -187,6 +187,44 @@ The `r Biocpkg("goseq")` Bioconductor package offers functions to detect the enr
 Furthermore, `goseq` corrects for gene length biases, which is useful for full length scRNA-Seq data as highlighted in the first section. 
 In this workflow, we will use `goseq` to detect GO enrichment among differentially expressed sets of genes.
 
+For downstream analysis, such as GO enrichment analysis or the biological interpretation of individual genes, we need to (i) link each gene's ID to its symbol and (ii) calculate each gene's length.
+For the first task, the `r Biocpkg("biomaRt")` Bioconductor package annotates a wide range of gene and gene product identifiers [@Durinck2005] by accessing the BioMart software suite ([http://www.biomart.org](http://www.biomart.org)).
+We can use `biomaRt` to link the **Mus musculus** gene IDs and to their gene symbols (also referred to as 'gene name'): 
+
+```{r obtain-gene-symbols, eval = FALSE}
+library(biomaRt)
+
+# Initialize mart
+ensembl <- useMart("ensembl")
+
+# Select dataset
+ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", 
+                      mart = ensembl)
+
+# Select gene ID and gene name
+genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
+                   mart = ensembl)
+rownames(genenames) <- genenames$ensembl_gene_id
+```
+
+For the second task, and to perform GO enrichment analysis, we further collected the gene length information of each gene.
+This can be extracted from the `r Biocpkg("EnsDb.Mmusculus.v79")` annotation package.
+This resource offers gene annotations, such as exon positions and promoters, for the Ensembl data base.
+
+```{r gene-length, eval = FALSE}
+library("EnsDb.Mmusculus.v79")
+
+# Build exon list
+exons.list <- exonsBy(EnsDb.Mmusculus.v79, by = "gene")
+
+# Calculate summed length of all exons
+genelength <- unlist(lapply(exons.list, 
+                            function(x){sum(width(reduce(x)))}))
+
+# Add gene length to gene names
+genenames$gene_length <- genelength[genenames$ensembl_gene_id]
+```
+
 ## Operation
 
 The following R, Bioconductor and package version were used for this workflow:
@@ -201,7 +239,7 @@ For the full list of packages used, please see the [Session Info](#session-info)
 
 # C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
 
-As the first example, we will use scRNA-Seq data of CD4+ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm®). 
+As the first example, we will use scRNA-Seq data of CD4+ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm^®^). 
 Martinez-Jimenez _et al._ collected naive CD4^+^ T cells from young and old animals across two mouse strains to profile changes in expression variability that occur during organismal ageing [@Martinez-jimenez2017].
 Naive or effector memory CD4^+^ T cells were extracted from spleens of young or old animals and filtered using either a MACS- or FACS-based approach (MACS-purified Naive, FACS-purified Naive or FACS-purified Effector Memory).
 In addition to profiling naive CD4^+^ T cells, the authors activated half of the naive cells for 3 hours using _in vitro_ antibody stimulation.
@@ -212,9 +250,7 @@ All experiments were performed in replicates (also referred to as batches) to co
 
 In the first instance, the data needs to be obtained, processed and filtered before running the BASiCS model.
 
-## Creating the input data
-
-### Obtaining the data
+## Obtaining the data
 
 The raw counts of the full dataset can be obtain from ArrayExpress under the accession number [E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
 The column names contain the library identifier of the original experiment while the row names of the matrix store the individual gene names. 
@@ -258,7 +294,7 @@ rownames(CD4.metadata) <- CD4.metadata$X
 head(CD4.metadata)
 ```
 
-### Filtering the data
+## Filtering the data
 
 For further down-stream analysis, we select naive and activated CD4^+^ T cells from young B6 animals that were obtained using MACS-based cell selection.
 It is crucial that proper quality control (QC) and gene filtering is performed before running BASiCS, and, in general, before performing meaningful computational analysis on biological data.
@@ -345,7 +381,7 @@ Furthermore, we do not detect batch effects or outlier cells based on PCA visual
 Nevertheless, we removed two cells that showed unusually low number of reads mapping to endogeneous genes.
 It is crucial that an in-depth quality control is performed to remove low-quality or outlying cells, but also to understand where possible confounding effect arise that can influence the interpretation of variability measures.
 
-### Calculating the molecule count for spike-in genes
+## Calculating the molecule count for spike-in genes
 
 BASiCS requires the actual molecule count of the spike-in genes that were added per well.
 For this, a table of the spike-in concentrations can be downloaded from: [ERCC spike-in](https://www.thermofisher.com/order/catalog/product/4456740).
@@ -392,43 +428,6 @@ The second column must contain the input number of molecules for the spike-in ge
 ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
                          Names = ERCC.conc$ERCC.ID,
                          count = ERCC.count)
-```
-
-### Gene-specific information
-
-For further downstream analyses, it is useful to obtain the gene symbols associated to gene IDs.
-For this, we used the `Biocpkg(biomaRt)` package to assess the **Mus musculus** gene ids and gene names: 
-
-```{r obtain-gene-symbols, eval = FALSE}
-library(biomaRt)
-# Initialize mart
-ensembl <- useMart("ensembl")
-
-# Select dataset
-ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", 
-                      mart = ensembl)
-
-# Select gene ID and gene name
-genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
-                   mart = ensembl)
-rownames(genenames) <- genenames$ensembl_gene_id
-```
-
-To perform gene ontology (GO) analysis, we further need the information on the length of each gene.
-This can be extracted from the `Biocpkg(EnsDb.Mmusculus.v79)` annotation package.
-
-```{r gene-length, eval = FALSE}
-library("EnsDb.Mmusculus.v79")
-
-# Build exon list
-exons.list <- exonsBy(EnsDb.Mmusculus.v79, by = "gene")
-
-# Calculate summed length of all exons
-genelength <- unlist(lapply(exons.list, 
-                            function(x){sum(width(reduce(x)))}))
-
-# Add gene length to gene names
-genenames$gene_length <- genelength[genenames$ensembl_gene_id]
 ```
 
 ## Single condition example: Naive CD4^+^ T cells {#Tcells-single}
