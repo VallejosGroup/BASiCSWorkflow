@@ -255,18 +255,24 @@ We will begin the workflow with obtaining the data before quality control, runni
 ## Obtaining the data
 
 The raw counts of the full dataset can be obtain from ArrayExpress under the accession number [E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
-The column names contain the library identifier of the original experiment while the row names of the matrix store the individual gene names. 
+In this dataset, the column names contain the library identifier of the original experiment while the row names of the matrix store the individual gene names. 
 The dataset contains reads mapping to ERCC spike-in genes [@Rna2005], which `BASiCS` uses to estimate and remove technical noise.
 
-```{r naive-data, eval = FALSE}
+```{r naive-data}
 if(!file.exists("raw_data.txt")){
   # Download raw counts file
-  download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/E-MTAB-4888.processed.1.zip", 
-                destfile = "raw_data.txt.zip")
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
+  file <- "E-MTAB-4888.processed.1.zip"
+  destfile <- "raw_data.txt.zip"
+  download.file(paste(website, file, sep = ""), 
+                destfile = destfile)
+  
   # Unzip file
   unzip("raw_data.txt.zip")
   file.remove("raw_data.txt.zip")
 }
+
+# Read in raw data
 CD4.raw <- read.table("raw_data.txt", header = TRUE, sep = "\t")
 
 # Show row and column names
@@ -274,27 +280,34 @@ head(colnames(CD4.raw))
 head(rownames(CD4.raw))
 
 # ERCC spike-in genes
-rownames(CD4.raw)[grepl("ERCC", rownames(CD4.raw))]
+head(rownames(CD4.raw)[grepl("ERCC", rownames(CD4.raw))])
 ```
 
-To link the library identifier to the experimental condition, the authors provide a metadata file that can be accessed online.
-We will remove the spaces in the `Individual` column since these will be used as batch information later on.
+To link the library identifiers to the experimental conditions, the authors provide a metadata file that can be accessed online under the same accession number.
 
-```{r selecting-serum-cells, eval = FALSE}
+```{r selecting-serum-cells}
 if(!file.exists("metadata_file.txt")){
   # Download raw counts file
-  download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/E-MTAB-4888.additional.1.zip", 
-                destfile = "metadata.txt.zip")
+  file <- "E-MTAB-4888.additional.1.zip"
+  destfile <- "metadata.txt.zip"
+  download.file(paste(website, file, sep = ""), 
+                destfile = destfile)
+  
   # Unzip file
   unzip("metadata.txt.zip")
   file.remove("metadata.txt.zip")
 }
+# Read in metadata file
 CD4.metadata <- read.table("metadata_file.txt", header = TRUE, sep = "\t")
+
+# Save library identifier as rownames
 rownames(CD4.metadata) <- CD4.metadata$X
 
 # Show metadata entries
 head(CD4.metadata)
 ```
+
+This metadata file contains the library identifiers (*X*), the strain information (*Strain*), the relative age of the animals (*Age*), the stimulation state of the cells (*Stimulus*), the batch information indicating the different mice used (*Individuals*), and the purification method used (*Celltype*). 
 
 ## Filtering the data
 
