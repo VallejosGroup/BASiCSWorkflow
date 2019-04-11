@@ -239,16 +239,18 @@ For the full list of packages used, please see the [Session Info](#session-info)
 
 # C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
 
-As the first example, we will use scRNA-Seq data of CD4+ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm^®^). 
-Martinez-Jimenez _et al._ collected naive CD4^+^ T cells from young and old animals across two mouse strains to profile changes in expression variability that occur during organismal ageing [@Martinez-jimenez2017].
-Naive or effector memory CD4^+^ T cells were extracted from spleens of young or old animals and filtered using either a MACS- or FACS-based approach (MACS-purified Naive, FACS-purified Naive or FACS-purified Effector Memory).
-In addition to profiling naive CD4^+^ T cells, the authors activated half of the naive cells for 3 hours using _in vitro_ antibody stimulation.
-Naive as well as activated CD4^+^ T cells were processed using the C1 Fluidigm® system to capture and lyse cells, and to reverse transcribe and amplify mRNA prior to sequencing.
+For the first case study, we will use scRNA-Seq data of CD4^+^ T cells, which were processed using the C1 Single-Cell Auto Prep System (Fluidigm^®^) using 10–17 $\mu{}m$ integrated fluidic circuits (IFCs). 
+Martinez-Jimenez _et al._ profiled naive and activated CD4^+^ T cells from young and old animals across two mouse strains to test for changes in expression variability that occur during organismal ageing [@Martinez-jimenez2017].
+Naive or effector memory CD4^+^ T cells were extracted from spleens of young or old animals and filtered using either magnetic-activated cell sorting (MACS) or fluorescence activated cell sorting (FACS) (labelled as MACS-purified Naive, FACS-purified Naive or FACS-purified Effector Memory).
+For clarification, naive CD4^+^ T cells are also referred to as 'unstimulated' CD4^+^ T cells.
+
+In addition to profiling naive CD4^+^ T cells, the authors stimulated half of the naive cells for 3 hours using _in vitro_ antibody stimulation (labelled as Active).
+Naive as well as activated CD4^+^ T cells were processed using the C1 Fluidigm^®^ system to capture and lyse cells, and to reverse transcribe and amplify mRNA prior to sequencing.
 Cells were isolated from B6 (C57BL/6J, _Mus musculus domesticus_) and CAST (_Mus musculus castaneus_) animals to profile the evolutionary conservation of transcriptional dynamics during ageing.
 External spike-in RNA has been added to quantify technical variability across all cells.
 All experiments were performed in replicates (also referred to as batches) to control for batch effects.
 
-In the first instance, the data needs to be obtained, processed and filtered before running the BASiCS model.
+We will begin the workflow with obtaining the data before quality control, running the BASiCS model, and performing further downstream analysis.
 
 ## Obtaining the data
 
