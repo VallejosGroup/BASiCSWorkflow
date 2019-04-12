@@ -442,34 +442,38 @@ Furthermore, such a quality control step can help understand where possible conf
 
 ## Calculating the molecule count for spike-in genes
 
-BASiCS requires the actual molecule count of the spike-in genes that were added per well.
-For this, a table of the spike-in concentrations can be downloaded from: [ERCC spike-in](https://www.thermofisher.com/order/catalog/product/4456740).
+BASiCS requires the absolute molecule count of the spike-in transcripts that were added to each well.
+To calculate the molecule count, we require the dilution and the concentration of the spike-in mix.
+For this, a table of the spike-in concentrations can be downloaded from [https://www.thermofisher.com](https://www.thermofisher.com/order/catalog/product/4456740).
 The file contains the concentrations of 2 ERCC spike-in mixes.
 
-The lysis mix contains a 1:50,000 dilution of the ERCC mix 1 [@Martinez-jimenez2017].
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC spike-in mix 1 [@Martinez-jimenez2017].
+We will first download the concentration information.
 
-```{r spike-in_download, eval = FALSE}
+```{r spike-in_download}
 # Read in the spike-in concentrations
-ERCC.conc <- read.table(url("https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt"), 
+website <- "https://assets.thermofisher.com/TFS-Assets/LSG/manuals/"
+file <- "cms_095046.txt"
+ERCC.conc <- read.table(url(paste(website, file, sep = "")), 
                          sep = "\t", header = TRUE)
 ```
 
 The concentration is given in units of attomoles per $\mu{}l$. 
-We will first calculate the concentration in moles per $\mu{}l$
+We will first calculate the concentration in moles per $\mu{}l$.
 
-```{r, eval = FALSE}
+```{r}
 # Moles per micro litre
 ERCC.mmul <- ERCC.conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
 ```
 
-From this, we can calculate the molecule count per $\mu{}l$.
-1 mole is equal to $6.02214076\cdot10^{23}$ molecules.
+From this, we can calculate the molecule count per $\mu{}l$ using the fact that 1 mole is equal to $6.02214076\cdot10^{23}$ molecules.
 
-```{r, eval = FALSE}
+```{r}
+# Molecule count per micro litre
 ERCC.countmul <- ERCC.mmul*(6.02214076*(10^23))
 ```
 
-The authors diluted this mix by 1:50,000.
+During the preparation of the reaction mix, the authors diluted this mix by a factor of 1:50,000 [@Martinez-jimenez2017].
 The actual molecule number of spike-ins can therefore be calculated per well:
 
 ```{r, eval = FALSE}
