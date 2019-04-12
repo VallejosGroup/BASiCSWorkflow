@@ -397,31 +397,48 @@ multiplot(p.stimulus, p.batch, cols = 2)
 The data splits into two conditions: naive and activated CD4^+^ T cells.
 Furthermore, we do not detect batch effects or outlier cells based on PCA visualization.
 
-In the next step, we 
+In the next step, we will visualize selected cell-specific quality metrics overlayed on the PCA.
+Figure \@ref(fig:no-genes_total-counts) highlights the number of endogeneous genes detected per cell and the total number of counts.
+Both metrics can be used to detect empty wells or broken cells (low values) and potentially doublets (high values).
 
-```{r}
+```{r no-genes-total-counts, fig.height=2, fig.cap="Visualization of the number of biological genes detected per cell (left) and the total number of reads per cell (right).", fig.pos='h'}
 # Visualize number of endogeneous genes detected
-p.total_features <- scater::plotPCA(sce.naive_active, colour_by = "total_features_by_counts_endogenous")
+p.total_features <- scater::plotPCA(sce.naive_active, 
+                            colour_by = "total_features_by_counts_endogenous") +
+  scale_fill_viridis_c(name = "Number of genes")
 
 # Visualize log10-transformed total number of counts
-scater::plotPCA(sce.naive_active, colour_by = "log10_total_counts")
+p.total_counts <- scater::plotPCA(sce.naive_active, 
+                            colour_by = "log10_total_counts") +
+   scale_fill_viridis_c(name = "Number of counts")
+multiplot(p.total_features, p.total_counts, cols = 2)
 ```
 
-```{r}
+We detect a higher number of expressed genes and a higher total read count in activated cells. 
+Furthermore, cells within each group show a wide distribution of these quality measures without clear outlying cells.
+
+A widely used quality visualisation is to plot the total number (or fraction) of spike-in counts versus the total number (or fraction) of endogeneous counts (Figure \@ref(fig:ERCC-endogeneous)).
+In such a plot, low quality wells are characterised by a high fraction of spike-in counts and a low fraction of endogeneous counts.
+
+```{r ERCC-endogeneous, fig.height=3, fig.width=3, fig.cap="The number of spike-in counts per cells is plotted against the number of endogeneous counts per cell.", fig.pos='h'}
 # Plot the fraction of reads mapping to spike-ins 
 # versus the number of reads mapping to endogeneous genes
 ggplot(as.data.frame(colData(sce.naive_active))) +
-  geom_point(aes(log10_total_counts_endogenous, log10_total_counts_ERCC))
+  geom_point(aes(log10_total_counts_endogenous,
+                 log10_total_counts_ERCC))
+```
 
+Since we are lacking the information of the total reads per cell (including the non-mapped and intronic reads), we can solely filter cells based on the total number of endogeneous counts (assuming equal numbers of spike-in molecules per well).
+Nevertheless, we remove two cells that showed unusually low number of reads mapping to endogeneous genes.
+
+```{r}
 # Remove two cells that appear to be outliers
 ind_retain <- sce.naive_active$log10_total_counts_endogenous > 5.8
 sce.naive_active <- sce.naive_active[, ind_retain]
 ```
 
-The data splits into two conditions: naive and activated CD4^+^ T cells.
-Furthermore, we do not detect batch effects or outlier cells based on PCA visualization.
-Nevertheless, we removed two cells that showed unusually low number of reads mapping to endogeneous genes.
-It is crucial that an in-depth quality control is performed to remove low-quality or outlying cells, but also to understand where possible confounding effect arise that can influence the interpretation of variability measures.
+It is crucial that an in-depth quality control is performed to remove low-quality or outlying cells.
+Furthermore, such a quality control step can help understand where possible confounding effects arise that can influence the interpretation the results of downstream analyses.
 
 ## Calculating the molecule count for spike-in genes
 
