@@ -476,8 +476,15 @@ ERCC.countmul <- ERCC.mmul*(6.02214076*(10^23))
 During the preparation of the reaction mix, the authors diluted this mix by a factor of 1:50,000 [@Martinez-jimenez2017].
 The actual molecule number of spike-ins can therefore be calculated per well:
 
-```{r, eval = FALSE}
+```{r}
 ERCC.count <- ERCC.countmul / 50000
+```
+
+The volume per well in the IFC chip is 6.7 nano litre [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9).
+We therfore need to calculate the number of molecules in 6.7 nano litre reaaction mix.
+
+```{r}
+ERCC.count.final <- ERCC.countmul * 0.0067
 ```
 
 We can now use the molecule count to prepare the BASiCS data object.
@@ -486,11 +493,11 @@ The second column must contain the input number of molecules for the spike-in ge
 
 *Find a ref for 1ul wells*
 
-```{r spike-info, eval = FALSE}
+```{r spike-info}
 # Prepare the data.frame
 ERCC.count <- data.frame(row.names = ERCC.conc$ERCC.ID,
                          Names = ERCC.conc$ERCC.ID,
-                         count = ERCC.count)
+                         count = ERCC.count.final)
 ```
 
 ## Single condition example: Naive CD4^+^ T cells {#Tcells-single}
@@ -512,14 +519,14 @@ The `newBASiCS_Data` function can be used to create the required `SingleCellExpe
 
 We will first select the naive cells from the `SingleCellExperiment` object that was generated above.
 
-```{r SCE-naive, eval = FALSE}
+```{r SCE-naive}
 ind_stimulated <- sce.naive_active$Stimulus == "Unstimulated"
 sce.naive <- sce.naive_active[, ind_stimulated]
 ```
 
 Next, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
 
-```{r Data-naive, eval = FALSE}
+```{r Data-naive}
 # Here is the first time that we use BASiCS
 library("BASiCS")
 
@@ -537,7 +544,7 @@ Data.naive
 
 Alternatively, when using data the contain spike-in genes, the original `SingleCellExperiment` object can be extended by simply specifying a `BatchInfo` slot in the `colData` object and by adding the `SpikeInfo` object to the `metadata` slot.
 
-```{r Data-naive-alternative, eval = FALSE}
+```{r Data-naive-alternative}
 Data.naive <- sce.naive
 colData(Data.naive)$BatchInfo <- colData(sce.naive)$Individuals
 metadata(Data.naive)$SpikeInput <- SpikeInput$count
@@ -555,7 +562,7 @@ Here, we run the MCMC sampler for 40,000 iterations, using an initial 20,000 ite
 Since the dataset contains spike-in genes, we run the sampler with `WithSpikes = TRUE` and we also want to correct for the mean-variance trend using `Regression = TRUE`.
 For further information see *link to Methods*
 
-```{r MCMC-naive, echo=FALSE, eval=FALSE}
+```{r MCMC-naive, echo=FALSE}
 MCMC.naive <- BASiCS_MCMC(Data = Data.naive, 
                           N = 40000, 
                           Thin = 20, 
@@ -859,14 +866,14 @@ Prior to differential testing, and as explained above, we need to generate a `Si
 We have performed quality control on the naive and activated CD4^+^ T cells above *link to filtering section*. 
 Therefore, we can directly select the activated CD4^+^ T cells from the `sce.naive_active` object.
 
-```{r SCE-active, eval = FALSE}
+```{r SCE-active}
 ind_active <- sce.naive_active$Stimulus == "Active"
 sce.active <- sce.naive_active[, sce.naive_active$Stimulus == "Active"]
 ```
 
 Similar to the procedure described above *link to naive section*, we will use the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object for the use with BASiCS.
 
-```{r Data-active, eval = FALSE}
+```{r Data-active}
 # Select the ERCC spike-ins of the dataset
 ind_spike <- rownames(sce.active)[isSpike(sce.active)]
 SpikeInput <- ERCC.count[ind_spike, ]
@@ -882,13 +889,14 @@ Data.active <- newBASiCS_Data(Counts = counts(sce.active),
 
 BASiCS takes this `SingleCellExperiment` object and runs the MCMC sampler over 40,000 iterations. 
 
-```{r MCMC-active, echo=FALSE, eval=FALSE}
+```{r MCMC-active, echo=FALSE}
 MCMC.active <- BASiCS_MCMC(Data = Data.active, 
                            N = 40000, 
                            Thin = 20, 
                            Burn = 20000, 
                            Regression = TRUE, 
                            WithSpikes = TRUE)
+
 ```
 
 This sampler runs for *98 minutes* on a 1.4 GHz Intel Core i5 procesor with 4GB RAM and produces a `BASiCS_Chain` data object.
