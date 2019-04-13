@@ -1174,9 +1174,12 @@ ggplot(Test_DE.LFC0$TableDisp[ind_nochange,]) +
                                 "NoDiff" = "black"))
 
 # Boxplot
-boxplot(list(Naive = Test_DE.LFC0$TableDisp[ind_nochange,"Disp1"],
-             Active = Test_DE.LFC0$TableDisp[ind_nochange,"Disp2"]),
-        ylab = "log(over-dispersion)", outline = FALSE, log = "y")
+wilcox.test(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange,])
+boxplot(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange],
+        ylab = "LFC in over-dispersion", outline = FALSE)
+abline(a = 0, b = 0, lwd = 2, col = "dark red")
+
+wilcox.test(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange,])
 ```
 
 With this analysis, we detect increased over-dispersion in naive CD4^+^ T cells for genes that show similar expression levels between naive and activated CD4^+^ T cells.
