@@ -6,6 +6,9 @@ file <- "MCMC_naive.rds"
 MCMC.naive1 <- readRDS(file = url(paste(website, folder, file, sep = "")))
 MCMC.naive1
 
+MCMC.naive1 <- readRDS(file = "~/Downloads/MCMC_naive.rds")
+
+
 # MCMC.naive was calculated suing the new concentrations
 
 SummaryOld <- Summary(MCMC.naive1)
@@ -16,21 +19,22 @@ ess <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.naive, "mu")))
 high_ess_genes <- names(ess[ess > 500])
 selectGenes <- which(ess > 500)
 
-smoothScatter(log10(displaySummaryBASiCS(SummaryOld, Param = "mu")[selectGenes,1]),
-              log10(displaySummaryBASiCS(SummaryNew, Param = "mu")[selectGenes,1]))
+smoothScatter(log10(displaySummaryBASiCS(SummaryOld, Param = "mu")[,1]),
+              log10(displaySummaryBASiCS(SummaryNew, Param = "mu")[,1]))
 abline(a = 0, b = 1, col = "red")
 
-smoothScatter(log10(displaySummaryBASiCS(SummaryOld, Param = "delta")[selectGenes,1]),
-              log10(displaySummaryBASiCS(SummaryNew, Param = "delta")[selectGenes,1]))
+smoothScatter(log10(displaySummaryBASiCS(SummaryOld, Param = "delta")[,1]),
+              log10(displaySummaryBASiCS(SummaryNew, Param = "delta")[,1]))
 abline(a = 0, b = 1, col = "red")
 
-smoothScatter(displaySummaryBASiCS(SummaryOld, Param = "epsilon")[selectGenes,1],
-              displaySummaryBASiCS(SummaryNew, Param = "epsilon")[selectGenes,1])
+smoothScatter(displaySummaryBASiCS(SummaryOld, Param = "epsilon")[,1],
+              displaySummaryBASiCS(SummaryNew, Param = "epsilon")[,1])
 abline(a = 0, b = 1, col = "red")
 
 smoothScatter(displaySummaryBASiCS(SummaryOld, Param = "s")[,1],
               displaySummaryBASiCS(SummaryNew, Param = "s")[,1])
 abline(a = 0, b = 1, col = "red")
 
-BASiCS_showFit(MCMC.naive)
 BASiCS_showFit(MCMC.naive1)
+BASiCS_showFit(MCMC.naive)
+
