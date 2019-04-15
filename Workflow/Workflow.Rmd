@@ -484,7 +484,7 @@ The volume per well in the IFC chip is 6.7 nano litre [https://www.fluidigm.com/
 We therfore need to calculate the number of molecules in 6.7 nano litre reaction mix.
 
 ```{r}
-ERCC.count.final <- ERCC.countmul * 0.0067
+ERCC.count.final <- ERCC.count * 0.0067
 ```
 
 Depending on the technology used to capture and process single cells, and the dilution of the spike-in mix, the absolute number of spike-ins per reaction can change.
@@ -571,7 +571,7 @@ MCMC.naive <- BASiCS_MCMC(Data = Data.naive,
                           N = 40000, 
                           Thin = 20, 
                           Burn = 20000, 
-                          Regression = FALSE, 
+                          Regression = TRUE, 
                           WithSpikes = TRUE)
 ```
 
@@ -1027,8 +1027,7 @@ Test_DE <- BASiCS_TestDE(Chain1 = MCMC.naive,
                          Chain2 = MCMC.active, 
                          EpsilonM = log2(1.5),
                          GroupLabel1 = "Naive", 
-                         GroupLabel2 = "Active", 
-                         EFDR_M = 0.1,
+                         GroupLabel2 = "Active",
                          Plot = FALSE,
                          PlotOffset = FALSE,
                          GenesSelect = genes_select)
@@ -1153,7 +1152,7 @@ We furthermore, it is crucial to exclude lowly expressed genes from this analysi
 
 ```{r over-dispersion-testing, eval = FALSE}
 # Select genes that show expression in both conditions
-genes_select <- (Test_DE$TableMean$Mean1 > 5 & Test_DE$TableMean$Mean2 > 5)
+genes_select <- (Test_DE$TableMean$Mean1 > 1 & Test_DE$TableMean$Mean2 > 1)
 
 Test_DE.LFC0 <- BASiCS_TestDE(Chain1 = MCMC.naive, 
                               Chain2 = MCMC.active,
@@ -1198,7 +1197,7 @@ Here, we filter on genes that are lowly expressed in both conditions and, as exp
 
 ```{r res-over-disp-filtering, eval = FALSE}
 # Remove lowly expressed genes
-low_expr <- !(Test_DE$TableMean$Mean1 < 5 & Test_DE$TableMean$Mean2 < 5)
+low_expr <- !(Test_DE$TableMean$Mean1 < 1 & Test_DE$TableMean$Mean2 < 1)
 
 # Low ESS for mu
 ess.naive.mu <- coda::effectiveSize(coda::mcmc(displayChainBASiCS(MCMC.naive, "mu")))
@@ -1289,8 +1288,7 @@ var.response.genes <- genenames[res.df$GeneName[ind_var.response],
 intersect(var.response.genes, immun.names)
 ```
 
-We find the cytokines interleukine 2 (_Il2_) and tumor necrosis factor (_Tnf_) being up-regulated in a variable fashion. 
-In the case of _Il2_, it has been proposed that this heterogeneous up-regulation supports the tuning of a robust immune response [@Fuhrmann2016]  
+Pou2f2 and Smad3 .
 
 While immune activation induces large transcriptional shifts in CD4^+^ T cells, we will now exemplify the use of `BASiCS` on a system that shows more subtle transcriptional changes during differentiation.
 
