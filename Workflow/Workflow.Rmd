@@ -587,9 +587,21 @@ MCMC.naive <- readRDS(file = url(paste(website, folder, file, sep = "")))
 MCMC.naive
 ```
 
+The `BASiCS_Chain` object contains a list of matrices that store the individual MCMC draws per parameter. 
+Each matrix contains the cell- or gene-specific parameters in the columns and the MCMC draws in the rows.
+`BASiCS` provides the `displayChainBASiCS` function to access the cell- or gene-specific parameters.
+As an example, we access the first 10 draws for $\mu_i$ of the first 10 genes.
 
-In the next step, the convergence of the sampler needs to be assessed.
+```{r displayChainBASiCS}
+displayChainBASiCS(MCMC.naive, Param = "mu")[1:10,1:10]
+```
 
+We ran the MCMC samples for 40,000 iterations, with 20,000 iterations and a thining value of 20. 
+This results in the storage of 1000 draws for each parameter in the `BASiCS_Chain` object:
+
+```{r dim-displayChainBASiCS}
+dim(displayChainBASiCS(MCMC.naive, Param = "mu"))
+```
 
 ### Validating the MCMC convergence
 
