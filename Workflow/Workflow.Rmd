@@ -484,7 +484,7 @@ The volume per well in the IFC chip is 6.7 nano litre [https://www.fluidigm.com/
 We therfore need to calculate the number of molecules in 6.7 nano litre reaction mix.
 
 ```{r}
-ERCC.count.final <- ERCC.countmul * 0.0067
+ERCC.count.final <- ERCC.count * 0.0067
 ```
 
 Depending on the technology used to capture and process single cells, and the dilution of the spike-in mix, the absolute number of spike-ins per reaction can change.
