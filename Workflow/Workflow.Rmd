@@ -191,7 +191,7 @@ For downstream analysis, such as GO enrichment analysis or the biological interp
 For the first task, the `r Biocpkg("biomaRt")` Bioconductor package annotates a wide range of gene and gene product identifiers [@Durinck2005] by accessing the BioMart software suite ([http://www.biomart.org](http://www.biomart.org)).
 We can use `biomaRt` to link the **Mus musculus** gene IDs and to their gene symbols (also referred to as 'gene name'): 
 
-```{r obtain-gene-symbols, eval = FALSE}
+```{r obtain-gene-symbols}
 library(biomaRt)
 
 # Initialize mart
@@ -211,7 +211,7 @@ For the second task, and to perform GO enrichment analysis, we further collected
 This can be extracted from the `r Biocpkg("EnsDb.Mmusculus.v79")` annotation package.
 This resource offers gene annotations, such as exon positions and promoters, for the Ensembl data base.
 
-```{r gene-length, eval = FALSE}
+```{r gene-length}
 library("EnsDb.Mmusculus.v79")
 
 # Build exon list
@@ -480,11 +480,11 @@ The actual molecule number of spike-ins can therefore be calculated per $\mu{}l$
 ERCC.count <- ERCC.countmul / 50000
 ```
 
-The volume per well in the IFC chip is 6.7 nano litre [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9).
-We therfore need to calculate the number of molecules in 6.7 nano litre reaction mix.
+The volume per well in the IFC chip is 9 nano litre [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9).
+We therfore need to calculate the number of molecules in 9 nano litre reaction mix.
 
 ```{r}
-ERCC.count.final <- ERCC.count * 0.0067
+ERCC.count.final <- ERCC.count * 0.009
 ```
 
 Depending on the technology used to capture and process single cells, and the dilution of the spike-in mix, the absolute number of spike-ins per reaction can change.
@@ -593,7 +593,7 @@ Each matrix contains the cell- or gene-specific parameters in the columns and th
 As an example, we access the first 10 draws for $\mu_i$ of the first 10 genes.
 
 ```{r displayChainBASiCS}
-displayChainBASiCS(MCMC.naive, Param = "mu")[1:10,1:10]
+displayChainBASiCS(MCMC.naive, Param = "mu")[1:2,1:10]
 ```
 
 We ran the MCMC samples for 40,000 iterations, with 20,000 iterations and a thining value of 20. 
@@ -603,10 +603,10 @@ This results in the storage of 1000 draws for each parameter in the `BASiCS_Chai
 dim(displayChainBASiCS(MCMC.naive, Param = "mu"))
 ```
 
-### Validating the MCMC convergence
+### Validating the MCMC convergence {#naive-convergence}
 
-There are multiple ways of how the convergence of the chains can be assessed *refs*.
-The `CRANpkg("coda")` contains diagnostic and plot functions for this task *ref*.
+In the next step, we need to validate the convergence of the chain to ensure robust downstream analysis.
+There are multiple ways of how to visualize and test the convergence of the chains *refs* and the `r CRANpkg("coda")` contains diagnostic and plot functions for this task *ref*.
 Here, we highlight two ways of assessing the convergence of the MCMC sampler by (i) plotting trace plots, sample densities and the chain autocorrelation, and (ii) plotting the the effective sample size across multiple parameters.
 Trace plots show the sampled parameter values over time. 
 A chain converged when the sample density (in form of a histogram) shows a unimodal distribution.
@@ -707,7 +707,7 @@ HVG <- BASiCS_DetectHVG(MCMC.naive, PercentileThreshold = 0.9)
 LVG <- BASiCS_DetectLVG(MCMC.naive, PercentileThreshold = 0.1)
 ```
 
-This analysis results in the detection of *306* highly variable genes and *716* lowly variable genes.
+This analysis results in the detection of *265* highly variable genes and *778* lowly variable genes.
 
 The `Biocpkg("scran")` provides similar functions to detect HVGs and we can compare the results of both methods.
 `scran` first fits a smooth regression between the variance of the log-transformed expression of the spike-in transcripts and their mean abundance using the `trendVar` function.
@@ -1191,7 +1191,7 @@ ggplot(Test_DE.LFC0$TableDisp[ind_nochange,]) +
                                 "NoDiff" = "black"))
 
 # Boxplot
-wilcox.test(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange,])
+wilcox.test(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange])
 boxplot(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange],
         ylab = "LFC in over-dispersion", outline = FALSE)
 abline(a = 0, b = 0, lwd = 2, col = "dark red")
@@ -1295,6 +1295,12 @@ Finally, we will find the subset of immune response genes that are variably up-r
 # Variable response genes
 ind_var.response <- res.df$ResultDiffMean == "Active+" & 
   res.df$ResultDiffResDisp == "Active+"
+var.response.genes <- genenames[res.df$GeneName[ind_var.response],
+                                "external_gene_name"]
+intersect(var.response.genes, immun.names)
+
+ind_var.response <- res.df$ResultDiffMean == "Active+" & 
+  res.df$ResultDiffResDisp == "Naive+"
 var.response.genes <- genenames[res.df$GeneName[ind_var.response],
                                 "external_gene_name"]
 intersect(var.response.genes, immun.names)
