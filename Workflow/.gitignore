@@ -4,3 +4,4 @@ Workflow_files/*
 *.tsv
 *.zip
 *.csv
+*.Rproj
