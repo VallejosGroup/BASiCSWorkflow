@@ -23,8 +23,9 @@ author:
   - The Alan Turing Institute, British Library, 96 Euston Road, London, 
     NW1 2DB, UK
   email: catalina.vallejos@igmm.ed.ac.uk
-abstract: "Cell-to-cell variability in gene expression is an inherent feature of
-  biological systems. Single-cell RNA sequencing can be used to quantify this 
+abstract: |
+  Cell-to-cell variability in gene expression is an inherent feature 
+  of biological systems. Single-cell RNA sequencing can be used to quantify this 
   heterogeneity, but it is prone to strong technical noise. Here, we describe a 
   computational workflow that uses, among others, the BASiCS Bioconductor 
   package to robustly quantify expression variability within and between known 
@@ -40,8 +41,9 @@ abstract: "Cell-to-cell variability in gene expression is an inherent feature of
   Bioconductor packages. Data for the first case study was generated using 
   the Fluidigm\@ C1 system, in which spike-in RNA molecules are added in order 
   to quantify technical noise. The second dataset was generated using 
-  a droplet-based system, for which spike-in RNA is not available. The latter analysis provides an example, in which differential variability testing 
-  reveals insights regarding a possible early cell fate commitment process. 
+  a droplet-based system, for which spike-in RNA is not available. The 
+  latter analysis provides an example, in which differential variability testing 
+  reveals insights regarding a possible early cell fate commitment process.
 keywords: Single-cell RNA sequencing, expression variability, 
   transcriptional noise, differential expression testing
 bibliography: library.bib
@@ -674,8 +676,8 @@ spike-in counts and a low fraction of endogeneous counts.
 # versus the number of reads mapping to endogeneous genes
 ggplot(as.data.frame(colData(sce.naive_active))) +
   geom_point(aes(sum, altexps_spike.ins_sum)) +
-  geom_vline(xintercept = 10^5.8, linetype = "dashed", colour = "grey60")
-scale_x_log10() +
+  geom_vline(xintercept = 10^5.8, linetype = "dashed", colour = "grey60") +
+  scale_x_log10() +
   scale_y_log10()
 ```
 
