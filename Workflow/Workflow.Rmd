@@ -410,13 +410,13 @@ Both metrics can be used to detect empty wells or broken cells (low values) and 
 ```{r no-genes-total-counts, fig.height=2, fig.cap="Visualization of the number of biological genes detected per cell (left) and the total number of reads per cell (right).", fig.pos='h'}
 # Visualize number of endogeneous genes detected
 p.total_features <- scater::plotPCA(sce.naive_active, 
-                            colour_by = "total_features_by_counts_endogenous") +
+                            colour_by = "detected") +
   scale_fill_viridis_c(name = "Number of genes")
 
 # Visualize log10-transformed total number of counts
 p.total_counts <- scater::plotPCA(sce.naive_active, 
-                            colour_by = "log10_total_counts") +
-   scale_fill_viridis_c(name = "Number of counts")
+                            colour_by = "sum") +
+   scale_fill_viridis_c(name = "Number of counts", trans = "log10")
 multiplot(p.total_features, p.total_counts, cols = 2)
 ```
 
