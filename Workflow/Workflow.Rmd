@@ -745,7 +745,7 @@ file <- "cms_095046.txt"
 download_file(file, website, folder, "spike_info.txt")
 
 ERCC_conc <- read.table(
-  "cms_095046.txt",
+  "spike_info.txt",
   sep = "\t", header = TRUE
 )
 ```
@@ -942,7 +942,7 @@ download_file(
   folder = "BASiCSWorkflow2018/raw/master/MCMCs/"
 )
 
-MCMC_naive <- readRDS(file)
+MCMC_naive <- readRDS("MCMC_naive.rds")
 ```
 
 The `BASiCS_Chain` object contains a list of matrices that store the 
@@ -1073,7 +1073,7 @@ To perform normalization, BASiCS provides the `BASiCS_DenoisedCounts` and the
 These functions take the `SingleCellExperiment` and `BASiCS_Chain` objects as 
 inputs.
 
-```{r normalization-naive, eval = FALSE}
+```{r normalization-naive}
 counts_denoised <- BASiCS_DenoisedCounts(Data = data_naive, Chain = MCMC_naive)
 ```
 
