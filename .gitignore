@@ -1,3 +1,10 @@
+Workflow.pdf
+Workflow.tex
+Workflow_files/*
+*.tsv
+*.zip
+*.csv
+*.Rproj
 .Rproj.user
 .Rhistory
 .RData
@@ -6,6 +13,6 @@
 *.txt
 *.csv
 *.fa
-Workflow/cache/*
-Workflow/figure/*
+cache/*
+figure/*
 *.log
