@@ -362,21 +362,26 @@ dir.create("downloads", showWarnings = FALSE)
 ```
 
 ```{r obtain-gene-symbols}
-# Initialize mart
-ensembl <- useMart("ensembl")
+if (!file.exists("rds/genenames.rds")) {
+  # Initialize mart
+  ensembl <- useMart("ensembl")
 
-# Select dataset
-ensembl <- useDataset(
-  dataset = "mmusculus_gene_ensembl",
-  mart = ensembl
-)
+  # Select dataset
+  ensembl <- useDataset(
+    dataset = "mmusculus_gene_ensembl",
+    mart = ensembl
+  )
 
-# Select gene ID and gene name
-genenames <- getBM(
-  attributes = c("ensembl_gene_id", "external_gene_name"),
-  mart = ensembl
-)
-rownames(genenames) <- genenames$ensembl_gene_id
+  # Select gene ID and gene name
+  genenames <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name"),
+    mart = ensembl
+  )
+  rownames(genenames) <- genenames$ensembl_gene_id
+  saveRDS(genenames, "rds/genenames.rds")
+} else {
+  genenames <- readRDS("rds/genenames.rds")
+}
 ```
 
 For the second task, and to perform GO enrichment analysis, we further collected 
@@ -1539,7 +1544,7 @@ colour_scale <- scale_color_manual(
     "Naive+" = "dark blue",
     "Active+" = "dark red",
     "NoDiff" = "black",
-    "ExcludedLowESS" = "grey60"
+    "ExcludedLowESS" = "grey60",
     "ExcludedByUser" = "grey80"
   )
 )
@@ -1692,7 +1697,7 @@ analysis to avoid biases arising from non-informative genes.
 # Select genes that show expression in both conditions
 genes_select <- (Test_DE$TableMean$Mean1 > 1 & Test_DE$TableMean$Mean2 > 1)
 
-Test_DE.LFC0 <- BASiCS_TestDE(
+Test_DE_LFC0 <- BASiCS_TestDE(
   Chain1 = MCMC_naive,
   Chain2 = MCMC_active,
   EpsilonM = 0,
@@ -1712,10 +1717,10 @@ and boxplots.
 
 ```{r over-dispersion-result}
 # Select genes with no changes in mean expression
-ind_nochange <- Test_DE.LFC0$TableMean$ResultDiffMean == "NoDiff"
+ind_nochange <- Test_DE_LFC0$TableMean$ResultDiffMean == "NoDiff"
 
 # MA plot
-ggplot(Test_DE.LFC0$TableDisp[ind_nochange, ]) +
+ggplot(Test_DE_LFC0$TableDisp[ind_nochange, ]) +
   geom_point(aes(log(MeanOverall), DispLog2FC,
     colour = ResultDiffDisp
   )) +
@@ -1726,13 +1731,13 @@ ggplot(Test_DE.LFC0$TableDisp[ind_nochange, ]) +
   ))
 
 # Boxplot
-wilcox.test(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange])
-boxplot(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange],
+wilcox.test(Test_DE_LFC0$TableDisp$DispLog2FC[ind_nochange])
+boxplot(Test_DE_LFC0$TableDisp$DispLog2FC[ind_nochange],
   ylab = "LFC in over-dispersion", outline = FALSE
 )
 abline(a = 0, b = 0, lwd = 2, col = "dark red")
 
-wilcox.test(Test_DE.LFC0$TableDisp$DispLog2FC[ind_nochange, ])
+wilcox.test(Test_DE_LFC0$TableDisp$DispLog2FC[ind_nochange])
 ```
 
 With this analysis, we detect increased over-dispersion in naive CD4^+^ T cells
@@ -1755,33 +1760,13 @@ effective sample size:
 # Remove lowly expressed genes
 low_expr <- !(Test_DE$TableMean$Mean1 < 1 & Test_DE$TableMean$Mean2 < 1)
 
-# Low ESS for mu
-ess_naive.mu <- coda::effectiveSize(
-  coda::mcmc(displayChainBASiCS(MCMC_naive, "mu"))
-)
-ind_ess_naive.mu <- ess_naive.mu > 100
-ess_active.mu <- coda::effectiveSize(
-  coda::mcmc(displayChainBASiCS(MCMC_active, "mu"))
-)
-ind_ess_active.mu <- ess_naive.mu > 100
-
-# Low ESS for delta
-ess_naive.epsilon <- coda::effectiveSize(
-  coda::mcmc(displayChainBASiCS(MCMC_naive, "epsilon"))
-)
-ind_ess_naive.epsilon <- ess_naive.mu > 100
-ess_active.epsilon <- coda::effectiveSize(
-  coda::mcmc(displayChainBASiCS(MCMC_active, "epsilon"))
-)
-ind_ess_active.epsilon <- ess_naive.mu > 100
-
 # Genes to exclude
-genes_select <- low_expr & ind_ess_naive.mu &
-  ind_ess_active.mu & ind_ess_naive.epsilon & ind_ess_active.epsilon
+genes_select <- low_expr
 ```
 
 We can now perform the differential testing as shown above.
-Again, we use a LFC threshold higher than the default to capture strong changes in mean expression.
+Again, we use a LFC threshold higher than the default to capture strong changes
+in mean expression.
 
 ```{r DE-DV-testing}
 # Perform differential testing
@@ -1791,6 +1776,8 @@ Test_DE <- BASiCS_TestDE(
   EpsilonM = log2(2),
   GroupLabel1 = "Naive",
   GroupLabel2 = "Active",
+  CheckESS = TRUE,
+  MinESS = 100,
   Plot = FALSE,
   PlotOffset = FALSE,
   GenesSelect = genes_select
@@ -1925,7 +1912,7 @@ if (!file.exists("rawCounts.tsv")) {
   unzip(zipfile = "rawCounts.zip", exdir = "downloads")
   unlink("downloads/rawCounts.zip")
 }
-rawCounts <- fread("rawCounts.tsv",
+rawCounts <- fread("downloads/rawCounts.tsv",
   sep = "\t", header = FALSE,
   data.table = FALSE
 )
