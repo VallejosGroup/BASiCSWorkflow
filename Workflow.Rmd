@@ -48,9 +48,9 @@ keywords: Single-cell RNA sequencing, expression variability,
   transcriptional noise, differential expression testing
 bibliography: library.bib
 output: BiocWorkflowTools::f1000_article
-urlcolor: orange
-#output:
-# BiocStyle::html_document:
+urlcolor: Orange
+# output:
+#   BiocStyle::html_document:
 #   fig_caption: true
 #   self_contained: yes
 #vignette: >
@@ -353,6 +353,7 @@ library("goseq")
 library("org.Mm.eg.db")
 library("data.table")
 library("pheatmap")
+library("ggpointdensity")
 
 ## Set theme for ggplot2 plots
 theme_set(theme_bw())
@@ -476,7 +477,7 @@ if (!file.exists("downloads/raw_data.txt")) {
   file <- "E-MTAB-4888.processed.1.zip"
   destfile <- "downloads/raw_data.txt.zip"
   download.file(
-    paste0(website, file),
+    paste0(website, folder, file),
     destfile = destfile
   )
   unzip("downloads/raw_data.txt.zip", exdir = "downloads")
@@ -508,10 +509,12 @@ download_file <- function(file, website, folder, destfile = file) {
 
 if (!file.exists("downloads/metadata_file.txt")) {
   # Download raw counts file
+  website <- "https://www.ebi.ac.uk/"
+  folder <- "arrayexpress/files/E-MTAB-4888/"
   file <- "E-MTAB-4888.additional.1.zip"
   destfile <- "downloads/metadata.txt.zip"
   download.file(
-    paste0(website, file),
+    paste0(website, folder, file),
     destfile = destfile
   )
   unzip("downloads/metadata.txt.zip", exdir = "downloads")
@@ -1294,7 +1297,7 @@ ggplot(data.frame(
   mu = mu_naive[, "median"],
   epsilon = epsilon_naive[, "median"]
 )) +
-  geom_point(aes(log(mu), epsilon))
+  geom_pointdensity(aes(log(mu), epsilon))
 
 # DM values
 DM.naive <- scran::DM(mean = mean_genes, cv2 = var_genes / mean_genes^2)
@@ -1304,14 +1307,14 @@ ggplot(data.frame(
   mean = mean_genes,
   DM = DM.naive
 )) +
-  geom_point(aes(log(mean), DM))
+  geom_pointdensity(aes(log(mean), DM))
 
 # Compare residual over-dispersion and DM
 ggplot(data.frame(
   epsilon = epsilon_naive[rownames(counts_denoised), "median"],
   DM = DM.naive
 )) +
-  geom_point(aes(epsilon, DM))
+  geom_pointdensity(aes(epsilon, DM))
 ```
 
 Neither the DM nor the residual over-dispersion estimates show association 
@@ -1597,34 +1600,34 @@ genes specifically expressed by naive or activated CD4^+^ T cells
 ```{r go-analysis-naive}
 
 # Collect significan genes as 1 and all other as 0
-naive.genes <- as.integer(Test_DE$TableMean$ResultDiffMean == "Naive+")
-names(naive.genes) <- Test_DE$TableMean$GeneName
+naive_genes <- as.integer(Test_DE$TableMean$ResultDiffMean == "Naive+")
+names(naive_genes) <- Test_DE$TableMean$GeneName
 
 # Build a Null distribution by correcting the gene length bias
-pwf <- nullp(naive.genes, "mm10", "ensGene",
-  bias.data = genenames[names(naive.genes), "gene_length"]
+pwf <- nullp(naive_genes, "mm10", "ensGene",
+  bias.data = genenames[names(naive_genes), "gene_length"]
 )
 GO_wall <- goseq(pwf, "mm10", "ensGene")
 ind_signif <- p.adjust(GO_wall$over_represented_pvalue, method = "fdr") < 0.01
-naive.GO <- DataFrame(GO_wall[ind_signif, ])
+naive_GO <- DataFrame(GO_wall[ind_signif, ])
 
 # Add genenames to the GO categories
-all_genes <- vector(length = nrow(naive.GO))
-for (i in 1:nrow(naive.GO)) {
-  allegs <- get(naive.GO$category[i], org.Mm.egGO2ALLEGS)
+all_genes <- vector(length = nrow(naive_GO))
+for (i in 1:nrow(naive_GO)) {
+  allegs <- get(naive_GO$category[i], org.Mm.egGO2ALLEGS)
   genes <- unique(unlist(mget(allegs, org.Mm.egENSEMBL)))
   genes <- as.character(intersect(
     genes,
-    Test_DE$TableMean$GeneName[naive.genes == 1]
+    Test_DE$TableMean$GeneName[naive_genes == 1]
   ))
   all_genes[i] <- paste(genenames[genes, "external_gene_name"],
     collapse = ", "
   )
 }
-naive.GO$gene <- all_genes
+naive_GO$gene <- all_genes
 
 # Show GO categories
-naive.GO$term
+naive_GO$term
 ```
 
 Genes that are down-regulated during immune activation are enriched for cell
@@ -1640,12 +1643,12 @@ increased expression upon T cell activation.
 
 ```{r}
 # Collect significan genes as 1 and all other as 0
-active.genes <- as.integer(Test_DE$TableMean$ResultDiffMean == "Active+")
-names(active.genes) <- Test_DE$TableMean$GeneName
+active_genes <- as.integer(Test_DE$TableMean$ResultDiffMean == "Active+")
+names(active_genes) <- Test_DE$TableMean$GeneName
 
 # Build a Null distribution by correcting the gene length bias
-pwf <- nullp(active.genes, "mm10", "ensGene",
-  bias.data = genenames[names(active.genes), "gene_length"]
+pwf <- nullp(active_genes, "mm10", "ensGene",
+  bias.data = genenames[names(active_genes), "gene_length"]
 )
 GO_wall <- goseq(pwf, "mm10", "ensGene")
 ind_signif <- p.adjust(GO_wall$over_represented_pvalue, method = "fdr") < 0.01
@@ -1658,7 +1661,7 @@ for (i in 1:nrow(active.GO)) {
   genes <- unique(unlist(mget(allegs, org.Mm.egENSEMBL)))
   genes <- as.character(intersect(
     genes,
-    Test_DE$TableMean$GeneName[active.genes == 1]
+    Test_DE$TableMean$GeneName[active_genes == 1]
   ))
   all_genes[i] <- paste(genenames[genes, "external_gene_name"],
     collapse = ", "
@@ -1904,12 +1907,15 @@ The full dataset is stored under the accession number E-MTAB-6153 on
 ArrayExpress and can be obtained via:
 
 ```{r load-droplet-data}
-if (!file.exists("rawCounts.tsv")) {
+if (!file.exists("downloads/rawCounts.tsv")) {
+  website <- "https://www.ebi.ac.uk/"
+  folder <- "arrayexpress/files/E-MTAB-6153/"
+  file <- "E-MTAB-6153.processed.3.zip"
   download.file(
-    "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.2.zip",
+    paste0(website, folder, file),
     destfile = "downloads/rawCounts.zip"
   )
-  unzip(zipfile = "rawCounts.zip", exdir = "downloads")
+  unzip(zipfile = "downloads/rawCounts.zip", exdir = "downloads")
   unlink("downloads/rawCounts.zip")
 }
 rawCounts <- fread("downloads/rawCounts.tsv",
@@ -1928,14 +1934,19 @@ rawCounts <- rawCounts[, -1]
 The cluster labels of the original publication ca be obtained via:
 
 ```{r cluster-labels-droplet}
-if (!file.exists("cellAnnotation.tsv")) {
-  download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6153/E-MTAB-6153.processed.3.zip",
+if (!file.exists("downloads/cellAnnotation.tsv")) {
+  website <- "https://www.ebi.ac.uk/"
+  folder <- "arrayexpress/files/E-MTAB-6153/"
+  file <- "E-MTAB-6153.processed.3.zip"
+  download.file(
+    paste0(website, folder, file),
     destfile = "cluster_labels.zip"
   )
   unzip(zipfile = "cluster_labels.zip", exdir = "downloads")
 }
 
-cluster_labels <- read.table("cellAnnotation.tsv", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+cluster_labels <- read.table("downloads/cellAnnotation.tsv",
+  sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 ```
 
 ## Select populations of interest
@@ -1981,7 +1992,7 @@ populations using the `scran` package.
 droplet_sce <- computeSumFactors(droplet_sce,
   clusters = colData(droplet_sce)$subCellType
 )
-droplet_sce <- normalize(droplet_sce)
+droplet_sce <- logNormCounts(droplet_sce)
 ```
 
 Next, we compute a PCA using the `scater` package. 
@@ -1994,7 +2005,7 @@ We can now visualize the different factors stored in the `colData` slot.
 
 ```{r}
 # Cell types identified by clustering
-plotReducedDim(droplet_sce, use_dimred = "PCA", colour_by = "subCellType") +
+plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
   scale_fill_manual(values = c("coral4", "steelblue", "limegreen"))
 ```
 
@@ -2060,7 +2071,7 @@ somitic mesoderm), we set the number of iterations to 20000.
 In this case, we used the regression BASiCS model to additionally estimate residual 
 over-dispersion parameters.
 
-```{r}
+```{r, eval = FALSE}
 # Presomitic mesoderm cells
 PSM_MCMC <- BASiCS_MCMC(
   PSM_Data,
@@ -2084,11 +2095,17 @@ Running these MCMC will take around 8-12 hours on a standard PC (2.6 GHz i5,
 8 GB RAM, using 1 core). Here, we provide these chains to download from:
 
 ```{r droplet-chain-download}
+website <- "https://git.ecdf.ed.ac.uk/"
+folder <- "vallejosgroup/basicsworkflow2020/raw/master/MCMCs/"
 PSM_MCMC <- readRDS(
-  file = url("https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMCs/PSM_MCMC.rds")
+  file = url(
+    paste0(website, folder, "PSM_MCMC.rds")
+  )
 )
 SM_MCMC <- readRDS(
-  file = url("https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMCs/SM_MCMC.rds")
+  file = url(
+    paste0(website, folder, "SM_MCMC.rds")
+  )
 )
 ```
 
@@ -2144,11 +2161,15 @@ expressed in both conditions are compared.
 
 ```{r}
 droplet_test_logFC0 <- BASiCS_TestDE(
-  PSM_MCMC,
-  SM_MCMC,
+  Chain1 = PSM_MCMC,
+  Chain2 = SM_MCMC,
   EpsilonM = 0,
   GroupLabel1 = "PSM",
-  GroupLabel2 = "SM"
+  GroupLabel2 = "SM",
+  Plot = FALSE,
+  PlotOffset = FALSE,
+  CheckESS = TRUE,
+  MinESS = 100
 )
 not_excluded <- droplet_test_logFC0$TableDisp$ResultDiffDisp != "ExcludedFromTesting"
 for_plot <- droplet_test_logFC0$TableDisp[not_excluded, c("Disp1", "Disp2")]
@@ -2168,24 +2189,36 @@ and the default threshold of $\psi_0\approx0.41$ for differential variability
 testing.
 
 ```{r droplet-gene-specific-testing}
-droplet_test <- BASiCS_TestDE(PSM_MCMC, SM_MCMC,
+droplet_test <- BASiCS_TestDE(
+  Chain1 = PSM_MCMC,
+  Chain2 = SM_MCMC,
   EpsilonM = 1,
-  GroupLabel1 = "PSM", GroupLabel2 = "SM",
-  Plot = FALSE, PlotOffset = FALSE
+  GroupLabel1 = "PSM",
+  GroupLabel2 = "SM",
+  Plot = FALSE,
+  PlotOffset = FALSE,
+  CheckESS = TRUE,
+  MinESS = 100
 )
 
 # Differential expression
 ggplot(droplet_test$TableMean) +
   geom_point(aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean)) +
   theme_minimal(base_size = 15) +
-  scale_colour_manual(name = "Differential expression", values = c("grey80", "#2166ac", "#b2182b")) +
+  scale_colour_manual(
+    name = "Differential expression", 
+    values = c("tan", "grey80", "#2166ac", "#b2182b")
+  ) +
   ylab(expression(mu[PSM] / mu[SM])) + xlab(expression(log(mu)))
 
 # Differential variability
 ggplot(droplet_test$TableResDisp) +
   geom_point(aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp)) +
   theme_minimal(base_size = 15) +
-  scale_colour_manual(name = "Differential variability", values = c("black", "grey80", "#542788", "#b35806")) +
+  scale_colour_manual(
+    name = "Differential variability",
+    values = c("tan", "grey80", "#542788", "#b35806")
+  ) +
   ylab(expression(epsilon[PSM] - epsilon[SM])) + xlab(expression(log(mu)))
 ```
 
@@ -2275,7 +2308,7 @@ plotExpression(droplet_sce,
   x = "cellType", colour_by = "cellType"
 )
 plotReducedDim(droplet_sce,
-  use_dimred = "PCA",
+  dimred = "PCA",
   colour_by = genenames[ind_fgf, 1]
 )
 ```
@@ -2347,7 +2380,7 @@ plotExpression(droplet_sce,
 ) +
   scale_fill_manual(values = c("coral4", "limegreen"))
 plotReducedDim(droplet_sce,
-  use_dimred = "PCA",
+  dimred = "PCA",
   colour_by = genenames[ind_meox, 1]
 )
 ```

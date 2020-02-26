@@ -1,0 +1,79 @@
+---
+title: "A BASiCS workflow for expression variability analysis using scRNA-Seq data"
+author:
+- name: Nils Eling
+  affiliation: 
+  - &EBI European Molecular Biology Laboratory, European Bioinformatics 
+    Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+  - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+    Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+  email: eling@ebi.ac.uk
+- name: Alan O'Callaghan
+  affiliation: 
+  - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
+    University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
+    EH4 2XU, UK
+- name: John C. Marioni
+  affiliation: 
+  - *EBI
+  - *CRUK
+- name: Catalina A. Vallejos
+  affiliation: 
+  - *MRC 
+  - The Alan Turing Institute, British Library, 96 Euston Road, London, 
+    NW1 2DB, UK
+  email: catalina.vallejos@igmm.ed.ac.uk
+abstract: |
+  Cell-to-cell variability in gene expression is an inherent feature 
+  of biological systems. Single-cell RNA sequencing can be used to quantify this 
+  heterogeneity, but it is prone to strong technical noise. Here, we describe a 
+  computational workflow that uses, among others, the BASiCS Bioconductor 
+  package to robustly quantify expression variability within and between known 
+  cell populations (e.g.~experimental conditions or cell types). Within a 
+  single homogeneous population of cells, BASiCS estimates interpretable gene- 
+  and cell-specific parameters that can be used for normalization and to 
+  identify highly and lowly variable genes. Furthermore, we also show how 
+  BASiCS can highlight changes in gene expression variability between cell
+  populations, while avoiding confounding effects related to technical noise 
+  or changes in overall abundance. Using two publicly available datasets, we 
+  guide users through a complete pipeline which includes preliminary steps 
+  for quality control and data exploration using the scater and scran 
+  Bioconductor packages. Data for the first case study was generated using 
+  the Fluidigm\@ C1 system, in which spike-in RNA molecules are added in order 
+  to quantify technical noise. The second dataset was generated using 
+  a droplet-based system, for which spike-in RNA is not available. The 
+  latter analysis provides an example, in which differential variability testing 
+  reveals insights regarding a possible early cell fate commitment process.
+keywords: Single-cell RNA sequencing, expression variability, 
+  transcriptional noise, differential expression testing
+bibliography: library.bib
+output: 
+  BiocWorkflowTools::f1000_article:
+    includes:
+      in_header: f1000_styles.sty
+urlcolor: Orange
+geometry: "hmargin=1.8cm,vmargin=2.2cm"
+---
+```{r setup_knitr, include = FALSE, cache = FALSE}
+library("BiocStyle")
+## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
+on.bioc <- FALSE
+library("knitr")
+# Use fig.width = 7 for html and fig.width = 6 for pdf
+fig.width <- ifelse(on.bioc, 7, 6)
+knitr::opts_chunk$set(
+  cache = FALSE, warning = FALSE, message = FALSE, error = FALSE,
+  cache.path = "cache/", fig.path = "figure/", fig.width = fig.width
+)
+```
+
+
+: Four settings that can be used to run the `BASiCS_MCMC` function.
+
+                        No regression         Regression           
+----------------------- --------------------  -------------------
+Using spike-in reads    `WithSpikes = TRUE`   `WithSpikes = TRUE`  
+                        `Regression = FALSE`  `Regression = TRUE` 
+No spike-ins available  `WithSpikes = FALSE`  `WithSpikes = FALSE` 
+                        `Regression = FALSE`  `Regression = TRUE`
+----------------------- --------------------  -------------------
