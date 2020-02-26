@@ -1,6 +1,89 @@
 ---
 title: "A BASiCS workflow for expression variability analysis using scRNA-Seq data"
 author:
+  - name: Me
+  - name: You
+abstract: |
+  Cell-to-cell variability in gene expression is an inherent feature 
+  of biological systems. Single-cell RNA sequencing can be used to quantify this 
+  heterogeneity, but it is prone to strong technical noise. Here, we describe a 
+  computational workflow that uses, among others, the BASiCS Bioconductor 
+  package to robustly quantify expression variability within and between known 
+  cell populations (e.g. experimental conditions or cell types). Within a 
+  single homogeneous population of cells, BASiCS estimates interpretable gene- 
+  and cell-specific parameters that can be used for normalization and to 
+  identify highly and lowly variable genes. Furthermore, we also show how 
+  BASiCS can highlight changes in gene expression variability between cell
+  populations, while avoiding confounding effects related to technical noise 
+  or changes in overall abundance. Using two publicly available datasets, we 
+  guide users through a complete pipeline which includes preliminary steps 
+  for quality control and data exploration using the scater and scran 
+  Bioconductor packages. Data for the first case study was generated using 
+  the Fluidigm\@ C1 system, in which spike-in RNA molecules are added in order 
+  to quantify technical noise. The second dataset was generated using 
+  a droplet-based system, for which spike-in RNA is not available. The 
+  latter analysis provides an example, in which differential variability testing 
+  reveals insights regarding a possible early cell fate commitment process.
+keywords: Single-cell RNA sequencing, expression variability, 
+  transcriptional noise, differential expression testing
+bibliography: library.bib
+output:
+  BiocStyle::html_document: default
+  BiocWorkflowTools::f1000_article: default
+urlcolor: Orange
+geometry: "hmargin=1.8cm,vmargin=2.2cm"
+subparagraph: yes
+header-includes:
+   - \usepackage{f1000_styles}
+# output:
+#vignette: >
+#  %\VignetteIndexEntry{A BASiCS workflow for expression variability analysis using scRNAseq data}
+#  %\VignetteEngine{knitr::rmarkdown}
+#  %\VignetteEncoding{UTF-8}
+---
+<!-- 
+
+author:
+  - name: Nils Eling
+    affiliation:
+    - CRUK
+    - EBI
+  - name: Alan O'Callaghan
+    affiliation: 
+    - HGU
+  - name: John C. Marioni
+    affiliation:
+    - CRUK
+    - EBI
+  - name: Catalina A. Vallejos
+    affiliation: 
+    - HGU
+    - ATU
+address:
+  - code: EBI
+    address: |
+      European Molecular Biology Laboratory, European Bioinformatics 
+      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+  - code: CRUK
+    address: |
+      CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+  - code: HGU
+    address: |
+      MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
+      University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh,
+      EH4 2XU, UK
+  - code: ATU
+    address: |
+      The Alan Turing Institute, British Library, 96 Euston Road,
+      London, NW1 2DB, UK
+
+
+
+    email: eling@ebi.ac.uk
+    email: catalina.vallejos@igmm.ed.ac.uk
+
+
 - name: Nils Eling
   affiliation: 
   - &EBI European Molecular Biology Laboratory, European Bioinformatics 
@@ -23,41 +106,12 @@ author:
   - The Alan Turing Institute, British Library, 96 Euston Road, London, 
     NW1 2DB, UK
   email: catalina.vallejos@igmm.ed.ac.uk
-abstract: |
-  Cell-to-cell variability in gene expression is an inherent feature 
-  of biological systems. Single-cell RNA sequencing can be used to quantify this 
-  heterogeneity, but it is prone to strong technical noise. Here, we describe a 
-  computational workflow that uses, among others, the BASiCS Bioconductor 
-  package to robustly quantify expression variability within and between known 
-  cell populations (e.g.~experimental conditions or cell types). Within a 
-  single homogeneous population of cells, BASiCS estimates interpretable gene- 
-  and cell-specific parameters that can be used for normalization and to 
-  identify highly and lowly variable genes. Furthermore, we also show how 
-  BASiCS can highlight changes in gene expression variability between cell
-  populations, while avoiding confounding effects related to technical noise 
-  or changes in overall abundance. Using two publicly available datasets, we 
-  guide users through a complete pipeline which includes preliminary steps 
-  for quality control and data exploration using the scater and scran 
-  Bioconductor packages. Data for the first case study was generated using 
-  the Fluidigm\@ C1 system, in which spike-in RNA molecules are added in order 
-  to quantify technical noise. The second dataset was generated using 
-  a droplet-based system, for which spike-in RNA is not available. The 
-  latter analysis provides an example, in which differential variability testing 
-  reveals insights regarding a possible early cell fate commitment process.
-keywords: Single-cell RNA sequencing, expression variability, 
-  transcriptional noise, differential expression testing
-bibliography: library.bib
-output: BiocWorkflowTools::f1000_article
-urlcolor: Orange
-# output:
-#   BiocStyle::html_document:
-#   fig_caption: true
-#   self_contained: yes
-#vignette: >
-#  %\VignetteIndexEntry{A BASiCS workflow for expression variability analysis using scRNAseq data}
-#  %\VignetteEngine{knitr::rmarkdown}
-#  %\VignetteEncoding{UTF-8}
----
+ -->
+
+<!-- subparagraph: https://stackoverflow.com/questions/42916124/not-able-to-use-titlesec-with-markdown-and-pandoc -->
+<!-- geometry: https://github.com/grimbough/BiocWorkflowTools/blob/cb4e70de976ab0244e16874734610ac3f6b0bad6/R/f1000_article.R#L108 -->
+
+
 <!-- #Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.-->
 ```{r setup_knitr, include = FALSE, cache = FALSE}
 library("BiocStyle")
@@ -67,7 +121,7 @@ library("knitr")
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 fig.width <- ifelse(on.bioc, 7, 6)
 knitr::opts_chunk$set(
-  cache = FALSE, warning = FALSE, message = FALSE, error = FALSE,
+  cache = TRUE, warning = FALSE, message = FALSE, error = FALSE,
   cache.path = "cache/", fig.path = "figure/", fig.width = fig.width
 )
 ```
@@ -82,7 +136,7 @@ otherwise undetected in bulk experiments [@Stegle2015; @Prakadan2017;
 @Patange2018]. Its applications range from characterising cell types in 
 immunity [@Lonnberg2017;  @Villani2017; @Zheng2017] and development 
 [@Ibarra-Soria2018; @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanism 
-for cell fate commitment events [@Goolam2016; @Ohnishi2014] . 
+for cell fate commitment events [@Goolam2016; @Ohnishi2014]. 
 Within a population of cells, transcriptional heterogeneity can be due a 
 mixture of possible causes. 
 On the broadest level, this heterogeneity can reflect the presence of cell 
@@ -181,7 +235,7 @@ Bioconductor packages to perform initial quality control and low-level analysis
 scRNA-Seq data. In the first case, `BASiCS` can be used to detect highly and 
 lowly variable genes and to obtain robust, gene-specific estimates to assess 
 biological variability in naive CD4^+^ T cells 
-[@Martinez-jimenez2017](for a similar workflow see [@Kim2019]).
+[@Martinez-jimenez2017]; for a similar workflow see [@Kim2019].
 Furthermore, we compare naive to activated CD4^+^ T cells to highlight the use 
 of `BASiCS` to test for changes in mean expression and expression variability.
 In the second case, we use droplet-based scRNA-Seq data to detect more subtle 
@@ -1641,7 +1695,7 @@ to show higher expression in naive cells compared to activated CD4^+^ T cells.
 We can also test the enrichment of GO categories among genes that show 
 increased expression upon T cell activation.
 
-```{r}
+```{r go-analysis-active}
 # Collect significan genes as 1 and all other as 0
 active_genes <- as.integer(Test_DE$TableMean$ResultDiffMean == "Active+")
 names(active_genes) <- Test_DE$TableMean$GeneName
@@ -1980,7 +2034,7 @@ colData(droplet_sce) <- DataFrame(
 
 For further processing steps, we remove lowly expressed genes.
 
-```{r}
+```{r filter_drop}
 ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
 droplet_sce <- droplet_sce[ind_expressed, ]
 ```
@@ -1988,7 +2042,7 @@ droplet_sce <- droplet_sce[ind_expressed, ]
 To visualize possible sub-structure in the data, we normalize both cell 
 populations using the `scran` package.
 
-```{r}
+```{r norm_drop}
 droplet_sce <- computeSumFactors(droplet_sce,
   clusters = colData(droplet_sce)$subCellType
 )
@@ -1997,13 +2051,13 @@ droplet_sce <- logNormCounts(droplet_sce)
 
 Next, we compute a PCA using the `scater` package. 
 
-```{r}
+```{r droplet_pca}
 droplet_sce <- runPCA(droplet_sce)
 ```
 
 We can now visualize the different factors stored in the `colData` slot.
 
-```{r}
+```{r drop_pca_plot}
 # Cell types identified by clustering
 plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
   scale_fill_manual(values = c("coral4", "steelblue", "limegreen"))
@@ -2014,7 +2068,7 @@ outlying cells.
 We will remove these outliers and the intermediate cell population from 
 down-stream analysis.
 
-```{r}
+```{r drop_filt}
 ind_retain <- reducedDims(droplet_sce)$PCA[, 2] > -5 &
   colData(droplet_sce)$subCellType != "presomiticMesoderm.b"
 droplet_sce <- droplet_sce[, ind_retain]
@@ -2159,7 +2213,7 @@ variability between the two conditions.
 For this, over-dispersion paramters $\delta_i$ for genes that are similarly 
 expressed in both conditions are compared.
 
-```{r}
+```{r drop_testde_lfc0}
 droplet_test_logFC0 <- BASiCS_TestDE(
   Chain1 = PSM_MCMC,
   Chain2 = SM_MCMC,
@@ -2300,7 +2354,7 @@ PSM_GO$Genes <- all_genes
 
 To visualize the expression of individual genes, we can use the `scater` package.
 
-```{r}
+```{r plot-de-scater}
 # Expression of Fgf8 in both conditions
 ind_fgf <- genenames$external_gene_name == "Fgf8"
 plotExpression(droplet_sce,
@@ -2315,7 +2369,7 @@ plotReducedDim(droplet_sce,
 
 Visualize one category in form of heatmap.
 
-```{r, fig.height = 7, fig.width = 5}
+```{r gp-heatmap, fig.height = 7, fig.width = 5}
 genes <- unlist(strsplit(PSM_GO[1, "Genes"], ", "))
 for_heatmap <- logcounts(droplet_sce)[genes, ]
 colnames(for_heatmap) <- colData(droplet_sce)$cell
@@ -2350,7 +2404,7 @@ four categories. These include:
 * More variable in PSM, highly expressed in PSM
 * More variable in PSM, lowly expressed in SM
 
-```{r}
+```{r diff-var-check}
 gene_groups <- data.frame(
   Genename = droplet_test$TableResDisp$GeneName,
   Symbol = genenames[droplet_test$TableResDisp$GeneName, 2],
