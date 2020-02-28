@@ -46,7 +46,7 @@ abstract: |
   reveals insights regarding a possible early cell fate commitment process.
 keywords: Single-cell RNA sequencing, expression variability, 
   transcriptional noise, differential expression testing
-bibliography: BASiCSWorkflow.bib
+bibliography: Workflow.bib
 urlcolor: Orange
 output:
   BiocWorkflowTools::f1000_article: default
@@ -1102,7 +1102,8 @@ HVG <- BASiCS_DetectHVG(MCMC_naive, PercentileThreshold = 0.9)
 LVG <- BASiCS_DetectLVG(MCMC_naive, PercentileThreshold = 0.1)
 ```
 
-This analysis results in the detection of *265* highly variable genes and *778*
+This analysis results in the detection of *`r sum(HVG$Table$HVG)`*
+highly variable genes and *`r sum(LVG$Table$LVG)`*
 lowly variable genes.
 
 The `Biocpkg("scran")` provides similar functions to detect HVGs and we can 
@@ -1145,29 +1146,21 @@ HVG_res <- paste(
     var_out[HVG$Table$GeneName, "bio"] >= 0.5
 )
 
-ind_ff <- HVG_res == "FALSE FALSE"
-ind_notff <- !which(ind_ff)
-
 ggplot() +
   geom_point(
     data = data.frame(
-      Mu = HVG$Table$Mu[ind_ff],
-      Epsilon = HVG$Table$Epsilon[ind_ff],
-      HVG = HVG_res[ind_ff]
-    ),
-    aes(log(Mu), Epsilon, colour = HVG)
-  ) +
-  geom_point(
-    data = data.frame(
-      Mu = HVG$Table$Mu[ind_notff],
-      Epsilon = HVG$Table$Epsilon[ind_notff],
-      HVG = HVG_res[ind_notff]
+      Mu = HVG$Table$Mu,
+      Epsilon = HVG$Table$Epsilon,
+      HVG = HVG_res
     ),
     aes(log(Mu), Epsilon, colour = HVG)
   )
 ```
 
-All *TODO: XYZ* HVG genes of scran are among the HVGs identified by BASiCS.
+*`r length(intersect(rownames(hvg_out), HVG$Table$GeneName[HVG$Table$HVG]))`*
+of the *`r nrow(hvg_out)`* HVG genes of scran are among the
+*`r sum(HVG$Table$HVG)`*
+HVGs identified by BASiCS.
 
 ### Mean-variance trend
 
