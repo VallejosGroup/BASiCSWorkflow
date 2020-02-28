@@ -1,8 +1,28 @@
 ---
-title: "A BASiCS workflow for expression variability analysis using scRNA-Seq data"
-author:
-  - name: Me
-  - name: You
+title: "*F1000Research* Software Tool Article Template"
+author: 
+  - name: Nils Eling
+    affiliation: 
+    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
+      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+    email: eling@ebi.ac.uk
+  - name: Alan O'Callaghan
+    affiliation: 
+    - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
+      University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
+      EH4 2XU, UK
+  - name: John C. Marioni
+    affiliation: 
+    - *EBI
+    - *CRUK
+  - name: Catalina A. Vallejos
+    affiliation: 
+    - *MRC 
+    - The Alan Turing Institute, British Library, 96 Euston Road, London, 
+      NW1 2DB, UK
+    email: catalina.vallejos@igmm.ed.ac.uk
 abstract: |
   Cell-to-cell variability in gene expression is an inherent feature 
   of biological systems. Single-cell RNA sequencing can be used to quantify this 
@@ -26,93 +46,15 @@ abstract: |
   reveals insights regarding a possible early cell fate commitment process.
 keywords: Single-cell RNA sequencing, expression variability, 
   transcriptional noise, differential expression testing
-bibliography: library.bib
-output:
-  BiocStyle::html_document: default
-  BiocWorkflowTools::f1000_article: default
+bibliography: BASiCSWorkflow.bib
 urlcolor: Orange
-geometry: "hmargin=1.8cm,vmargin=2.2cm"
-subparagraph: yes
-header-includes:
-   - \usepackage{f1000_styles}
-# output:
-#vignette: >
-#  %\VignetteIndexEntry{A BASiCS workflow for expression variability analysis using scRNAseq data}
-#  %\VignetteEngine{knitr::rmarkdown}
-#  %\VignetteEncoding{UTF-8}
+output:
+  BiocWorkflowTools::f1000_article: default
+  BiocStyle::html_document: default
 ---
-<!-- 
-
-author:
-  - name: Nils Eling
-    affiliation:
-    - CRUK
-    - EBI
-  - name: Alan O'Callaghan
-    affiliation: 
-    - HGU
-  - name: John C. Marioni
-    affiliation:
-    - CRUK
-    - EBI
-  - name: Catalina A. Vallejos
-    affiliation: 
-    - HGU
-    - ATU
-address:
-  - code: EBI
-    address: |
-      European Molecular Biology Laboratory, European Bioinformatics 
-      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
-  - code: CRUK
-    address: |
-      CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
-      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
-  - code: HGU
-    address: |
-      MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
-      University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh,
-      EH4 2XU, UK
-  - code: ATU
-    address: |
-      The Alan Turing Institute, British Library, 96 Euston Road,
-      London, NW1 2DB, UK
 
 
 
-    email: eling@ebi.ac.uk
-    email: catalina.vallejos@igmm.ed.ac.uk
-
-
-- name: Nils Eling
-  affiliation: 
-  - &EBI European Molecular Biology Laboratory, European Bioinformatics 
-    Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
-  - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
-    Li Ka Shing Centre, Cambridge, CB2 0RE, UK
-  email: eling@ebi.ac.uk
-- name: Alan O'Callaghan
-  affiliation: 
-  - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
-    University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
-    EH4 2XU, UK
-- name: John C. Marioni
-  affiliation: 
-  - *EBI
-  - *CRUK
-- name: Catalina A. Vallejos
-  affiliation: 
-  - *MRC 
-  - The Alan Turing Institute, British Library, 96 Euston Road, London, 
-    NW1 2DB, UK
-  email: catalina.vallejos@igmm.ed.ac.uk
- -->
-
-<!-- subparagraph: https://stackoverflow.com/questions/42916124/not-able-to-use-titlesec-with-markdown-and-pandoc -->
-<!-- geometry: https://github.com/grimbough/BiocWorkflowTools/blob/cb4e70de976ab0244e16874734610ac3f6b0bad6/R/f1000_article.R#L108 -->
-
-
-<!-- #Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.-->
 ```{r setup_knitr, include = FALSE, cache = FALSE}
 library("BiocStyle")
 ## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
@@ -1203,20 +1145,23 @@ HVG_res <- paste(
     var_out[HVG$Table$GeneName, "bio"] >= 0.5
 )
 
+ind_ff <- HVG_res == "FALSE FALSE"
+ind_notff <- !which(ind_ff)
+
 ggplot() +
   geom_point(
     data = data.frame(
-      Mu = HVG$Table$Mu[HVG_res == "FALSE FALSE"],
-      Epsilon = HVG$Table$Epsilon[HVG_res == "FALSE FALSE"],
-      HVG = HVG_res[HVG_res == "FALSE FALSE"]
+      Mu = HVG$Table$Mu[ind_ff],
+      Epsilon = HVG$Table$Epsilon[ind_ff],
+      HVG = HVG_res[ind_ff]
     ),
     aes(log(Mu), Epsilon, colour = HVG)
   ) +
   geom_point(
     data = data.frame(
-      Mu = HVG$Table$Mu[HVG_res != "FALSE FALSE"],
-      Epsilon = HVG$Table$Epsilon[HVG_res != "FALSE FALSE"],
-      HVG = HVG_res[HVG_res != "FALSE FALSE"]
+      Mu = HVG$Table$Mu[ind_notff],
+      Epsilon = HVG$Table$Epsilon[ind_notff],
+      HVG = HVG_res[ind_notff]
     ),
     aes(log(Mu), Epsilon, colour = HVG)
   )
@@ -1283,24 +1228,30 @@ counts_denoised <- counts_denoised[eps_not_na, ]
 var_genes <- apply(counts_denoised, 1, var)
 mean_genes <- apply(counts_denoised, 1, mean)
 
-ggplot(data.frame(
-  variance = var_genes,
-  mean = mean_genes
-)) +
+ggplot(
+    data.frame(
+      variance = var_genes,
+      mean = mean_genes
+    )
+  ) +
   geom_point(aes(log(mean), log(variance)))
 
 # Fano factor
-ggplot(data.frame(
-  fano = var_genes / mean_genes,
-  mean = mean_genes
-)) +
+ggplot(
+    data.frame(
+      fano = var_genes / mean_genes,
+      mean = mean_genes
+    )
+  ) +
   geom_point(aes(log(mean), log(fano)))
 
 # Squared coefficient of variation
-ggplot(data.frame(
-  CV2 = var_genes / mean_genes^2,
-  mean = mean_genes
-)) +
+ggplot(
+    data.frame(
+      CV2 = var_genes / mean_genes^2,
+      mean = mean_genes
+    )
+  ) +
   geom_point(aes(log(mean), log(CV2)))
 ```
 
@@ -1317,17 +1268,21 @@ mu_naive <- displaySummaryBASiCS(summary_naive, Param = "mu")[eps_not_na, ]
 delta_naive <- displaySummaryBASiCS(summary_naive, Param = "delta")[eps_not_na, ]
 
 # Over-dispersion versus mean expression
-ggplot(data.frame(
-  mu = mu_naive[, "median"],
-  delta = delta_naive[, "median"]
-)) +
+ggplot(
+    data.frame(
+      mu = mu_naive[, "median"],
+      delta = delta_naive[, "median"]
+    )
+  ) +
   geom_point(aes(log(mu), log(delta)))
 
 # Compare delta to CV2
-ggplot(data.frame(
-  CV2 = var_genes / mean_genes^2,
-  delta = delta_naive[rownames(counts_denoised), "median"]
-)) +
+ggplot(
+    data.frame(
+      CV2 = var_genes / mean_genes^2,
+      delta = delta_naive[rownames(counts_denoised), "median"]
+    )
+  ) +
   geom_point(aes(log(CV2), log(delta)))
 ```
 
@@ -1347,27 +1302,33 @@ Here, we highlight how to obtain the residual variability estimates using
 epsilon_naive <- displaySummaryBASiCS(summary_naive, Param = "epsilon")[eps_not_na, ]
 
 # Residual over-dispersion versus mean expression
-ggplot(data.frame(
-  mu = mu_naive[, "median"],
-  epsilon = epsilon_naive[, "median"]
-)) +
+ggplot(
+    data.frame(
+      mu = mu_naive[, "median"],
+      epsilon = epsilon_naive[, "median"]
+    )
+  ) +
   geom_pointdensity(aes(log(mu), epsilon))
 
 # DM values
 DM.naive <- scran::DM(mean = mean_genes, cv2 = var_genes / mean_genes^2)
 
 # DM versus mean expression
-ggplot(data.frame(
-  mean = mean_genes,
-  DM = DM.naive
-)) +
+ggplot(
+    data.frame(
+      mean = mean_genes,
+      DM = DM.naive
+    )
+  ) +
   geom_pointdensity(aes(log(mean), DM))
 
 # Compare residual over-dispersion and DM
-ggplot(data.frame(
-  epsilon = epsilon_naive[rownames(counts_denoised), "median"],
-  DM = DM.naive
-)) +
+ggplot(
+    data.frame(
+      epsilon = epsilon_naive[rownames(counts_denoised), "median"],
+      DM = DM.naive
+    )
+  ) +
   geom_pointdensity(aes(epsilon, DM))
 ```
 
@@ -1375,7 +1336,7 @@ Neither the DM nor the residual over-dispersion estimates show association
 with mean expression.
 Furthermore, the mean-independent variability measures display high correlation.
 These measures can be used to associate genomic features 
-[@Morgan2018,@Faure2018] or transcriptional dynamics [@Antolovic2017] to 
+[@Morgan2018,@Faure2017] or transcriptional dynamics [@Antolovic2017] to 
 gene expression variability.
 While the DM is calculated as a point estimate, BASiCS stores each posterior 
 sample within the `BASiCS_Chain` object.
@@ -1401,7 +1362,7 @@ This section highlights the use of BASiCS to perform differential testing
 (mean and variability) between cells of two condtions. 
 For convenience, we will compare the naive CD4^+^ T cells, which were analysed 
 in the previous section to activated CD4^+^ T cells of the same dataset 
-[@Martinez-jimnenez2017]. Naive CD4^+^ T cells were activated for 3 hours 
+[@Martinez-jimenez2017]. Naive CD4^+^ T cells were activated for 3 hours 
 using plate-bound CD3e and CD28 antibodies.
 T cell activation is linked to strong transcriptional shifts and the
 up-regulation of lineage specific marker genes, such as Tbx21 and Gata1 
@@ -1943,7 +1904,7 @@ transcriptional changes during differentiation.
 
 # Differential testing using differentiating cells (two group, droplet-based example) {#droplet-data}
 
-With the development of droplet-based scRNA-Seq [@Klein2015, @Makosco2015] 
+With the development of droplet-based scRNA-Seq [@Klein2015, @Macosko2015] 
 lead to a strong increase in the number of cells that can be profiled per 
 experiment. 
 With this, large-scale scRNA-Seq datasets have been generated to study 
@@ -2081,7 +2042,7 @@ For this, we will generate the BASiCS data objects.
 
 Since droplet-based scRNA-Seq data are generated without including technical 
 spike-in genes, BASiCS uses measurement error models to quantify technical 
-variation through replication [@Carrol1998].
+variation through replication [@Carroll1998].
 Here, it is crucial to provide batch information to the BASiCS model.
 In the case of the somitic and pre-somoitic mesoderm cells, embryos of two mice 
 have been used to generate the data. 
