@@ -60,6 +60,7 @@ library("BiocStyle")
 ## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
 on.bioc <- FALSE
 library("knitr")
+theme_set(theme_bw(base_size = 15))
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 fig.width <- ifelse(on.bioc, 7, 6)
 knitr::opts_chunk$set(
@@ -1227,7 +1228,8 @@ ggplot(
       mean = mean_genes
     )
   ) +
-  geom_point(aes(log(mean), log(variance)))
+  geom_pointdensity(aes(log(mean), log(variance))) +
+  scale_color_viridis()
 
 # Fano factor
 ggplot(
@@ -1236,7 +1238,8 @@ ggplot(
       mean = mean_genes
     )
   ) +
-  geom_point(aes(log(mean), log(fano)))
+  geom_pointdensity(aes(log(mean), log(fano))) +
+  scale_color_viridis()
 
 # Squared coefficient of variation
 ggplot(
@@ -1245,7 +1248,8 @@ ggplot(
       mean = mean_genes
     )
   ) +
-  geom_point(aes(log(mean), log(CV2)))
+  geom_pointdensity(aes(log(mean), log(CV2))) +
+  scale_color_viridis()
 ```
 
 We see that all measures correlate with mean expression.
@@ -1267,7 +1271,8 @@ ggplot(
       delta = delta_naive[, "median"]
     )
   ) +
-  geom_point(aes(log(mu), log(delta)))
+  geom_pointdensity(aes(log(mu), log(delta))) +
+  scale_color_viridis()
 
 # Compare delta to CV2
 ggplot(
@@ -1276,7 +1281,8 @@ ggplot(
       delta = delta_naive[rownames(counts_denoised), "median"]
     )
   ) +
-  geom_point(aes(log(CV2), log(delta)))
+  geom_pointdensity(aes(log(CV2), log(delta))) +
+  scale_color_viridis()
 ```
 
 The over-dispersion parameters estimated using BASiCS show strong correlation 
@@ -1288,7 +1294,6 @@ along the mean-variability trend to correct for this confounding factor
 [@Kolodziejczyk2015cell].
 Here, we highlight how to obtain the residual variability estimates using 
 `BASiCS` and `scran`.
-**TODO: Add density to these plots**
 
 ```{r mean-dispersion-plots}
 # Residual over-dispersion estimates
@@ -1301,7 +1306,8 @@ ggplot(
       epsilon = epsilon_naive[, "median"]
     )
   ) +
-  geom_pointdensity(aes(log(mu), epsilon))
+  geom_pointdensity(aes(log(mu), epsilon)) +
+  scale_color_viridis()
 
 # DM values
 DM.naive <- scran::DM(mean = mean_genes, cv2 = var_genes / mean_genes^2)
@@ -1313,7 +1319,8 @@ ggplot(
       DM = DM.naive
     )
   ) +
-  geom_pointdensity(aes(log(mean), DM))
+  geom_pointdensity(aes(log(mean), DM)) +
+  scale_color_viridis()
 
 # Compare residual over-dispersion and DM
 ggplot(
@@ -1322,7 +1329,8 @@ ggplot(
       DM = DM.naive
     )
   ) +
-  geom_pointdensity(aes(epsilon, DM))
+  geom_pointdensity(aes(epsilon, DM)) +
+  scale_color_viridis()
 ```
 
 Neither the DM nor the residual over-dispersion estimates show association 
@@ -1550,22 +1558,34 @@ After running the test, we can now visaulize the results in form of a MA-plot
 _versus_ log ratio).
 
 ```{r visualize-MA-plot}
-colour_scale <- scale_color_manual(
-  values = c(
-    "Naive+" = "dark blue",
-    "Active+" = "dark red",
-    "NoDiff" = "black",
-    "ExcludedLowESS" = "grey60",
-    "ExcludedByUser" = "grey80"
-  )
+colour_map <- c(
+  "Naive+" = "dark blue",
+  "Active+" = "dark red",
+  "NoDiff" = "black",
+  "ExcludedLowESS" = "grey60",
+  "ExcludedByUser" = "grey80"
 )
+Test_DE$TableMean$ResultDiffMean <- factor(
+  Test_DE$TableMean$ResultDiffMean,
+  levels = names(colour_map)
+)
+Test_DE$TableMean <- Test_DE$TableMean[order(Test_DE$TableMean$ResultDiffMean), ]
+colour_scale <- scale_color_manual(values = colour_map)
 # Visualize MA plot
 ggplot(Test_DE$TableMean) +
-  geom_point(aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean)) +
+  geom_point(
+    aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean),
+    shape = 16,
+    alpha = 0.5
+  ) +
   colour_scale
 # Visualize MA plot
 ggplot(Test_DE$TableMean) +
-  geom_point(aes(MeanLog2FC, ProbDiffMean, colour = ResultDiffMean)) +
+  geom_point(
+    aes(MeanLog2FC, ProbDiffMean, colour = ResultDiffMean),
+    shape = 16,
+    alpha = 0.5
+  ) +
   colour_scale
 ```
 
@@ -1635,7 +1655,7 @@ for (i in 1:nrow(naive_GO)) {
 naive_GO$gene <- all_genes
 
 # Show GO categories
-naive_GO$term
+head(naive_GO$term, n = 10)
 ```
 
 Genes that are down-regulated during immune activation are enriched for cell
@@ -1660,12 +1680,12 @@ pwf <- nullp(active_genes, "mm10", "ensGene",
 )
 GO_wall <- goseq(pwf, "mm10", "ensGene")
 ind_signif <- p.adjust(GO_wall$over_represented_pvalue, method = "fdr") < 0.01
-active.GO <- DataFrame(GO_wall[ind_signif, ])
+active_GO <- DataFrame(GO_wall[ind_signif, ])
 
 # Add genenames to the GO categories
-all_genes <- vector(length = nrow(active.GO))
-for (i in 1:nrow(active.GO)) {
-  allegs <- get(active.GO$category[i], org.Mm.egGO2ALLEGS)
+all_genes <- vector(length = nrow(active_GO))
+for (i in 1:nrow(active_GO)) {
+  allegs <- get(active_GO$category[i], org.Mm.egGO2ALLEGS)
   genes <- unique(unlist(mget(allegs, org.Mm.egENSEMBL)))
   genes <- as.character(intersect(
     genes,
@@ -1675,10 +1695,10 @@ for (i in 1:nrow(active.GO)) {
     collapse = ", "
   )
 }
-active.GO$gene <- all_genes
+active_GO$gene <- all_genes
 
 # Show GO categories
-head(active.GO$term)
+head(active_GO$term, n = 10)
 ```
 
 Genes that are up-regulated upon activation are dominated by GO categories that
@@ -1732,14 +1752,22 @@ ind_nochange <- Test_DE_LFC0$TableMean$ResultDiffMean == "NoDiff"
 
 # MA plot
 ggplot(Test_DE_LFC0$TableDisp[ind_nochange, ]) +
-  geom_point(aes(log(MeanOverall), DispLog2FC,
-    colour = ResultDiffDisp
-  )) +
-  scale_color_manual(values = c(
-    "Naive+" = "dark blue",
-    "Active+" = "dark red",
-    "NoDiff" = "black"
-  ))
+  geom_point(
+    aes(
+      log(MeanOverall),
+      DispLog2FC,
+      colour = ResultDiffDisp
+    ),
+    shape = 16,
+    alpha = 0.5
+  ) +
+  scale_color_manual(
+    values = c(
+      "Naive+" = "dark blue",
+      "Active+" = "dark red",
+      "NoDiff" = "black"
+    )
+  )
 
 # Boxplot
 wilcox.test(Test_DE_LFC0$TableDisp$DispLog2FC[ind_nochange])
@@ -1803,23 +1831,30 @@ Epsilon values for genes that are not expressed in at least 2 cells per
 conditions are marked as `NA` and are therefore not being displayed.
 
 ```{r diff-res-plot}
+colour_map <- c(
+  "Naive+" = "dark blue",
+  "Active+" = "dark red",
+  "NoDiff" = "black",
+  "ExcludedByUser" = "grey",
+  "ExcludedLowESS" = "grey80",
+  "ExcludedFromTesting" = "grey50"
+)
+Test_DE$TableResDisp$ResultDiffResDisp <- factor(
+  Test_DE$TableResDisp$ResultDiffResDisp,
+  levels = names(colour_map)
+)
+Test_DE$TableResDisp <- Test_DE$TableResDisp[order(Test_DE$TableResDisp$ResultDiffResDisp), ]
 ggplot(Test_DE$TableResDisp) +
   geom_point(
     aes(
       x = log(MeanOverall),
       y = ResDispDistance,
       colour = ResultDiffResDisp
-    )
+    ),
+    shape = 16,
+    alpha = 0.5
   ) +
-  scale_color_manual(
-    values = c(
-      "Naive+" = "dark blue",
-      "Active+" = "dark red",
-      "NoDiff" = "black",
-      "ExcludedByUser" = "grey",
-      "ExcludedFromTesting" = "grey50"
-    )
-  )
+  scale_color_manual(values = colour_map)
 ```
 
 While one could perform GO analysis (as explained above) on the genesets that 
@@ -1841,10 +1876,19 @@ Next, we can visualize the regulation of each individual gene based on its
 changes in mean expression and expression variability.
 
 ```{r DV-DE-vis}
+res.df$ResultDiffMean[grep("Excluded", res.df$ResultDiffMean)] <- "NoDiff"
+res.df$ResultDiffResDisp[grep("Excluded", res.df$ResultDiffResDisp)] <- "NoDiff"
 ggplot(res.df) +
-  geom_point(aes(MeanLog2FC, ResDispDistance,
-    colour = interaction(ResultDiffMean, ResultDiffResDisp)
-  ))
+  geom_point(
+    aes(
+      MeanLog2FC,
+      ResDispDistance,
+      colour = interaction(ResultDiffMean, ResultDiffResDisp, sep = ", ")
+    ),
+    alpha = 0.5,
+    shape = 16
+  ) +
+  scale_color_brewer(name = "Categories", palette = "Set1")
 ```
 
 While we can now test each of the nine genesets for functional enrichment, here, 
@@ -2014,7 +2058,7 @@ We can now visualize the different factors stored in the `colData` slot.
 ```{r drop_pca_plot}
 # Cell types identified by clustering
 plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
-  scale_fill_manual(values = c("coral4", "steelblue", "limegreen"))
+  scale_fill_manual(name = "Cell type", values = c("coral4", "steelblue", "limegreen"))
 ```
 
 The first PC separates the two different cell types while the second PC captures
@@ -2127,21 +2171,20 @@ The `mcmc` function of the `coda` package is suited to generate trace plots
 for each chain. 
 
 ```{r droplet-chain-convergence}
-plot(mcmc(displayChainBASiCS(PSM_MCMC, Param = "mu")[, 120]), main = "mu[120]")
-plot(mcmc(displayChainBASiCS(PSM_MCMC, Param = "delta")[, 10]), main = "delta[10]")
-plot(mcmc(displayChainBASiCS(PSM_MCMC, Param = "epsilon")[, 20]), main = "epsilon[20]")
-plot(mcmc(displayChainBASiCS(PSM_MCMC, Param = "s")[, 90]), main = "s[90]")
-plot(mcmc(displayChainBASiCS(PSM_MCMC, Param = "nu")[, 100]), main = "nu[100]")
-plot(mcmc(displayChainBASiCS(PSM_MCMC, Param = "beta")[, 2]), main = "beta[2]")
-plot(mcmc(displayChainBASiCS(PSM_MCMC, Param = "sigma2")), main = "sigma2")
-
-plot(mcmc(displayChainBASiCS(SM_MCMC, Param = "mu")[, 120]), main = "mu[120]")
-plot(mcmc(displayChainBASiCS(SM_MCMC, Param = "delta")[, 10]), main = "delta[10]")
-plot(mcmc(displayChainBASiCS(SM_MCMC, Param = "epsilon")[, 20]), main = "epsilon[20]")
-plot(mcmc(displayChainBASiCS(SM_MCMC, Param = "s")[, 90]), main = "s[90]")
-plot(mcmc(displayChainBASiCS(SM_MCMC, Param = "nu")[, 100]), main = "nu[100]")
-plot(mcmc(displayChainBASiCS(SM_MCMC, Param = "beta")[, 2]), main = "beta[2]")
-plot(mcmc(displayChainBASiCS(SM_MCMC, Param = "sigma2")), main = "sigma2")
+plot(PSM_MCMC, Param = "mu", Gene = 120)
+plot(PSM_MCMC, Param = "delta", Gene = 10)
+plot(PSM_MCMC, Param = "epsilon", Gene = 20)
+plot(PSM_MCMC, Param = "s", Cell = 90)
+plot(PSM_MCMC, Param = "nu", Cell = 100)
+plot(PSM_MCMC, Param = "beta", RegressionTerm = 2)
+plot(PSM_MCMC, Param = "sigma2", Column = 1)
+plot(SM_MCMC, Param = "mu", Gene = 120)
+plot(SM_MCMC, Param = "delta", Gene = 10)
+plot(SM_MCMC, Param = "epsilon", Gene = 20)
+plot(SM_MCMC, Param = "s", Cell = 90)
+plot(SM_MCMC, Param = "nu", Cell = 100)
+plot(SM_MCMC, Param = "beta", RegressionTerm = 2)
+plot(SM_MCMC, Param = "sigma2")
 ```
 
 We observe that the chains for all chosen paramteres converged. 
@@ -2183,7 +2226,7 @@ not_excluded <- droplet_test_logFC0$TableDisp$ResultDiffDisp != "ExcludedFromTes
 for_plot <- droplet_test_logFC0$TableDisp[not_excluded, c("Disp1", "Disp2")]
 for_plot <- melt(for_plot)
 ggplot(for_plot) + geom_boxplot(aes(variable, log(value))) +
-  scale_x_discrete(labels = c("PSM", "SM")) + theme_minimal(base_size = 15) +
+  scale_x_discrete(labels = c("PSM", "SM")) +
   ylab("log(delta)") + xlab("")
 ```
 
@@ -2209,23 +2252,38 @@ droplet_test <- BASiCS_TestDE(
   MinESS = 100
 )
 
+
+colour_map_sm <- c(
+  "PSM+" = "dark blue",
+  "SM+" = "dark red",
+  "NoDiff" = "black",
+  "ExcludedLowESS" = "grey60",
+  "ExcludedByUser" = "grey80"
+)
+
 # Differential expression
 ggplot(droplet_test$TableMean) +
-  geom_point(aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean)) +
-  theme_minimal(base_size = 15) +
+  geom_point(
+    aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean),
+    shape = 16,
+    alpha = 0.5
+  ) +
   scale_colour_manual(
-    name = "Differential expression", 
-    values = c("tan", "grey80", "#2166ac", "#b2182b")
+    name = "Differential\nexpression",
+    values = colour_map_sm
   ) +
   ylab(expression(mu[PSM] / mu[SM])) + xlab(expression(log(mu)))
 
 # Differential variability
 ggplot(droplet_test$TableResDisp) +
-  geom_point(aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp)) +
-  theme_minimal(base_size = 15) +
+  geom_point(
+    aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp),
+    shape = 16,
+    alpha = 0.5
+  ) +
   scale_colour_manual(
-    name = "Differential variability",
-    values = c("tan", "grey80", "#542788", "#b35806")
+    name = "Differential\nvariability",
+    values = colour_map_sm
   ) +
   ylab(expression(epsilon[PSM] - epsilon[SM])) + xlab(expression(log(mu)))
 ```
@@ -2314,7 +2372,7 @@ ind_fgf <- genenames$external_gene_name == "Fgf8"
 plotExpression(droplet_sce,
   features = genenames[ind_fgf, 1],
   x = "cellType", colour_by = "cellType"
-)
+) + scale_fill_manual(name = "Cell type", values = c("coral4", "limegreen"))
 plotReducedDim(droplet_sce,
   dimred = "PCA",
   colour_by = genenames[ind_fgf, 1]
@@ -2337,13 +2395,18 @@ heatmap_order <- order(PSM_mean[heatmap_ind, "MeanLog2FC"], decreasing = TRUE)
 for_heatmap <- for_heatmap[heatmap_order, ]
 
 pheatmap(for_heatmap,
-  cluster_cols = FALSE, show_colnames = FALSE, cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  show_colnames = FALSE,
+  cluster_rows = FALSE,
   color = colorRampPalette(c("#053061", "#4393c3", "white", "#d6604d", "#67001f"))(100),
   labels_row = genenames[rownames(for_heatmap), 2],
-  cellheight = 8, fontsize = 7, annotation_col = data.frame(
+  cellheight = 8,
+  fontsize = 7,
+  annotation_col = data.frame(
     row.names = colnames(for_heatmap),
     cellType = sub("_.*", "", colnames(for_heatmap))
-  ), scale = "row"
+  ),
+  scale = "row"
 )
 ```
 
@@ -2353,6 +2416,7 @@ pheatmap(for_heatmap,
 Next, we are interested in genes that change in variability between the two 
 cell types. To help interpretion of the result, we will split the genes into 
 four categories. These include:
+
 * More variable in SM, highly expressed in SM
 * More variable in SM, lowly expressed in SM
 * More variable in PSM, highly expressed in PSM
@@ -2374,7 +2438,7 @@ gene_groups <- data.frame(
 ind_reg <- gene_groups$Regulation %in% c("SM+_SM+", "SM+_PSM+", "PSM+_PSM+", "PSM+_SM+")
 gene_groups <- gene_groups[ind_reg, ]
 
-gene_groups[gene_groups$Regulation == "SM+_SM+", ]
+knitr::kable(head(gene_groups[gene_groups$Regulation == "SM+_SM+", ]))
 ```
 
 We can visualize individual genes using `scater`.
@@ -2385,8 +2449,7 @@ ind_meox <- genenames$external_gene_name == "Meox2"
 plotExpression(droplet_sce,
   features = genenames[ind_meox, 1],
   x = "cellType", colour_by = "cellType"
-) +
-  scale_fill_manual(values = c("coral4", "limegreen"))
+) + scale_fill_manual(name = "Cell type", values = c("coral4", "limegreen"))
 plotReducedDim(droplet_sce,
   dimred = "PCA",
   colour_by = genenames[ind_meox, 1]
