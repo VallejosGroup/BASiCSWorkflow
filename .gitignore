@@ -16,3 +16,9 @@ Workflow_files/*
 cache/*
 figure/*
 *.log
+*.aux
+*.bbl
+*.blg
+*.dvi
+*.out
+

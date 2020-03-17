@@ -60,6 +60,7 @@ library("BiocStyle")
 ## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
 on.bioc <- FALSE
 library("knitr")
+library("ggplot2")
 theme_set(theme_bw(base_size = 15))
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 fig.width <- ifelse(on.bioc, 7, 6)
