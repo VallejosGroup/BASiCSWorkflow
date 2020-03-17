@@ -76,24 +76,21 @@ knitr::opts_chunk$set(
 
 <!--- scRNA-Seq and the different types of heterogeneity ---> 
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
-transcriptional heterogeneity in cell populations that remains 
-otherwise undetected in bulk experiments [@Stegle2015; @Prakadan2017; 
-@Patange2018]. Existing applications range from characterising cell types in 
-immunity [@Lonnberg2017;  @Villani2017; @Zheng2017] and development 
-[@Ibarra-Soria2018; @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms 
-for cell fate commitment [@Goolam2016; @Ohnishi2014]. 
-
-<!---
-
-Within a population of cells, transcriptional heterogeneity can be due a 
-mixture of possible causes. 
-On the broadest level, this heterogeneity can reflect the presence of cell 
-subtypes with distinct expression profiles.
-In such cases, clustering strategies can be used to select individual cell 
-types and cell states for individual analyses [@Kiselev2019].
-More subtle variation within a seemingly homogeneous cell population can be due 
-to deterministic or stochastic events, the later being referred to as 'noise' 
-[@Elowitz2002]. 
+transcriptional heterogeneity in cell populations that remains otherwise 
+undetected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
+Existing applications range from characterising cell types in immunity 
+[@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018; 
+@Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms for cell fate 
+commitment [@Goolam2016; @Ohnishi2014]. 
+Transcriptional heterogeneity within a population of cells can relate to 
+different reasons.
+On the broadest level, this heterogeneity can reflect the presence of distinct 
+expression profiles associated to cell subtypes or states which could be 
+characterised through clustering [@Kiselev2019]. 
+<!-- something about pseudotime trajectories --> 
+More subtle gene expression variability within a seemingly homogeneous cell 
+population can be due to deterministic or stochastic events, the later being 
+referred to as 'noise' [@Elowitz2002]. 
 
 
 <!--- Transcriptional noise and molecular phenotypic variability ---> 
@@ -149,6 +146,7 @@ differential mean expression and differential variability testing
 
 
 <!--- Differential analyses ---> 
+<!--- add reference to 11 challenges paper, flexible changes in expression ---> 
 Since the era of RNA sequencing, methods for differential expression testing 
 of transcript counts across two conditions have been developed 
 [@Anders2010; @Robinson2009]. 

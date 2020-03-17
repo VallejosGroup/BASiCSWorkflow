@@ -76,9 +76,18 @@ knitr::opts_chunk$set(
 
 <!--- scRNA-Seq and the different types of heterogeneity ---> 
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
-transcriptional heterogeneity in cell populations that remains 
-otherwise undetected in bulk experiments [@Stegle2015; @Prakadan2017; 
-@Patange2018]. Existing applications range from characterising cell types in 
-immunity [@Lonnberg2017;  @Villani2017; @Zheng2017] and development 
-[@Ibarra-Soria2018; @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms 
-for cell fate commitment [@Goolam2016; @Ohnishi2014]. 
+transcriptional heterogeneity in cell populations that remains otherwise 
+undetected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
+Existing applications range from characterising cell types in immunity 
+[@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018; 
+@Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms for cell fate 
+commitment [@Goolam2016; @Ohnishi2014]. 
+Transcriptional heterogeneity within a population of cells can relate to 
+different reasons.
+On the broadest level, this heterogeneity can reflect the presence of distinct 
+expression profiles associated to cell subtypes or states which could be 
+characterised through clustering [@Kiselev2019]. 
+<!-- something about pseudotime trajectories --> 
+More subtle gene expression variability within a seemingly homogeneous cell 
+population can be due to deterministic or stochastic events, the later being 
+referred to as 'noise' [@Elowitz2002]. 
