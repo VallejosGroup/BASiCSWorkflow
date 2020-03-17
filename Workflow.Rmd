@@ -61,7 +61,6 @@ library("BiocStyle")
 on.bioc <- FALSE
 library("knitr")
 library("ggplot2")
-theme_set(theme_bw(base_size = 15))
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 fig.width <- ifelse(on.bioc, 7, 6)
 knitr::opts_chunk$set(
@@ -340,6 +339,7 @@ symbols (also referred to as 'gene name'):
 
 ```{r libraries}
 library("ggplot2")
+library("viridis")
 library("biomaRt")
 library("EnsDb.Mmusculus.v79")
 library("SingleCellExperiment")
@@ -354,7 +354,7 @@ library("pheatmap")
 library("ggpointdensity")
 
 ## Set theme for ggplot2 plots
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 15))
 ## Directories to store downloaded files and intermediate results
 dir.create("rds", showWarnings = FALSE)
 dir.create("downloads", showWarnings = FALSE)
@@ -2225,7 +2225,7 @@ droplet_test_logFC0 <- BASiCS_TestDE(
 )
 not_excluded <- droplet_test_logFC0$TableDisp$ResultDiffDisp != "ExcludedFromTesting"
 for_plot <- droplet_test_logFC0$TableDisp[not_excluded, c("Disp1", "Disp2")]
-for_plot <- melt(for_plot)
+for_plot <- reshape2::melt(for_plot)
 ggplot(for_plot) + geom_boxplot(aes(variable, log(value))) +
   scale_x_discrete(labels = c("PSM", "SM")) +
   ylab("log(delta)") + xlab("")
