@@ -1,5 +1,5 @@
 ---
-title: "*F1000Research* Software Tool Article Template"
+title: "BASiCS workflow: a step-by-step analysis of expression variability using single cell RNA sequencing data"
 author: 
   - name: Nils Eling
     affiliation: 
@@ -24,26 +24,29 @@ author:
       NW1 2DB, UK
     email: catalina.vallejos@igmm.ed.ac.uk
 abstract: |
-  Cell-to-cell variability in gene expression is an inherent feature 
-  of biological systems. Single-cell RNA sequencing can be used to quantify this 
+  Cell-to-cell gene expression variability is an inherent feature of complex 
+  biological systems. Single-cell RNA sequencing can be used to quantify this 
   heterogeneity, but it is prone to strong technical noise. Here, we describe a 
-  computational workflow that uses, among others, the BASiCS Bioconductor 
-  package to robustly quantify expression variability within and between known 
-  cell populations (e.g. experimental conditions or cell types). Within a 
-  single homogeneous population of cells, BASiCS estimates interpretable gene- 
-  and cell-specific parameters that can be used for normalization and to 
-  identify highly and lowly variable genes. Furthermore, we also show how 
-  BASiCS can highlight changes in gene expression variability between cell
-  populations, while avoiding confounding effects related to technical noise 
-  or changes in overall abundance. Using two publicly available datasets, we 
-  guide users through a complete pipeline which includes preliminary steps 
-  for quality control and data exploration using the scater and scran 
-  Bioconductor packages. Data for the first case study was generated using 
-  the Fluidigm\@ C1 system, in which spike-in RNA molecules are added in order 
-  to quantify technical noise. The second dataset was generated using 
-  a droplet-based system, for which spike-in RNA is not available. The 
-  latter analysis provides an example, in which differential variability testing 
-  reveals insights regarding a possible early cell fate commitment process.
+  step-by-step computational workflow which uses the BASiCS Bioconductor package 
+  to robustly quantify expression variability within and between known cell 
+  populations (such as experimental conditions or cell types). BASiCS provides 
+  an integrated framework for data normalisation, technical noise quantification
+  and downstream analyses, whilst propagating statistical uncertainty across 
+  these steps. Within a single seemingly homogeneous cell population, BASiCS 
+  can be used identify highly variable genes that drive the heterogeneity 
+  within the population as well as lowly variable genes that might exhibit 
+  housekeeping-like behavior. BASiCS also provides a probabilistic rule to
+  identify changes in expression variability between cell populations, while 
+  avoiding confounding effects related to differences in technical noise or in 
+  overall abundance. Using two publicly available datasets, we guide users 
+  through a complete pipeline which includes preliminary steps for quality 
+  control and data exploration using the scater and scran Bioconductor packages. 
+  Data for the first case study was generated using the Fluidigm\@ C1 system, in 
+  which extrinsic spike-in RNA molecules were added in order to quantify 
+  technical noise. The second dataset was generated using a droplet-based 
+  system, for which spike-in RNA is not available. The latter analysis provides 
+  an example, in which differential variability testing reveals insights 
+  regarding a possible early cell fate commitment process.
 keywords: Single-cell RNA sequencing, expression variability, 
   transcriptional noise, differential expression testing
 bibliography: Workflow.bib
@@ -52,7 +55,6 @@ output:
   BiocWorkflowTools::f1000_article: default
   BiocStyle::html_document: default
 ---
-
 
 
 ```{r setup_knitr, include = FALSE, cache = FALSE}
@@ -73,13 +75,16 @@ knitr::opts_chunk$set(
 # Introduction
 
 <!--- scRNA-Seq and the different types of heterogeneity ---> 
-Single-cell RNA-sequencing (scRNA-Seq) is the leading technology to study 
-genome-wide transcriptional heterogeneity in cell populations that remains 
+Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
+transcriptional heterogeneity in cell populations that remains 
 otherwise undetected in bulk experiments [@Stegle2015; @Prakadan2017; 
-@Patange2018]. Its applications range from characterising cell types in 
+@Patange2018]. Existing applications range from characterising cell types in 
 immunity [@Lonnberg2017;  @Villani2017; @Zheng2017] and development 
-[@Ibarra-Soria2018; @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanism 
-for cell fate commitment events [@Goolam2016; @Ohnishi2014]. 
+[@Ibarra-Soria2018; @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms 
+for cell fate commitment [@Goolam2016; @Ohnishi2014]. 
+
+<!---
+
 Within a population of cells, transcriptional heterogeneity can be due a 
 mixture of possible causes. 
 On the broadest level, this heterogeneity can reflect the presence of cell 

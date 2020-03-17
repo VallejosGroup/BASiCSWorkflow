@@ -1,0 +1,110 @@
+\documentclass[9pt,a4paper,]{extarticle}
+
+\usepackage{f1000_styles}
+
+\usepackage[pdfborder={0 0 0}]{hyperref}
+
+\usepackage[numbers]{natbib}
+\bibliographystyle{unsrtnat}
+
+
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+
+% disable code chunks background
+%\renewenvironment{Shaded}{}{}
+
+% disable section numbers
+\setcounter{secnumdepth}{0}
+
+%% added by MLS, this is not in the F1000 style by default %%
+
+\hypersetup{unicode=true,
+            pdftitle={BASiCS workflow: a step-by-step analysis of expression variability using single cell RNA sequencing data},
+            pdfkeywords={Single-cell RNA sequencing, expression variability, transcriptional noise, differential expression testing},
+            colorlinks=true,
+            linkcolor=Maroon,
+            citecolor=Blue,
+            urlcolor=Orange,
+            breaklinks=true}
+
+%% End added by MLS %%
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+
+
+
+\begin{document}
+\pagestyle{front}
+
+\title{BASiCS workflow: a step-by-step analysis of expression variability using single cell RNA sequencing data}
+
+\author[1,2]{Nils Eling\thanks{\ttfamily eling@ebi.ac.uk}}
+\author[3]{Alan O'Callaghan}
+\author[1,2]{John C. Marioni}
+\author[3,4]{Catalina A. Vallejos\thanks{\ttfamily catalina.vallejos@igmm.ed.ac.uk}}
+\affil[1]{European Molecular Biology Laboratory, European Bioinformatics Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK}
+\affil[2]{Cancer Research UK Cambridge Institute, University of Cambridge, Li Ka Shing Centre, Cambridge, CB2 0RE, UK}
+\affil[3]{MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, EH4 2XU, UK}
+\affil[4]{The Alan Turing Institute, British Library, 96 Euston Road, London, NW1 2DB, UK}
+
+\maketitle
+\thispagestyle{front}
+
+\begin{abstract}
+Cell-to-cell gene expression variability is an inherent feature of complex
+biological systems. Single-cell RNA sequencing can be used to quantify this
+heterogeneity, but it is prone to strong technical noise. Here, we describe a
+step-by-step computational workflow which uses the BASiCS Bioconductor package
+to robustly quantify expression variability within and between known cell
+populations (such as experimental conditions or cell types). BASiCS provides
+an integrated framework for data normalisation, technical noise quantification
+and downstream analyses, whilst propagating statistical uncertainty across
+these steps. Within a single seemingly homogeneous cell population, BASiCS
+can be used identify highly variable genes that drive the heterogeneity
+within the population as well as lowly variable genes that might exhibit
+housekeeping-like behavior. BASiCS also provides a probabilistic rule to
+identify changes in expression variability between cell populations, while
+avoiding confounding effects related to differences in technical noise or in
+overall abundance. Using two publicly available datasets, we guide users
+through a complete pipeline which includes preliminary steps for quality
+control and data exploration using the scater and scran Bioconductor packages.
+Data for the first case study was generated using the Fluidigm@ C1 system, in
+which extrinsic spike-in RNA molecules were added in order to quantify
+technical noise. The second dataset was generated using a droplet-based
+system, for which spike-in RNA is not available. The latter analysis provides
+an example, in which differential variability testing reveals insights
+regarding a possible early cell fate commitment process.
+\end{abstract}
+
+\section*{Keywords}
+Single-cell RNA sequencing, expression variability, transcriptional noise, differential expression testing
+
+
+\clearpage
+\pagestyle{main}
+
+\hypertarget{introduction}{%
+\section{Introduction}\label{introduction}}
+
+Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide
+transcriptional heterogeneity in cell populations that remains
+otherwise undetected in bulk experiments \citep{Stegle2015, Prakadan2017, Patange2018}. Existing applications range from characterising cell types in
+immunity \citep{Lonnberg2017, Villani2017, Zheng2017} and development
+\citep{Ibarra-Soria2018, Wagner2018, Pijuan-Sala2019} to dissecting the mechanisms
+for cell fate commitment \citep{Goolam2016, Ohnishi2014}.
+
+{\small\bibliography{Workflow.bib}}
+
+\end{document}
