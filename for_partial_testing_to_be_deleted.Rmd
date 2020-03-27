@@ -123,17 +123,12 @@ well as to infer technical background noise [@Brennecke2013].
 
 <!-- next talk about UMIs and computational approaches ---> 
 
-
-
 Some computational methods aim to denoise the data prior to downstream analysis
 (e.g. via imputation). Alternatively, computational approaches can be designed
 to simultaneously quantify technical variabli
 
 was to quantify or attenuate technical noise in scRNA-seq assays. 
 Some are experimental: eg spike-ins or UMIs. Some others are computational. 
-
-
-
 
 <!--- Technical noise, normalisation and hvg/lvg analyses ---> 
 Moreover, technical noise inflates the observed cell-to-cell variability in gene
