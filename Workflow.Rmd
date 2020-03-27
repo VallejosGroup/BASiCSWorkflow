@@ -87,7 +87,7 @@ different reasons.
 On the broadest level, this heterogeneity can reflect the presence of distinct 
 expression profiles associated to cell subtypes or states which could be 
 characterised through clustering [@Kiselev2019]. 
-<!-- something about pseudotime trajectories --> 
+something about pseudotime trajectories [@Saelens2019]
 More subtle gene expression variability within a seemingly homogeneous cell 
 population can be due to deterministic or stochastic events, the later being 
 referred to as 'noise' [@Elowitz2002]. 
