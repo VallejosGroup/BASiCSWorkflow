@@ -75,7 +75,7 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-<!--- scRNA-Seq and the different types of heterogeneity ---> 
+<!--- scRNA-seq and the different types of heterogeneity ---> 
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
 transcriptional heterogeneity in cell populations that remains otherwise 
 undetected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
@@ -86,26 +86,25 @@ commitment [@Goolam2016; @Ohnishi2014].
 Transcriptional heterogeneity within a cell population can relate to different 
 underlying sources.
 On the broadest level, this heterogeneity can reflect the presence of distinct 
-expression profiles associated to cell subtypes or discrete states which could 
+expression profiles associated to cell subtypes or discrete states, which could 
 be identified through clustering [@Kiselev2019]. 
 Alternatively, cell-to-cell expression heterogeneity can be due to gradual 
 changes along biological processes that evolve over time (such as 
-development and differentiation) --- these can be characterised using pseudotime
-inference methods [@Saelens2019].
+development and differentiation), which
+can be characterised using pseudotime inference methods [@Saelens2019].
 More subtle expression variability within a seemingly homogeneous cell 
 population can be due to deterministic or stochastic events and is the focus 
-of this article. 
-The stochastic component of this variability is referred to as transcriptional 
-*noise* [@Elowitz2002; @Eling2019]. 
+of this article. The stochastic component of this variability is referred to as
+transcriptional *noise* [@Elowitz2002; @Eling2019]. 
 
 <!--- why is it challenging to study transcriptional noise? ---> 
 Transcriptional noise can arise from intrinsic and extrinsic sources of 
-variability. Classically, extrinsic noise is defined as stochastic fluctuations 
-in cellular components, which is induced by cells residing in different dynamic 
+variability. Classically, extrinsic noise is defined as a stochastic fluctuation 
+in cellular components induced by cells residing in different dynamic 
 states (e.g. cell size, cell cycle, metabolism, intra- and inter-cellular 
 signalling) [@Zopf2013; @Iwamoto2016; @Kiviet2014]. 
-Instead, intrinsic noise arises from stochastic effects on biochemical 
-processes such as transcription and translation [@Elowitz2002]. 
+In contrast, intrinsic noise arises from stochastic effects on biochemical 
+processes such as transcription and translation [@Elowitz2002].
 Intrinsic noise can be modulated by genetic and epigenetic modifications (such 
 as mutations, histone modifications, CpG island length and nucleosome 
 positioning) [@Eberwine2015; @Faure2017; @Morgan2018] and is usually measured 
@@ -115,43 +114,47 @@ these effects, as well as deterministic regulatory mechanisms [@Eling2019].
 These variability estimates can also be inflated by the technical noise that is 
 typically observed in scRNA-seq assays [@Brennecke2013].
 
+<!--- Briefly describe origins of technical noise --->
+<!--- reference other approaches to tackle technical issues (scVI, scran, seurat) --->
 Different strategies have been implemented to quantify or attenuate technical
 noise in scRNA-seq experiments. For example, external RNA spike-in molecules 
-(such as the ones introduced by the External RNA Controls Consortium, ERCCs 
+(such as the ones introduced by the External RNA Controls Consortium, ERCC 
 [@Rna2005]) can be added to each cell’s lysate. Spike-ins can be used to inform
 quality control steps [@McCarthy2017], data normalisation [@Vallejos2017] as 
-well as to infer technical background noise [@Brennecke2013]. 
+well as to infer technical background noise [@Brennecke2013].
 
 
 
 <!--- BASiCS ---> 
+<!--- what technical issues? should explain/list in previous para --->
 To address these technical issues, the `r Biocpkg("BASiCS")` Bioconductor 
 package estimates gene- and cell-specific model parameters that can be used to, 
-for example, normalize raw scRNA-Seq counts and to detect highly and lowly 
+for example, normalize raw scRNA-seq counts and to detect highly and lowly 
 variable genes [@Vallejos2015BASiCS]. 
 `BASiCS` is a hierarchical Bayesian framework that propagates statistical 
-uncerstainty into down-stream analysis and allows the decomposition of total 
-variance into a biological and technical part by incorporating spike-in reads 
-[@Vallejos2015]. Furthermore, `BASiCS` has been extended to perform 
+uncerstainty into down-stream analyses, and allows the decomposition of total 
+variance into biological and technical components by incorporating spike-in 
+reads [@Vallejos2015]. Furthermore, `BASiCS` has been extended to perform 
 differential mean expression and differential variability testing 
 [@Vallejos2016].
 
 
 <!--- Differential analyses ---> 
 <!--- add reference to 11 challenges paper, flexible changes in expression ---> 
+<!-- DE testing isn't always between (2) conditions (blocking, continuous, etc) -->
 Since the era of RNA sequencing, methods for differential expression testing 
-of transcript counts across two conditions have been developed 
+of transcript counts across conditions have been developed 
 [@Anders2010; @Robinson2009]. 
 Due to high technical variability and sparsity in scRNA-seq data, new 
-approaches were developed for differential expression testing specifically 
+approaches were developed for differential expression testing 
 for scRNA-seq data [@Katayama2013; @Kharchenko2014; @Delmans2016]. 
 In contrast to bulk samples, scRNA-seq measures variations in gene expression 
-across a population of cells and can therefore be used to test for changes in 
+across a population of cells, and can therefore be used to test for changes in 
 expression variability between two conditions. 
-For this, `BASiCS` compares the gene-specific over-dispersion parameters 
+To do this, `BASiCS` compares the gene-specific over-dispersion parameters 
 between two conditions. These parameters are independent of technical noise 
-and can be used as proxy for biolgocial variability [@Vallejos2016]. 
-Similar to the mean-variability trend observed for normalized scRNA-Seq data 
+and can be used as proxy for biological variability [@Vallejos2016]. 
+Similar to the mean-variability trend observed for normalized scRNA-seq data 
 [@Brennecke2013], the estimates for over-dispersion parameters decrease with 
 mean expression [@Vallejos2016].
 To correct for this, BASiCS has been extended to model the mean-variability 
@@ -170,13 +173,13 @@ We highlight the use of the `r Biocpkg("scater")` and `r Biocpkg("scran")`
 Bioconductor packages to perform initial quality control and low-level analysis 
 [@McCarthy2017; @Lun2016], which is comparable to analyses performed using 
 `BASiCS`. Two case studies exemplify the use of `BASiCS` for non-UMI and UMI 
-scRNA-Seq data. In the first case, `BASiCS` can be used to detect highly and 
-lowly variable genes and to obtain robust, gene-specific estimates to assess 
+scRNA-seq data. In the first case, `BASiCS` can be used to detect highly and 
+lowly variable genes and to obtain robust, gene-specific estimates to assess
 biological variability in naive CD4^+^ T cells 
 [@Martinez-jimenez2017]; for a similar workflow see [@Kim2019].
 Furthermore, we compare naive to activated CD4^+^ T cells to highlight the use 
 of `BASiCS` to test for changes in mean expression and expression variability.
-In the second case, we use droplet-based scRNA-Seq data to detect more subtle 
+In the second case, we use droplet-based scRNA-seq data to detect more subtle 
 transcriptional changes during embryonic somitogenesis [@Ibarra-Soria2018]
 
 \newpage
@@ -195,7 +198,7 @@ transcriptional changes during embryonic somitogenesis [@Ibarra-Soria2018]
   differential mean expression and differential variability testing.
 
 3. [10X Genomics data](#droplet-data): We highlight the use of `BASiCS` for 
-  scRNA-Seq data that do not contain technical spike-in transcript. 
+  scRNA-seq data that do not contain technical spike-in transcript. 
   In this case, technical noise is estimated via experimental replication.
   Similar to the CD4^+^ T cells case, we perform differential mean expression 
   and differential variability testing to detect early cell fate decision events 
@@ -208,41 +211,42 @@ knitr::include_graphics("figure/Overview.png")
 # Methods {#methods}
 
 In this workflow, we use a number of Bioconductor and CRAN packages for 
-different parts of the analyses. 
-Here, we will briefly highlight the main functionalities of these packages 
-from a users perspective.
+different parts of the analyses. Here, we will briefly highlight the main 
+functionalities of these packages from a user's perspective.
 
-The `r Biocpkg("SingleCellExperiment")` Bioconductor package offers a S4 
-class container to store scRNA-Seq count data and their associated gene- and 
+The `r Biocpkg("SingleCellExperiment")` Bioconductor package offers an S4 
+class container to store scRNA-seq count data and their associated gene- and 
 cell-specific metadata. 
 Throughout this workflow, we perform analyses using a `SingleCellExperiment` 
 object that contains (at least) the raw expression counts, gene identifiers, 
 batch information and cell identifiers.
-The `SingleCellExperiment` function uses a `r Biocpkg("SummarizedExperiment")` 
-and takes a the raw expression counts in form of a list, and the cell- and 
-gene-specific metadata in form of data frames. 
+The `SingleCellExperiment` package uses `r Biocpkg("SummarizedExperiment")`,
+a container used in many Bioconductor packages to contain tabular biological 
+data. The `SingleCellExperiment` function takes a list of assays taken
+of the samples, usually including the raw expression counts, and the cell- and 
+gene-specific metadata in the form of `data.frame`s.
 
-The `r Biocpkg("scater")` Bioconductor package has been developed to facilitate 
-the handling of scRNA-Seq data [@McCarthy2017].
+The `r Biocpkg("scater")` Bioconductor package was developed to facilitate 
+the handling of scRNA-seq data [@McCarthy2017].
 Its main functions include the calculation of quality control (QC) metrics, 
-the visualization of such metrics and expression counts, and the normalization 
+the visualization of such metrics and expression counts, and the normalisation 
 of expression counts.
 We will primarily use the `calculateQCMetrics` function to calculate cell- 
 and gene-specific QC metrics, the `plotPCA` function to visualize QC 
-metrics, metadata and gene expression, and the `normalize` function to 
-pre-normalize expression data.
+metrics, metadata, and gene expression, and the `logNormCounts` function to 
+normalize expression data.
 
 The `r Biocpkg("scran")` Bioconductor package offers a variety of functions 
-for low-level scRNA-Seq data analysis [@Lun2016].
-While it contains function for batch correction, doublet detection, estimation 
-of cell cycle states, we will use it primarily for pre-normalization in junction
-with the `scater` package [@Lun2016pooling] and for modelling the mean-variance 
+for low-level scRNA-seq data analysis [@Lun2016].
+While it contains function for doublet detection, and estimation 
+of cell cycle states, we will use it primarily for normalisation in conjunction
+with the `scater` package [@Lun2016pooling], and for modelling the mean-variance 
 trend across all genes.
-Using the `trendVar` and `decomposeVar` functions will be used to fit a 
-mean-dependent trend to the gene-specific variances before decomposing the 
-overall variance into technical and biological components. 
-Furthermore, we will use the `DM` function to calculate the distance of 
-gene-specific squared coefficients of variation (CV2) to a rolling median 
+The `trendVar` and `decomposeVar` functions will be used to fit a 
+trend between the gene-specific variances and gene-specific mean expression,
+before decomposing the overall variance into technical and biological 
+components. Furthermore, we will use the `DM` function to calculate the distance
+of gene-specific squared coefficients of variation (CV2) to a rolling median 
 along mean expression [@Kolodziejczyk2015cell].
 
 The `r Biocpkg("BASiCS")` Bioconductor package contains an assembly of 
@@ -262,14 +266,16 @@ X_{ij}|\mu_i,\nu_j&\sim{}\text{Poisson}(\nu_j\mu_i)\\
 $$
 
 where $\mu_i$ explains the gene's mean expression, $\nu_j$ the technical effect 
-dominated by the mRNA capture efficiency $s_j$ and the unexplained technical 
+characterised by the mRNA capture efficiency $s_j$ and the unexplained technical
 noise parameter $\theta$. 
-Here, $\phi_j$ is the cell-specifc size factor and $\rho_{ij}$ the biological 
-random effect incoroporating the over-dispersion hyper-parameter $\delta_i$.
-It is important to note that, in the further analysis, $\mu_i$ represents the
+<!-- Here, $\phi_j$ is the cell-specifc size factor and  -->
+Here, $\rho_{ij}$ the biological 
+random effect fluctuating around the gene-specific over-dispersion 
+hyper-parameter $\delta_i$.
+It is important to note that, in further analyses, $\mu_i$ represents the
 mean expression and $\delta_i$ the biological over-dispersion of each gene.
 
-Due to a strong association between the mean expression and the biological 
+Due to a strong association between mean expression and biological 
 over-dispersion, the model has been extended to correct for such confounding 
 effect. To this end, the prior distribution for the over-dispersion parameters 
 has been changed to:
@@ -281,10 +287,11 @@ $$
 where $\text{f}(\mu_i)$ describes a smooth regression trend between the 
 over-dispersion and the mean expression parameters.
 This extension introduced the residual over-dispersion parameters 
-$\epsilon_i=\delta_i-\text{f}(\mu_i)$ that do not scale with mean expression [@Eling2018].
+$\epsilon_i=\delta_i-\text{f}(\mu_i)$ that do not scale with mean expression
+[@Eling2018].
 
 From a data analysis perspective, the `BASiCS_MCMC` function is the heart of 
-the `BASiCS` package and can be run in four different settings (see Table 1). 
+the `BASiCS` package, and can be run in four different settings (see Table 1). 
 
 : Four settings that can be used to run the `BASiCS_MCMC` function.
 
@@ -298,27 +305,36 @@ No spike-ins available  `WithSpikes = FALSE`  `WithSpikes = FALSE`
 
 If spike-in counts are availabe and should be used to estimate technical noise,
 the parameter `WithSpikes` is set to `TRUE` (default).
-If the regression between mean expression and over-dispersion should be 
+If the regression between over-dispersion and mean expression should be 
 performed, the `Regression` parameters is set to `TRUE` (default).
 If the user decides to set `Regression = FALSE`, `BASiCS` will not estimate 
-the regression trend and does not supply the residual over-dispersion 
+the regression trend, and will not supply the residual over-dispersion 
 parameters $\epsilon_i$.
 
 The `BASiCS_MCMC` function returns a `BASiCS_Chain` object, which can be used 
-for further doenstream analysis as indicated in this workflow.
-
-The `r CRANpkg("coda")` CRAN package contains a variety of functions to assess 
-the convergence of a sampled MCMC chain. 
+for further downstream analyses, many of which are detailed in this workflow.
+These objects contain draws from Markov chain Monte Carlo (MCMC) samplers,
+which are used to infer the posterior distribution over the model parameters
+[@Smith1993].
+Briefly, the posterior distribution quantifies how probable different parameter 
+values are given the observed data. However, before assessing the posterior
+distribution, we must first ensure that the MCMC sampler has converged to
+its stationary distribution, and has sampled efficiently from this distribution
+[@Cowles1996]. If these conditions are not met, then the estimated parameters
+may be inaccurate. The `r CRANpkg("coda")` CRAN package contains a variety of 
+functions to assess the convergence of a sampled MCMC chain. 
 To use `coda` functions, the individual chains returned by `BASiCS` need to be 
 transformed into a MCMC object that `coda` recognises using the `coda::mcmc` 
-function. `BASiCS` offers a number of functions to visualize the convergence 
-of MCMC chains. Nevertheless, we will use the `effectiveSize` function from 
-`coda` to compute the effective sample size of individual MCMC chains.
+function. `BASiCS` also offers a number of functions to visualize and assess the 
+convergence of MCMC chains. In particular, we will use 
+`BASiCS_EffectiveSize` and `BASiCS_DiagPlot` to calculate and visualise the
+effective sample size generated by the MCMC samplers.
+
 
 The `r Biocpkg("goseq")` Bioconductor package offers functions to detect the 
 enrichment of gene ontologies (GOs) among user-specified gene sets [@Young2010].
 Furthermore, `goseq` corrects for gene length biases, which is useful for full 
-length scRNA-Seq data as highlighted in the first section. 
+length scRNA-seq data as highlighted in the first section. 
 In this workflow, we will use `goseq` to detect GO enrichment among 
 differentially expressed sets of genes.
 
@@ -379,11 +395,10 @@ if (!file.exists("rds/genenames.rds")) {
 ```
 
 For the second task, and to perform GO enrichment analysis, we further collected 
-the gene length information of each gene.
-This can be extracted from the `r Biocpkg("EnsDb.Mmusculus.v79")` annotation 
-package.
-This resource offers gene annotations, such as exon positions and promoters, for 
-the Ensembl data base.
+the gene length for each gene. This can be extracted from the
+`r Biocpkg("EnsDb.Mmusculus.v79")` annotation package.
+This resource offers gene annotations such as exon positions and promoters for 
+the Ensembl database.
 
 ```{r gene-length}
 if (!file.exists("rds/genelength.rds")) {
@@ -391,12 +406,13 @@ if (!file.exists("rds/genelength.rds")) {
   exons_list <- exonsBy(EnsDb.Mmusculus.v79, by = "gene")
 
   # Calculate summed length of all exons
-  genelength <- unlist(lapply(
+  genelength <- vapply(
     exons_list,
     function(x) {
       sum(width(reduce(x)))
-    }
-  ))
+    },
+    numeric(1)
+  )
   saveRDS(genelength, "rds/genelength.rds")  
 }
 genelength <- readRDS("rds/genelength.rds")
@@ -421,13 +437,13 @@ For the full list of packages used, please see the [Session Info](#session-info)
 
 # C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
 
-For the first case study, we will use scRNA-Seq data of CD4^+^ T cells, which 
+For the first case study, we will use scRNA-seq data of CD4^+^ T cells, which 
 were processed using the C1 Single-Cell Auto Prep System (Fluidigm^®^) using 
 10–17 $\mu{}m$ integrated fluidic circuits (IFCs). 
 Martinez-Jimenez _et al._ profiled naive and activated CD4^+^ T cells from 
 young and old animals across two mouse strains to test for changes in 
 expression variability that occur during organismal ageing 
-[@Martinez-jimenez2017]. Naive or effector memory CD4^+^ T cells were extracted 
+[@Martinez-jimenez2017]. They extracted naive or effector memory CD4^+^ T cells
 from spleens of young or old animals and filtered using either 
 magnetic-activated cell sorting (MACS) or fluorescence activated cell sorting 
 (FACS) (labelled as MACS-purified Naive, FACS-purified Naive or FACS-purified 
@@ -438,31 +454,30 @@ CD4^+^ T cells.
 In addition to profiling naive CD4^+^ T cells, the authors stimulated half 
 of the naive cells for 3 hours using _in vitro_ antibody stimulation (labelled 
 as Active).
-Naive as well as activated CD4^+^ T cells were processed using the 
+They processed naive as well as activated CD4^+^ T cells using the 
 C1 Fluidigm^®^ system to capture and lyse cells, and to reverse transcribe 
 and amplify mRNA prior to sequencing.
-Cells were isolated from B6 (C57BL/6J, _Mus musculus domesticus_) and CAST 
-(_Mus musculus castaneus_) animals to profile the evolutionary conservation 
+The authors isolated cells from B6 (C57BL/6J, _Mus musculus domesticus_) and
+CAST (_Mus musculus castaneus_) animals to profile the evolutionary conservation
 of transcriptional dynamics during ageing.
-External spike-in RNA has been added to quantify technical variability across 
-all cells. All experiments were performed in replicates (also referred to as 
-batches) to control for batch effects.
+Additionally, the authors added external spike-in RNA to aid in quantifying
+technical variability across all cells. They performed all experiments in
+replicates (also referred to as batches) to control for batch effects.
 
 We will begin the workflow with obtaining the data before quality control, 
 running the BASiCS model, and performing further downstream analysis.
 
 ## Obtaining the data
 
-The raw counts of the full dataset can be obtain from ArrayExpress under the 
+The raw counts of the full dataset can be obtained from ArrayExpress under the 
 accession number 
 [E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
 In this dataset, the column names contain the library identifier of the original 
-experiment while the row names of the matrix store the individual gene names. 
-The dataset contains reads mapping to ERCC spike-in genes [@Rna2005], which 
+experiment, while the row names of the matrix store gene names. 
+The dataset contains reads mapped to ERCC spike-in genes [@Rna2005], which 
 `BASiCS` uses to estimate and remove technical noise.
 
 ```{r naive-data}
-
 if (!file.exists("downloads/raw_data.txt")) {
   # Download raw counts file
   website <- "https://www.ebi.ac.uk/"
@@ -532,14 +547,12 @@ the different mice used (*Individuals*), and the purification method used
 ## Filtering the data
 
 
-**TODONE: update with altExp**
-
 In the next step, we will first generate a `r Biocpkg("SingleCellExperiment")` 
 (SCE) object that contains all cells and that stores cell- and gene-specific 
 metadata.
-This data class offers convenient ways to subset, and to set and retrieve cell- 
-and gene-specific information.  
-We will also store information on the spike-in molecules using the `altExp` 
+This data class offers convenient ways to subset, set and retrieve cell- 
+and gene-specific information. We will also store information on the spike-in
+molecules using the `altExp` 
 accessor. This allows us to store alternative experimental assays other
 than endogenous genes --- in this case, technical (spike-in) genes.
 
@@ -560,9 +573,9 @@ altExp(sce_CD4_all, "spike-ins") <- SummarizedExperiment(
 
 For further downstream analysis, we select naive and activated CD4^+^ T cells 
 from young B6 animals that were obtained using the MACS-based cell selection.
-It is crucial that proper quality control (QC) and gene filtering is performed 
-before running BASiCS, and, in general, before performing meaningful 
-computational analysis on biological data.
+It is crucial that proper quality control (QC) and filtering is performed 
+before running BASiCS, and, in general, before performing any computational
+analysis on biological data.
 
 ```{r naive-activated-CD4-SCE-object}
 ind_select <- sce_CD4_all$Strain == "Mus musculus domesticus" &
@@ -575,37 +588,37 @@ Prior to cell-specific quality control, we will remove all genes that are not
 detected in at least 2 cells across both conditions.
 Furthermore, we remove genes that are not expressed with an average count of 1 
 across all cells.
-These thresholds need to be set dataset-specifically and careful gene-specific 
-quality metrics need to be closely examined as suggested by the 
+These thresholds need to be set specifically for each dataset, and careful
+gene-specific quality metrics need to be closely examined as suggested by the 
 `r Biocpkg("SimpleSingleCell")` Bioconductor workflow [@Lun2016].
 
 ```{r gene-selection}
-# Remove genese)
+# Remove genes
 ind_expressed <- rowSums(counts(sce_naive_active) > 0) > 1 &
   rowMeans(counts(sce_naive_active)) >= 1
 sce_naive_active <- sce_naive_active[ind_expressed, ]
 ```
 
 In the next step, we will use the `r Biocpkg("scran")` and 
-`r Biocpkg("scater")` Bioconductor packages for initial normalization and 
+`r Biocpkg("scater")` Bioconductor packages for initial normalisation and 
 visualization of quality metrics [@Lun2016,@McCarthy2017].
-The normalization at this point is needed to avoid biases in the visualization 
+The normalisation at this point is needed to avoid biases in the visualization 
 due to differences in the mRNA content between cells.
-In line with the normalization strategy of BASiCS, we use the spike-in reads 
-for normalization.
+In line with the normalisation strategy of BASiCS, we use the spike-in reads 
+for normalisation.
 
-```{r pre-normalization}
-# Pre-normalization of data for visualization purposes
+```{r pre-normalisation}
+# Pre-normalisation of data for visualization purposes
 sce_naive_active <- computeSpikeFactors(sce_naive_active, spikes = "spike-ins")
 sce_naive_active <- logNormCounts(sce_naive_active)
 ```
 
 The `Biocpkg("SimpleSingleCell")` Bioconductor workflow provides an extensive 
-overview on important aspects of how to perform low-level analysis of scRNA-Seq 
+overview on important aspects of how to perform low-level analysis of scRNA-seq 
 data, including quality control [@Lun2016].
 The `calculateQCMetrics` function of the `scater` package can be used to 
 calculate a number of cell- and gene-specific quality metrics.
-Furthermore, `scater` offers the `runPCA` function to compute a principal 
+Furthermore, `scater` offers the `runPCA` function to perform principal 
 component analysis (PCA) across all cells.
 
 ```{r scater-QC-metrics}
@@ -621,22 +634,22 @@ sce_naive_active <- scater::runPCA(sce_naive_active)
 ```
 
 For the CD4^+^ T cell dataset, the authors removed empty capture sites and 
-sites which contained multiple cells or debris as observed by visual inspection. 
+sites containing multiple cells or debris, as observed by visual inspection. 
 Furthermore, they removed cells which had fewer than 1,000,000 total reads, 
 cells where less than 20% of reads mapped to endogenous genes, cells in which 
-less than 1,250 or more than 3,000 genes were detected and cells with more than 
+less than 1,250 or more than 3,000 genes were detected, and cells with more than 
 10% or less than 0.5% reads mapping to mitochondrial genes 
 [@Martinez-jimenez2017].
 
 Since these data have been quality filtered in the original publication, we will 
 only visualize the distribution of quality metrics across the cells.
 The highlighted quality metrics can otherwise be used to identify low quality 
-cells.
-These metrics include (among others): number of endogeneous genes detected per 
-cell, total number of reads per cell, the fraction of reads mapping to spike-in 
-and endogeneous genes.
-The main aim is to identify broken or dying cells, and possibly empty wells.
-For an extenive discussion on quality metrics for scRNA-Seq data, see Ilicic 
+cells. These metrics include: number of endogeneous genes 
+detected per cell, total number of reads per cell, the fraction of reads mapping
+to spike-in and endogeneous genes.
+The main aim is to identify broken or dying cells, cells for which a very
+small quantity of mRNA was captured, and possibly empty wells.
+For an extenive discussion on quality metrics for scRNA-seq data, see Ilicic 
 *et al.* [@Ilicic2016].
 
 The activation status and batch information for each individual cell of the 
@@ -649,16 +662,17 @@ p_batch <- scater::plotPCA(sce_naive_active, colour_by = "Individuals")
 multiplot(p_stimulus, p_batch, cols = 2)
 ```
 
-The data splits into two conditions: naive and activated CD4^+^ T cells.
-Furthermore, we do not detect batch effects or outlier cells based on PCA 
-visualization.
+The cells split into two conditions: naive and activated CD4^+^ T cells.
+Furthermore, we do detect neither batch effects nor outlier cells based on PCA 
+visualisation
 
+<!-- What is a doublet? -->
 In the next step, we will visualize selected cell-specific quality metrics 
-overlayed on the PCA.
+overlayed on the principal components.
 Figure \@ref(fig:no-genes_total-counts) highlights the number of endogeneous 
 genes detected per cell and the total number of counts.
-Both metrics can be used to detect empty wells or broken cells (low values) 
-and potentially doublets (high values).
+Both of these metrics can be used to detect empty wells or broken cells 
+(low values) and possible doublets (high values).
 
 ```{r no-genes-total-counts, fig.height=2, fig.cap="Visualization of the number of biological genes detected per cell (left) and the total number of reads per cell (right).", fig.pos='h'}
 # Visualize number of endogeneous genes detected
@@ -678,9 +692,8 @@ multiplot(p_total_features, p_total_counts, cols = 2)
 ```
 
 We detect a higher number of expressed genes and a higher total read count in
-activated cells. 
-Furthermore, cells within each group show a wide distribution of these quality 
-measures without clear outlying cells.
+activated cells. Furthermore, cells within each group show a wide distribution
+of these quality measures, without clear outlying cells.
 
 A widely used quality visualisation is to plot the total number (or fraction) of 
 spike-in counts versus the total number (or fraction) of endogeneous counts 
@@ -703,8 +716,7 @@ non-mapped and intronic reads), we can solely filter cells based on the total
 number of endogeneous counts (assuming equal numbers of spike-in molecules per 
 well). Nevertheless, we remove two cells that showed unusually low number of 
 reads mapping to endogeneous genes. We indicate the threshold used for filtering
-on the plot using a dashed
-line.
+on the plot using a dashed line.
 
 ```{r}
 # Remove two cells that appear to be outliers
@@ -713,10 +725,9 @@ sce_naive_active <- sce_naive_active[, ind_retain]
 ```
 
 It is crucial that an in-depth quality control is performed to remove 
-low-quality or outlying cells.
-Furthermore, such a quality control step can help understand where possible 
-confounding effects arise that can influence the interpretation the results 
-of downstream analyses.
+low-quality or outlying cells. Furthermore, these quality control steps can
+help users to understand possible confounding effects that may influence
+the interpretation of downstream analyses.
 
 ## Calculating the molecule count for spike-in genes
 
@@ -744,15 +755,16 @@ ERCC_conc <- read.table(
 )
 ```
 
-The concentration is given in units of attomoles per $\mu{}l$. 
-We will first calculate the concentration in moles per $\mu{}l$.
+The concentration is given in units of $aM\mu{}l^{-1}$. 
+We will first calculate the concentration in $M\mu{}l^{-1}$.
 
 ```{r}
 # Moles per micro litre
 ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
 ```
 
-From this, we can calculate the molecule count per $\mu{}l$ using the fact that 1 mole is equal to $6.02214076\cdot10^{23}$ molecules.
+From this, we can calculate the molecule count per $\mu{}l$ using the fact that
+1 mole is equal to $6.02214076 \times 10^{23}$ molecules.
 
 ```{r}
 # Molecule count per micro litre
@@ -767,9 +779,9 @@ The actual molecule number of spike-ins can therefore be calculated per $\mu{}l$
 ERCC_count <- ERCC_countmul / 50000
 ```
 
-The volume per well in the IFC chip is 9 nano litre 
+The volume per well in the IFC chip is 9 $nl$
 [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9).
-We therfore need to calculate the number of molecules in 9 nano litre reaction mix.
+We therfore need to calculate the number of molecules in 9 $nl$ reaction mix.
 
 ```{r}
 ERCC_count_final <- ERCC_count * 0.009
@@ -777,8 +789,12 @@ ERCC_count_final <- ERCC_count * 0.009
 
 Depending on the technology used to capture and process single cells, and the 
 dilution of the spike-in mix, the absolute number of spike-ins per reaction can 
-change.
-The absolute amount of spike-ins per reaction is purely a scale ... 
+change. The absolute amount of spike-ins per reaction is only used to calibrate
+the scale of the capture efficiency normalisation parameter $\nu_j$. Since the
+true concentration of each spike-in molecule is known, BASiCS uses the observed
+counts of each molecule for each cell to estimate the . Differences in the 
+global scale across all wells of the level of spike-ins molecules thus do not 
+affect the cell-to-cell ratios of $\nu_j$.
 BASiCS assumes that the quantity of spike-ins is consistent in each well in
 each experiment. While the quantity used must remain constant between wells and
 experiments, the scale does not affect the results, provided the spike-ins
@@ -786,9 +802,6 @@ are at a reasonable level. In particular, they should not be in such a low
 concentration that they are rarely detected, and they should not be at such
 a high concentration that the majority of the sequencing reads map to the 
 spike-in molecules.
-
-**TODONE: Add explanation that the number of spike-ins need to be consistent 
-across all wells and experiments but that the scale does not effect the results.**
 
 We can now use the molecule count to prepare the BASiCS data object.
 To incorporate the spike-in molecule counts within the 
@@ -897,15 +910,17 @@ estimates of model parameters.
 ### Running the MCMC
 
 It is recommended to run the `BASiCS_MCMC` sampler for at least 40,000 
-iterations to assure convergence.
+iterations to ensure convergence.
 However, if datasets are large and each condition contains hundreds of cells 
 from a homogeneous population, BASiCS can be run with fewer (e.g. 20,000) 
 iterations (see [10X Genomics data](#droplet-data)).
-However, for convenience, `BASiCS_MCMC` can be run with very few (e.g 1,000) 
+For convenience, `BASiCS_MCMC` can be run with very few (e.g 1,000) 
 iterations to test whether the sampler breaks.
+<!-- what do we mean by "breaks"? -->
 
-Here, we run the MCMC sampler for 40,000 iterations, using an initial 20,000
-iterations as burn in an a thinning step of 20 iterations.
+Here, we run the MCMC sampler for 40,000 iterations, discaring the initial 
+20,000 samples as burn-in, and using thinning factor of 20,
+such that only each 20^th sample is stored for later use.
 Since the dataset contains spike-in genes, we run the sampler with 
 `WithSpikes = TRUE` and we also want to correct for the mean-variance trend 
 using `Regression = TRUE`. For further information see [Methods](#methods).
@@ -941,19 +956,19 @@ MCMC_naive <- readRDS("rds/MCMC_naive.rds")
 ```
 
 The `BASiCS_Chain` object contains a list of matrices that store the 
-individual MCMC draws per parameter. Each matrix contains the cell- or 
-gene-specific parameters in the columns and the MCMC draws in the rows.
+individual MCMC samples per parameter. Each matrix contains the cell- or 
+gene-specific parameters in the columns and the MCMC samples in the rows.
 `BASiCS` provides the `displayChainBASiCS` function to access the cell- or 
 gene-specific parameters.
-As an example, we access the first 10 draws for $\mu_i$ of the first 10 genes.
+As an example, we access the first 2 samples for $\mu_i$ of the first 10 genes.
 
 ```{r displayChainBASiCS}
 displayChainBASiCS(MCMC_naive, Param = "mu")[1:2, 1:10]
 ```
 
-We ran the MCMC samples for 40,000 iterations, with 20,000 iterations and a
-thining value of 20. This results in the storage of 1000 draws for each 
-parameter in the `BASiCS_Chain` object:
+Given that we ran the MCMC samples for 40,000 iterations, discarding
+the first 20,000 samples as burn-in, and using a thining factor of 20,
+we obtained 1000 draws for each parameter, stored in the `BASiCS_Chain` object:
 
 ```{r dim-displayChainBASiCS}
 dim(displayChainBASiCS(MCMC_naive, Param = "mu"))
@@ -962,21 +977,29 @@ dim(displayChainBASiCS(MCMC_naive, Param = "mu"))
 ### Validating the MCMC convergence {#naive-convergence}
 
 In the next step, we need to validate the convergence of the chain to ensure 
-robust downstream analysis. There are multiple ways to visualize and 
-test the convergence of MCMC chains (see [@CowlesCarlin1996], 
-[@BrooksGelman1998]).
+robust downstream analysis. Specifically, we want to ensure that the chain
+converged to its stationary distribution before the burn-in period ended,
+and after burn-in that it sampled efficiently from this stationary distribution.
+There are multiple ways to visualize and 
+assess the convergence of MCMC chains
+[@CowlesCarlin1996; @BrooksGelman1998].
 The `r CRANpkg("coda")`
 contains diagnostic and plot functions for this task ([@CODA2006]).
+
 Here, we highlight two ways of assessing the convergence of the MCMC sampler by 
-(i) plotting trace plots, sample densities and the chain autocorrelation, and 
+(i) plotting trace plots, sample densities and autocorrelation function, and 
 (ii) plotting the the effective sample size across multiple parameters.
-Trace plots show the sampled parameter values over time. A chain converged when 
-the sample density (in form of a histogram) shows a unimodal distribution.
-The autocorrelation of an MCMC chain is defined as the Pearson correlation 
-between the chain and a time-delayed version of the chain. 
-The difference in time-points is referred to as 'lag'.
-The chain converged if the autocorrelation (except for lag = 1) is small 
-(e.g. < 0.25).
+Trace plots show the sampled parameter values over time. A chain is likely to
+have converged when the sample density (in form of a histogram) shows a unimodal
+distribution. The autocorrelation of an MCMC chain is defined as the Pearson 
+correlation between the chain and time-delayed versions of the chain. 
+The difference in time-points is referred to as 'lag'. This helps to assess
+whether a chain has sampled efficiently from its stationary distribution.
+High autocorrelation indicates that the obtained samples are not independent,
+and indicates that we may not have enough information about the posterior
+distribution of the parameters.
+The chain is likely to be sampling efficiently if the autocorrelation
+(except for lag = 1) is small (e.g. < 0.25).
 
 Effective sample size is a measure of the number of independent samples 
 generated for a model parameter [@Gelman2014]. Simply, it is defined as the 
@@ -987,7 +1010,9 @@ $$
   \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
 $$
 where $n$ is the number of samples and $\rho(k)$ is the autocorrelation at lag 
-$k$. We can visualise this parameter using two 
+$k$. We can visualise this parameter by plotting histograms of the effective
+sample size over all genes, and by plotting effective sample size against
+mean expression or over-dispersion for all genes.
 
 ```{r convergence-naive}
 # Convergence of mean expression parameters
@@ -1027,11 +1052,11 @@ BASiCS_DiagPlot(MCMC_naive, Param = "s")
 ```
 
 We can see several genes show very low sample size for mu. We can identify 
-these using functions from the `CRANpkg(coda)`.
+these using `BASiCS_EffectiveSize`.
 
 ```{r low-ess-genes}
 
-ess <- effectiveSize(mcmc(displayChainBASiCS(MCMC_naive, "mu")))
+ess <- BASiCS_EffectiveSize(MCMC_naive, Param = "mu")
 low_ess_genes <- names(ess[ess < 100])
 hist(
   ess,
@@ -1043,17 +1068,19 @@ abline(v = 100, lty = "dashed", col = "grey60")
 head(low_ess_genes)
 ```
 
-Given that the sample has generated less than 100 effectively independent 
+Given that the sample has generated less than 100 independent 
 samples for these genes, there may not be sufficient posterior information to 
 reliably calculate differences in mean expression, and it would be appropriate 
-to exclude these genes from downstream analysis.
+to exclude these genes from downstream analysis. As we will see later,
+`BASiCS_TestDE` automatically excludes these genes from tests of differential
+expression.
 
 ## Downstream analysis
 
-In this section, we will highlight the use of BASiCS when cells of a single 
-condition are analysed.
-The downstream analysis includes: normalization, variance decomposition, 
-detection of highly and lowly variable genes and the use of gene-specific 
+In this section, we will highlight the use of BASiCS when analysing 
+cells of a single condition.
+This includes normalisation, variance decomposition, 
+detection of highly and lowly variable genes, and the use of gene-specific 
 parameters as interpretable variability measures.
 Furthermore, we will compare the results in the individual steps with results 
 obtained using the `Biocpkg("scran")`.
@@ -1062,20 +1089,22 @@ obtained using the `Biocpkg("scran")`.
 
 Posterior estimates of cell-specific parameters can be used to normalize the 
 data and correct for biases in mRNA content [@Vallejos2017].
-To perform normalization, BASiCS provides the `BASiCS_DenoisedCounts` and the 
+To perform normalisation, BASiCS provides the `BASiCS_DenoisedCounts` and the 
 `BASiCS_DenoisedRates` functions. 
 *TODO: Add more details on the DenoisedCounts function*
 These functions take the `SingleCellExperiment` and `BASiCS_Chain` objects as 
 inputs.
 
-```{r normalization-naive}
+```{r normalisation-naive}
 counts_denoised <- BASiCS_DenoisedCounts(Data = data_naive, Chain = MCMC_naive)
 ```
 
 Alternatively, *TODO: add the DenoisedRates*
 
 These normalized counts can be further used for dimensionality reduction and
-clustering as explained elsewhere *TODO: ref,ref*.
+clustering as explained elsewhere *TODO: ref,ref*. Alternatively, a 
+dimensionality reduction scheme that operates directly on the count matrix could
+be used (GLMPCA, scVI).
 
 ### Lowly and highly variable gene detection
 
@@ -1788,7 +1817,7 @@ mean expression and expression variability in parallel.
 For this, BASiCS compares the residual over-dispersion parameters, which do 
 not scale with mean expression, between the two conditions.
 Here, we filter on genes that are lowly expressed in both conditions and, as 
-explained above, remove genes for with the MCMC sampler leads to a low 
+explained above, remove genes for which the MCMC sampler obtained a low 
 effective sample size:
 
 ```{r res-over-disp-filtering}
@@ -1937,17 +1966,17 @@ transcriptional changes during differentiation.
 
 # Differential testing using differentiating cells (two group, droplet-based example) {#droplet-data}
 
-With the development of droplet-based scRNA-Seq [@Klein2015, @Macosko2015] 
+With the development of droplet-based scRNA-seq [@Klein2015, @Macosko2015] 
 lead to a strong increase in the number of cells that can be profiled per 
 experiment. 
-With this, large-scale scRNA-Seq datasets have been generated to study 
+With this, large-scale scRNA-seq datasets have been generated to study 
 development across multiple time-points and capturing musltiple tissues 
 [@Ibarra-Soria2018, @Kernfeld2018]. 
 Here we describe the computational analysis of changes in mean expression 
 and transcriptional variability when data is sparse and technical spike-in 
 genes are missing. 
 For this, we compare cells of the presomitic mesoderm and somitic mesoderm 
-using droplet-based scRNA-Seq data [@Ibarra-Soria2018].
+using droplet-based scRNA-seq data [@Ibarra-Soria2018].
 
 ## Obtaining the data
 
@@ -2073,7 +2102,7 @@ For this, we will generate the BASiCS data objects.
 
 ## Generating BASiCS data objects
 
-Since droplet-based scRNA-Seq data are generated without including technical 
+Since droplet-based scRNA-seq data are generated without including technical 
 spike-in genes, BASiCS uses measurement error models to quantify technical 
 variation through replication [@Carroll1998].
 Here, it is crucial to provide batch information to the BASiCS model.
