@@ -101,17 +101,68 @@ Single-cell RNA sequencing, expression variability, transcriptional noise, diffe
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide
 transcriptional heterogeneity in cell populations that remains otherwise
 undetected in bulk experiments \citep{Stegle2015, Prakadan2017, Patange2018}.
-Existing applications range from characterising cell types in immunity
+Applications of scRNA-seq range from characterising cell types in immunity
 \citep{Lonnberg2017, Villani2017, Zheng2017} and development \citep{Ibarra-Soria2018, Wagner2018, Pijuan-Sala2019} to dissecting the mechanisms for cell fate
 commitment \citep{Goolam2016, Ohnishi2014}.
-Transcriptional heterogeneity within a population of cells can relate to
-different reasons.
+Transcriptional heterogeneity within a cell population can relate to different
+underlying sources.
 On the broadest level, this heterogeneity can reflect the presence of distinct
-expression profiles associated to cell subtypes or states which could be
-characterised through clustering \citep{Kiselev2019}.
-More subtle gene expression variability within a seemingly homogeneous cell
-population can be due to deterministic or stochastic events, the later being
-referred to as `noise' \citep{Elowitz2002}.
+expression profiles associated to cell subtypes or discrete states which could
+be identified through clustering \citep{Kiselev2019}.
+Alternatively, cell-to-cell expression heterogeneity can be due to gradual
+changes along biological processes that evolve over time (such as
+development and differentiation) --- these can be characterised using pseudotime
+inference methods \citep{Saelens2019}.
+More subtle expression variability within a seemingly homogeneous cell
+population can be due to deterministic or stochastic events and is the focus
+of this article.
+The stochastic component of this variability is referred to as transcriptional
+\emph{noise} \citep{Elowitz2002, Eling2019}.
+
+Transcriptional noise can arise from intrinsic and extrinsic sources of
+variability. Classically, extrinsic noise is defined as stochastic fluctuations
+in cellular components, which is induced by cells residing in different dynamic
+states (e.g.~cell size, cell cycle, metabolism, intra- and inter-cellular
+signalling) \citep{Zopf2013, Iwamoto2016, Kiviet2014}.
+Instead, intrinsic noise arises from stochastic effects on biochemical
+processes such as transcription and translation \citep{Elowitz2002}.
+Intrinsic noise can be modulated by genetic and epigenetic modifications (such
+as mutations, histone modifications, CpG island length and nucleosome
+positioning) \citep{Eberwine2015, Faure2017, Morgan2018} and is usually measured
+at the level of individual genes \citep{Elowitz2002}. Cell-to-cell gene expression
+variability estimates derived from scRNA-seq data capture a combination of
+these effects, as well as deterministic regulatory mechanisms \citep{Eling2019}.
+These variability estimates can also be inflated by the technical noise that is
+typically observed in scRNA-seq assays \citep{Brennecke2013}.
+
+Different strategies have been implemented to quantify or attenuate technical
+noise in scRNA-seq experiments. For example, external RNA spike-in molecules
+(such as the ones introduced by the External RNA Controls Consortium, ERCCs
+\citep{Rna2005}) can be added to each cell's lysate. Spike-ins can be used to inform
+quality control steps \citep{McCarthy2017}, data normalisation \citep{Vallejos2017} as
+well as to infer technical background noise \citep{Brennecke2013}.
+
+Some computational methods aim to denoise the data prior to downstream analysis
+(e.g.~via imputation). Alternatively, computational approaches can be designed
+to simultaneously quantify technical variabli
+
+was to quantify or attenuate technical noise in scRNA-seq assays.
+Some are experimental: eg spike-ins or UMIs. Some others are computational.
+
+Moreover, technical noise inflates the observed cell-to-cell variability in gene
+expression \citep{Brennecke2013}.
+To account for high amounts of technical noise that affects scRNA-seq data,
+
+Fitting a regression trend between the variability and the mean abundance of the
+ERCC molecules allows the statistical detection of genes the show larger
+variability than the technical background .
+
+Genes that show larger variability compared to spike-in molecules or the average
+variability are often referred to as `highly variable genes' (HVG) and are used in
+computational scRNA-Seq analysis to select biologically informative genes for
+down-stream analysis \citep{Lun2016}.
+Furthermore, spike-in molecules can be used to normalize gene expression for
+cells with differences in total mRNA content.
 
 {\small\bibliography{Workflow.bib}}
 
