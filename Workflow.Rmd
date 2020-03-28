@@ -373,13 +373,10 @@ dir.create("downloads", showWarnings = FALSE)
 
 ```{r obtain-gene-symbols}
 if (!file.exists("rds/genenames.rds")) {
-  # Initialize mart
-  ensembl <- useMart("ensembl")
-
-  # Select dataset
-  ensembl <- useDataset(
-    dataset = "mmusculus_gene_ensembl",
-    mart = ensembl
+  # Initialize mart and dataset
+  ensembl <- useMart(
+    biomart = "ensembl",
+    dataset = "mmusculus_gene_ensembl"
   )
 
   # Select gene ID and gene name
@@ -387,6 +384,7 @@ if (!file.exists("rds/genenames.rds")) {
     attributes = c("ensembl_gene_id", "external_gene_name"),
     mart = ensembl
   )
+
   rownames(genenames) <- genenames$ensembl_gene_id
   saveRDS(genenames, "rds/genenames.rds")
 } else {
@@ -1891,19 +1889,19 @@ We will further remove the genes that were excluded from the test and those
 that are not expressed in at least 2 cells in either condition.
 
 ```{r combine-results}
-res.df <- cbind(Test_DE$TableMean, Test_DE$TableResDisp[, -c(1, 2)])
-ind_exclude <- res.df$ResultDiffResDisp == "ExcludedByUser" |
-  res.df$ResultDiffResDisp == "ExcludedFromTesting"
-res.df <- res.df[!ind_exclude, ]
+res_df <- cbind(Test_DE$TableMean, Test_DE$TableResDisp[, -c(1, 2)])
+ind_exclude <- res_df$ResultDiffResDisp == "ExcludedByUser" |
+  res_df$ResultDiffResDisp == "ExcludedFromTesting"
+res_df <- res_df[!ind_exclude, ]
 ```
 
 Next, we can visualize the regulation of each individual gene based on its 
 changes in mean expression and expression variability.
 
 ```{r DV-DE-vis}
-res.df$ResultDiffMean[grep("Excluded", res.df$ResultDiffMean)] <- "NoDiff"
-res.df$ResultDiffResDisp[grep("Excluded", res.df$ResultDiffResDisp)] <- "NoDiff"
-ggplot(res.df) +
+res_df$ResultDiffMean[grep("Excluded", res_df$ResultDiffMean)] <- "NoDiff"
+res_df$ResultDiffResDisp[grep("Excluded", res_df$ResultDiffResDisp)] <- "NoDiff"
+ggplot(res_df) +
   geom_point(
     aes(
       MeanLog2FC,
@@ -1928,9 +1926,9 @@ For this, we will first collect all immune response genes
 
 ```{r variable-immune-response}
 # Select immune response genes
-immun.allegs <- get("GO:0006955", org.Mm.egGO2ALLEGS)
-immun.genes <- unique(unlist(mget(immun.allegs, org.Mm.egENSEMBL)))
-immun.names <- genenames[immun.genes, "external_gene_name"]
+immun_allegs <- get("GO:0006955", org.Mm.egGO2ALLEGS)
+immun_genes <- unique(unlist(mget(immun_allegs, org.Mm.egENSEMBL)))
+immun_names <- genenames[immun_genes, "external_gene_name"]
 ```
 
 Finally, we will find the subset of immune response genes that are variably 
@@ -1938,21 +1936,21 @@ up-regulated upon early immune activation
 
 ```{r overlap}
 # Variable response genes
-ind_var.response <- res.df$ResultDiffMean == "Active+" &
-  res.df$ResultDiffResDisp == "Active+"
-var.response.genes <- genenames[
-  res.df$GeneName[ind_var.response],
+ind_var_response <- res_df$ResultDiffMean == "Active+" &
+  res_df$ResultDiffResDisp == "Active+"
+var_response_genes <- genenames[
+  res_df$GeneName[ind_var_response],
   "external_gene_name"
 ]
-intersect(var.response.genes, immun.names)
+intersect(var_response_genes, immun_names)
 
-ind_var.response <- res.df$ResultDiffMean == "Active+" &
-  res.df$ResultDiffResDisp == "Naive+"
-var.response.genes <- genenames[
-  res.df$GeneName[ind_var.response],
+ind_var_response <- res_df$ResultDiffMean == "Active+" &
+  res_df$ResultDiffResDisp == "Naive+"
+var_response_genes <- genenames[
+  res_df$GeneName[ind_var_response],
   "external_gene_name"
 ]
-intersect(var.response.genes, immun.names)
+intersect(var_response_genes, immun_names)
 ```
 
 Pou2f2 and Smad3 .

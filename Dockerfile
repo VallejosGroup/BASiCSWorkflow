@@ -38,7 +38,7 @@ RUN Rscript -e 'install.packages(c( \
   "RSQLite", \
   "reshape2", \
   "hexbin", \
-  "survival"), Ncpus = 4)
+  "survival"), Ncpus = 4)'
 
 
 RUN Rscript -e 'BiocManager::install(c( \
@@ -54,4 +54,11 @@ RUN Rscript -e 'BiocManager::install(c( \
   "scran", \
   "scater", \
   "SingleCellExperiment", \
-  "BiocWorkflowTools"))
+  "BiocWorkflowTools"), Ncpus = 4)'
+
+COPY Workflow.Rmd /home/rstudio/
+COPY Workflow.bib /home/rstudio/
+COPY Makefile /home/rstudio/
+ADD figure /home/rstudio/figure/
+COPY .here /home/rstudio/
+COPY mycode.Rproj /home/rstudio/
