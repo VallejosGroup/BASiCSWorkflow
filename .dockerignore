@@ -1,0 +1,17 @@
+cache
+figure/*
+!figure/Overview.png
+.git
+.gitignore
+LFC_experiments.Rmd
+library.bib
+*.log
+*.aux
+*.bbl
+*.blg
+*.dvi
+*.out
+*.pdf
+README.md
+*.zip
+downloads
