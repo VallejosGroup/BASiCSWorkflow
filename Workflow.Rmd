@@ -1991,7 +1991,7 @@ if (!file.exists("downloads/rawCounts.tsv")) {
     destfile = "downloads/rawCounts.zip"
   )
   unzip(zipfile = "downloads/rawCounts.zip", exdir = "downloads")
-  unlink("downloads/rawCounts.zip")
+  file.remove("downloads/rawCounts.zip")
 }
 rawCounts <- fread("downloads/rawCounts.tsv",
   sep = "\t", header = FALSE,
