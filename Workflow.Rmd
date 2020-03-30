@@ -1985,7 +1985,7 @@ ArrayExpress and can be obtained via:
 if (!file.exists("downloads/rawCounts.tsv")) {
   website <- "https://www.ebi.ac.uk/"
   folder <- "arrayexpress/files/E-MTAB-6153/"
-  file <- "E-MTAB-6153.processed.3.zip"
+  file <- "E-MTAB-6153.processed.2.zip"
   download.file(
     paste0(website, folder, file),
     destfile = "downloads/rawCounts.zip"

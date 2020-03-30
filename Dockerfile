@@ -55,10 +55,3 @@ RUN Rscript -e 'BiocManager::install(c( \
   "scater", \
   "SingleCellExperiment", \
   "BiocWorkflowTools"), Ncpus = 4)'
-
-COPY Workflow.Rmd /home/rstudio/
-COPY Workflow.bib /home/rstudio/
-COPY Makefile /home/rstudio/
-ADD figure /home/rstudio/figure/
-COPY .here /home/rstudio/
-COPY mycode.Rproj /home/rstudio/
