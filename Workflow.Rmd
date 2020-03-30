@@ -83,8 +83,8 @@ Applications of scRNA-seq range from characterising cell types in immunity
 [@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018; 
 @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms for cell fate 
 commitment [@Goolam2016; @Ohnishi2014]. 
-Transcriptional heterogeneity within a cell population can relate to different 
-underlying sources.
+Transcriptional heterogeneity within a cell population may be related to a 
+number of different underlying sources.
 On the broadest level, this heterogeneity can reflect the presence of distinct 
 expression profiles associated to cell subtypes or discrete states, which could 
 be identified through clustering [@Kiselev2019]. 
@@ -122,6 +122,41 @@ noise in scRNA-seq experiments. For example, external RNA spike-in molecules
 [@Rna2005]) can be added to each cell’s lysate. Spike-ins can be used to inform
 quality control steps [@McCarthy2017], data normalisation [@Vallejos2017] as 
 well as to infer technical background noise [@Brennecke2013].
+
+
+<!-- next talk about UMIs and computational approaches ---> 
+Some computational methods aim to denoise the data prior to downstream analysis
+(e.g. via imputation). Alternatively, computational approaches can be designed
+to simultaneously quantify technical variablity and... 
+<!-- todo -->
+
+was to quantify or attenuate technical noise in scRNA-seq assays. 
+Some are experimental: eg spike-ins or UMIs. Some others are computational. 
+
+
+
+
+<!--- Technical noise, normalisation and hvg/lvg analyses ---> 
+Moreover, technical noise inflates the observed cell-to-cell variability in gene
+expression [@Brennecke2013].
+To account for high amounts of technical noise that affects scRNA-seq data, 
+<!-- todo -->
+
+Fitting a regression trend between the variability and the mean abundance of the 
+ERCC molecules allows the statistical detection of genes the show larger 
+variability than the technical background . 
+<!-- todo -->
+
+Genes that show larger variability compared to spike-in molecules or the average 
+variability are often referred to as 'highly variable genes' (HVG) and are used in 
+computational scRNA-seq analysis to select biologically informative genes for 
+down-stream analysis [@Lun2016].
+Furthermore, spike-in molecules can be used to normalize gene expression for 
+cells with differences in total mRNA content.
+<!-- todo -->
+
+
+
 
 
 
@@ -465,6 +500,7 @@ replicates (also referred to as batches) to control for batch effects.
 We will begin the workflow with obtaining the data before quality control, 
 running the BASiCS model, and performing further downstream analysis.
 
+
 ## Obtaining the data
 
 The raw counts of the full dataset can be obtained from ArrayExpress under the 
@@ -542,8 +578,8 @@ stimulation state of the cells (*Stimulus*), the batch information indicating
 the different mice used (*Individuals*), and the purification method used 
 (*Celltype*). 
 
-## Filtering the data
 
+## Filtering the data
 
 In the next step, we will first generate a `r Biocpkg("SingleCellExperiment")` 
 (SCE) object that contains all cells and that stores cell- and gene-specific 
@@ -611,9 +647,10 @@ sce_naive_active <- computeSpikeFactors(sce_naive_active, spikes = "spike-ins")
 sce_naive_active <- logNormCounts(sce_naive_active)
 ```
 
-The `Biocpkg("SimpleSingleCell")` Bioconductor workflow provides an extensive 
+The `Biocpkg("SimpleSingleCell")` Bioconductor workflow and
+the `OSCA` online book each provide an extensive 
 overview on important aspects of how to perform low-level analysis of scRNA-seq 
-data, including quality control [@Lun2016].
+data, including quality control [@Lun2016;@Amezquita2019].
 The `calculateQCMetrics` function of the `scater` package can be used to 
 calculate a number of cell- and gene-specific quality metrics.
 Furthermore, `scater` offers the `runPCA` function to perform principal 
@@ -661,8 +698,7 @@ multiplot(p_stimulus, p_batch, cols = 2)
 ```
 
 The cells split into two conditions: naive and activated CD4^+^ T cells.
-Furthermore, we do detect neither batch effects nor outlier cells based on PCA 
-visualisation
+Furthermore, we detect neither obvious batch effects nor outlier cells.
 
 <!-- What is a doublet? -->
 In the next step, we will visualise selected cell-specific quality metrics 
@@ -727,6 +763,7 @@ low-quality or outlying cells. Furthermore, these quality control steps can
 help users to understand possible confounding effects that may influence
 the interpretation of downstream analyses.
 
+
 ## Calculating the molecule count for spike-in genes
 
 BASiCS requires the absolute molecule count of the spike-in transcripts that
@@ -762,7 +799,7 @@ ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
 ```
 
 From this, we can calculate the molecule count per $\mu{}l$ using the fact that
-1 mole is equal to $6.02214076 \times 10^{23}$ molecules.
+1 mole is comprised of $6.02214076 \times 10^{23}$ molecules.
 
 ```{r}
 # Molecule count per micro litre
@@ -777,20 +814,21 @@ The actual molecule number of spike-ins can therefore be calculated per $\mu{}l$
 ERCC_count <- ERCC_countmul / 50000
 ```
 
-The volume per well in the IFC chip is 9 $nl$
+The volume per well in the IFC chip is $9nl$
 [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9).
-We therfore need to calculate the number of molecules in 9 $nl$ reaction mix.
+We therfore need to calculate the number of molecules in $9nl$ reaction mix.
 
 ```{r}
 ERCC_count_final <- ERCC_count * 0.009
 ```
 
-Depending on the technology used to capture and process single cells, and the 
-dilution of the spike-in mix, the absolute number of spike-ins per reaction can 
-change. The absolute amount of spike-ins per reaction is only used to calibrate
-the scale of the capture efficiency normalisation parameter $\nu_j$. Since the
-true concentration of each spike-in molecule is known, BASiCS uses the observed
-counts of each molecule for each cell to estimate the . Differences in the 
+Depending on the technology used to capture and process single cells, as well 
+as the dilution of the spike-in mix, the absolute number of spike-ins per 
+reaction can change. The absolute amount of spike-ins per reaction is only used 
+to calibrate the scale of the capture efficiency normalisation parameter 
+$\nu_j$. Since the true concentration of each spike-in molecule is known, 
+BASiCS uses the observed counts of each molecule for each cell to estimate the 
+capture efficiency for each cell, $\nu_j$. Differences in the 
 global scale across all wells of the level of spike-ins molecules thus do not 
 affect the cell-to-cell ratios of $\nu_j$.
 BASiCS assumes that the quantity of spike-ins is consistent in each well in
@@ -830,7 +868,7 @@ over-dispersion (biological variability) and residual over-dispersion
 
 ### Preparing the BASiCS data object {#Tcells-filtering}
 
-The BASiCS Data object is an object of the class 
+Many BASiCS functions use as input objects of the class 
 `r Biocpkg("SingleCellExperiment")`.
 The `newBASiCS_Data` function can be used to create the required 
 `SingleCellExperiment` object based on the following information:
@@ -905,7 +943,7 @@ After creating the `SingleCellExperiment` object that contains all information
 that `BASiCS` requires, the MCMC sampler can be run to generate posterior 
 estimates of model parameters.
 
-### Running the MCMC
+### Running MCMC
 
 It is recommended to run the `BASiCS_MCMC` sampler for at least 40,000 
 iterations to ensure convergence.
@@ -958,10 +996,10 @@ individual MCMC samples per parameter. Each matrix contains the cell- or
 gene-specific parameters in the columns and the MCMC samples in the rows.
 `BASiCS` provides the `displayChainBASiCS` function to access the cell- or 
 gene-specific parameters.
-As an example, we access the first 2 samples for $\mu_i$ of the first 10 genes.
+As an example, we access the first 2 samples for $\mu_i$ of the first 5 genes.
 
 ```{r displayChainBASiCS}
-displayChainBASiCS(MCMC_naive, Param = "mu")[1:2, 1:10]
+displayChainBASiCS(MCMC_naive, Param = "mu")[1:2, 1:5]
 ```
 
 Given that we ran the MCMC samples for 40,000 iterations, discarding
@@ -972,20 +1010,18 @@ we obtained 1000 draws for each parameter, stored in the `BASiCS_Chain` object:
 dim(displayChainBASiCS(MCMC_naive, Param = "mu"))
 ```
 
-### Validating the MCMC convergence {#naive-convergence}
+### Assessing MCMC convergence {#naive-convergence}
 
-In the next step, we need to validate the convergence of the chain to ensure 
+In the next step, we need to assess the convergence of the chain to ensure 
 robust downstream analysis. Specifically, we want to ensure that the chain
 converged to its stationary distribution before the burn-in period ended,
 and after burn-in that it sampled efficiently from this stationary distribution.
-There are multiple ways to visualise and 
-assess the convergence of MCMC chains
-[@CowlesCarlin1996; @BrooksGelman1998].
-The `r CRANpkg("coda")`
+There are multiple ways to visualise and assess the convergence of MCMC chains
+[@CowlesCarlin1996; @BrooksGelman1998]. The `r CRANpkg("coda")`
 contains diagnostic and plot functions for this task ([@CODA2006]).
 
 Here, we highlight two ways of assessing the convergence of the MCMC sampler by 
-(i) plotting trace plots, sample densities and autocorrelation function, and 
+(i) plotting trace plots, sample densities and autocorrelation, and 
 (ii) plotting the the effective sample size across multiple parameters.
 Trace plots show the sampled parameter values over time. A chain is likely to
 have converged when the sample density (in form of a histogram) shows a unimodal
@@ -995,15 +1031,14 @@ The difference in time-points is referred to as 'lag'. This helps to assess
 whether a chain has sampled efficiently from its stationary distribution.
 High autocorrelation indicates that the obtained samples are not independent,
 and indicates that we may not have enough information about the posterior
-distribution of the parameters.
-The chain is likely to be sampling efficiently if the autocorrelation
-(except for lag = 1) is small (e.g. < 0.25).
+distribution of the parameters. The chain is likely to be sampling efficiently
+if the autocorrelation (except for lag = 1) is small (e.g. < 0.25), as it 
+indicates that the stored samples are largely independent.
 
 Effective sample size is a measure of the number of independent samples 
 generated for a model parameter [@Gelman2014]. Simply, it is defined as the 
 number of samples taken relative to the total autocorrelation.
 More formally, it is defined as follows:
-
 $$
   \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
 $$
@@ -1076,8 +1111,7 @@ expression.
 ## Downstream analysis
 
 In this section, we will highlight the use of BASiCS when analysing 
-cells of a single condition.
-This includes normalisation, variance decomposition, 
+cells of a single condition. This includes normalisation, variance decomposition, 
 detection of highly and lowly variable genes, and the use of gene-specific 
 parameters as interpretable variability measures.
 Furthermore, we will compare the results in the individual steps with results 
@@ -1088,35 +1122,45 @@ obtained using the `Biocpkg("scran")`.
 Posterior estimates of cell-specific parameters can be used to normalise the 
 data and correct for biases in mRNA content [@Vallejos2017].
 To perform normalisation, BASiCS provides the `BASiCS_DenoisedCounts` and the 
-`BASiCS_DenoisedRates` functions. 
-*TODO: Add more details on the DenoisedCounts function*
-These functions take the `SingleCellExperiment` and `BASiCS_Chain` objects as 
-inputs.
+`BASiCS_DenoisedRates` functions. These functions produce normalised expression
+values, with technical variation removed. They differ in that the former returns
+a denoise expression count, such that
+$$
+x^*_{ij} = \frac{ x_{ij} } {\hat{\phi}_j \hat{\nu}_j},
+$$
+represents a normalised and denoised expression count. 
+The latter returns a rate, such that
+$$
+\Lambda_{ij} = \hat{\mu_i} \hat{\rho}_{ij}
+$$
+is the denoised expression rate for a cell and gene.
+Both of these functions take the `SingleCellExperiment` and `BASiCS_Chain`
+objects as inputs.
 
 ```{r normalisation-naive}
 counts_denoised <- BASiCS_DenoisedCounts(Data = data_naive, Chain = MCMC_naive)
 ```
 
-Alternatively, *TODO: add the DenoisedRates*
-
-These normalised counts can be further used for dimensionality reduction and
-clustering as explained elsewhere *TODO: ref,ref*. Alternatively, a 
+These normalised counts or rates can be further used for dimensionality 
+reduction and clustering as explained elsewhere [@Lun2016;@Amezquita2019].
+Alternatively, a 
 dimensionality reduction scheme that operates directly on the count matrix could
-be used (GLMPCA, scVI).
+be used [@Townes2019;@Lopez2018].
 
 ### Lowly and highly variable gene detection
 
-BASiCS offers a function to select genes with large and small biological 
-variance. When the MCMC sampler was run with `Regression = TRUE` (default), 
+BASiCS offers a function to select genes with large or small biological 
+variance. If the MCMC sampler was run with `Regression = TRUE` (default), 
 the `BASiCS_DetectHVG` and `BASiCS_DetectLVG` functions take the 
 `BASiCS_Chain` object and a quantile threshold.
 Using the residual over-disperison parameters, genes are ranked by their 
-variability and the `BASiCS_DetectHVG` function selects the (for example) top 
-10% of highly variable genes (`PercentileThreshold = 0.9`).
+variability and the `BASiCS_DetectHVG` function selects (for example) the 
+10% most highly variable genes (`PercentileThreshold = 0.9`).
 Similarly, when detecting lowly variable genes, the `BASiCS_DetectLVG` selects 
-the top 10% of lowly variable genes (`PercentileThreshold = 0.1`).
+the 10% most lowly variable genes (`PercentileThreshold = 0.1`).
 The propability threshold for a gene showing higher variability than the 
 percentile threshold is found by controling the EFDR to 10% (default).
+<!-- todo: explain EFDR -->
 
 ```{r naive-HVG-LVG}
 # Highly variable genes
@@ -1148,10 +1192,9 @@ var_fit <- scran::fitTrendVar(means, vars)
 var_out <- scran::modelGeneVar(sce_naive)
 ```
 
-As proposed by the `SimpleSingleCell` workflow, the HVGs are described as 
-displaying a biolgical variance component of larger than 0.5 while controlling 
-the FDR to 5% [@Lun2016].
-*TODO: Make sure this is still in the current version of SimpleSingleCell*.
+As proposed by `SimpleSingleCell` and by `OSCA`,
+HVGs can be defined as those genes displaying a biolgical variance component of 
+larger than 0.5, while controlling the FDR to 5% [@Lun2016;@Amezquita2019].
 We can then compare the the overlap of the HVG identified by scran and by BASiCS.
 
 ```{r scran-HVG}
@@ -1182,13 +1225,13 @@ ggplot() +
 ```
 
 *`r length(intersect(rownames(hvg_out), HVG$Table$GeneName[HVG$Table$HVG]))`*
-of the *`r nrow(hvg_out)`* HVG genes of scran are among the
+of the *`r nrow(hvg_out)`* HVGs of scran are among the
 *`r sum(HVG$Table$HVG)`*
 HVGs identified by BASiCS.
 
 ### Mean-variance trend
 
-*TODO: Move this up*
+*TODO: Move this up* <!-- to where? -->
 
 Numerous studies have highlighted the relationship between gene-specific 
 variability measures such as the squared coefficient of variation and mean 
