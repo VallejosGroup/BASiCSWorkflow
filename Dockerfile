@@ -34,6 +34,7 @@ RUN Rscript -e 'install.packages(c( \
   "ggplot2", \
   "ggpointdensity", \
   "pheatmap", \
+  "ComplexHeatmap", \
   "rmarkdown", \
   "RSQLite", \
   "reshape2", \
