@@ -99,32 +99,53 @@ due to deterministic or stochastic events that regulate gene expression and has
 been reported to increase prior to cell phate decisions [@Mojtahedi2016] as well 
 as throughout ageing [@Martinez-jimenez2017]. 
 
-<!--- TBC intro to BASiCS ---> 
-<!--- FINAL SENTENCES TO BE EDITED ---> 
+<!--- Describes aims for the workflow and introduces BASiCS ---> 
 This article complements existing workflows that use the Bioconductor package 
-ecosystem to analyse scRNA-seq datasets [@Lun2016; @Kim2019], including the use 
-of `r Biocpkg("scater")` and `r Biocpkg("scran")` to perform quality control 
-steps and low-level preliminary analysis [@McCarthy2017; @Lun2016]. 
-We present a step-by-step computational workflow to robustly quantify 
-transcriptional variability using the `r Biocpkg("BASiCS")` package 
-[@Vallejos2015; @Vallejos2016; @Eling2017]. 
-`r Biocpkg("BASiCS")` implements a Bayesian hierarchical framework that 
-simultaneously performs data normalisation (global scaling), technical noise quantification and selected downstream analyses whilst propagating 
+ecosystem to analyse scRNA-seq datasets [@Lun2016; @Kim2019]. 
+We present a step-by-step computational workflow which combines 
+`r Biocpkg("scater")` and `r Biocpkg("scran")` to perform quality control steps 
+as well as low-level preliminary analysis [@McCarthy2017; @Lun2016]. 
+To robustly quantify transcriptional variability we use `r Biocpkg("BASiCS")` 
+[@Vallejos2015; @Vallejos2016; @Eling2017] --- a Bayesian hierarchical framework 
+that simultaneously performs data normalisation (global scaling), technical 
+noise quantification and selected downstream analyses, whilst propagating 
 statistical uncertainty across these steps. 
+
+<!--- BASiCS downstream analyses within a single population --->
 Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
 observed variability in gene expression measurements into technical and 
-biological components. This enables the identification of highly variable genes
-that [TBC]. Moreover, this variance decomposition enables detection of lowly
-variable genes with stable expression [TBC - CITE GIGASCIENCE PAPER]. When two 
-or more groups of cells are available (e.g. experimental conditions or
-cell types), `r Biocpkg("BASiCS")` uses differential expression analysis to identify genes whose expression patterns change [@Vallejos2016]. 
+biological components [@Vallejos2015]. 
+This enables the identification of *highly variable genes* (HVGs) that capture
+the major sources of heterogeneity within the analysed cells [@Brennecke2013]. 
+HVG detection is often used as a feature selection step to identify the input 
+set of genes for subsequent analyses. 
+The variance decomposition obtained by `r Biocpkg("BASiCS")` can also be used
+to highlight *lowly variable genes* (LVGs) that exhibit stable expression across
+the a population of cells.
+LVGs may relate to essential cellular functions and can assist the development
+of new data normalisation or integration strategies [@Lin2019]. 
+
+<!--- BASiCS downstream analyses between populations --->
+Often, scRNA-seq analyses aim to compare expression patterns across two or more
+pre-specified groups of cells, such as experimental conditions or cell types.
+In this context, `r Biocpkg("BASiCS")` provides a probabilistic decision rule 
+for differential expression analyses [@Vallejos2016; @Eling2018]. 
+Whilst several differential expression tools have been proposed for scRNA-seq 
+data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that these do 
+not generally outperform popular bulk RNA-seq tools [@Soneson2018]. 
+Moreover, most of these methods are unable to uncover the more complex 
+differential expression patterns (beyond changes in overall expression) that 
+can arise at the single cell level [@Lahnemann2020]. 
+Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
+uncovering changes in cell-to-cell expression variability that are not 
+confounded by differences in technical noise or in overall expression. 
 
 <!--- TBC description of BASiCS downstream analysis, with focus on differential --->
 <!--- add brief description for LVG/HVG 
 <!--- Differential analyses ---> 
 <!--- add reference to 11 challenges paper, flexible changes in expression ---> 
 <!-- DE testing isn't always between (2) conditions (blocking, continuous, etc) -->
-Since the era of RNA sequencing, methods for differential expression testing 
+<!--- Since the era of RNA sequencing, methods for differential expression testing 
 of transcript counts across conditions have been developed 
 [@Anders2010; @Robinson2009]. 
 Due to high technical variability and sparsity in scRNA-seq data, new 
@@ -143,9 +164,9 @@ To correct for this, BASiCS has been extended to model the mean-variability
 relationship and capture residual over-dispersion estimates that show no 
 association to mean expression. 
 Therefore, this extension allows to test changes in mean expression in parallel 
-to changes in variability [@Eling2018]. 
-
+to changes in variability [@Eling2018].  ---> 
 <!--- TBC Outline - wider use of bioc libraries + case studies ---> 
+<!---
 Two case studies exemplify the use of `BASiCS` for non-UMI and UMI 
 scRNA-seq data. In the first case, `BASiCS` can be used to detect highly and 
 lowly variable genes and to obtain robust, gene-specific estimates to assess
@@ -154,7 +175,29 @@ biological variability in naive CD4^+^ T cells
 Furthermore, we compare naive to activated CD4^+^ T cells to highlight the use 
 of `BASiCS` to test for changes in mean expression and expression variability.
 In the second case, we use droplet-based scRNA-seq data to detect more subtle 
-transcriptional changes during embryonic somitogenesis [@Ibarra-Soria2018]
+transcriptional changes during embryonic somitogenesis [@Ibarra-Soria2018].
+--->
+
+<!--- Brief outline + reproducibility ---> 
+This document is structured as follows. Firstly, we briefly discuss the 
+different sources of variability that can be reflected in scRNA-seq datasets 
+and some of the strategies that have been designed to control or attenuate 
+technical noise in scRNA-seq experimental protocols. 
+We also summarise the main features of the Bioconductor packages that are used
+throughout this workflow, including a description for the underlying statistical 
+model implemented in `r Biocpkg("BASiCS")`.
+This includes practical guidance to assess the convergence of the Markov Chain 
+Monte Carlo (MCMC) algorithm that is used to infer model parameters as well as 
+recommendations to interpret and to post-process the model outputs. 
+Finally, we provide two step-by-step case studies using naive CD4^+^ T cells 
+[@Martinez-jimenez2017] and samples collected during embryonic somitogenesis 
+[@Ibarra-Soria2018]. These examples were chosen to illustate the usage of 
+`r Biocpkg("BASiCS")` in the context of different scRNA-seq protocols. 
+
+All source code used to generate the results presented in this article is 
+available at https://github.com/VallejosGroup/BASiCSWorkflow. To ensure the 
+reproducibility of this workflow, the analysis environment and all software 
+dependencies are provided as a Docker [@Boettiger2014] image at: [ADD LINK].
 
 <!---
 In particular, 
@@ -177,6 +220,8 @@ differential mean expression and differential variability testing
 [@Vallejos2016].
 --->
 \newpage
+
+<!--- 
 
 ## Outline
 
@@ -205,21 +250,26 @@ ETC --- CREATE SECTION IN MANUSCRIPT!]
   Similar to the CD4^+^ T cells case, we perform differential mean expression 
   and differential variability testing to detect early cell fate decision events 
   in mammalian somitogenesis. 
+  
+---> 
 
-```{r overview, out.width='50%', fig.cap = 'Computational workflow highlighting the use of BASiCS to analyse single groups or two groups of cells. HVG: highly variable genes; LVG: lowly variable genes.', echo=FALSE, fig.pos='h'}
-knitr::include_graphics("figure/Overview.png")
-```
+## Sources of variability in scRNA-seq datasets
 
-## Noise in scRNA-seq datasets
+<!--- text to be revisited ---> 
+An overarching goal of scRNA-seq is to characterise gene expression 
+heterogeneity with cellular resolution. 
+The focus of this article is to quantify the strength of this heterogeneity 
+within seemingly homogeneous cell populations. 
+Here, we briefly describe the underlying sources of variability that can be 
+captured by estimates derived from scRNA-seq data. 
 
-<!--- why is it challenging to study transcriptional noise? ---> 
-[ADD INTRO SENTENCE]
-The stochastic component of this variability is referred to as transcriptional 
-*noise* and can arise from intrinsic and extrinsic sources of variability 
+Stochastic variability within a population of cells is often referred to as
+transcriptional *noise* and can arise from intrinsic and extrinsic sources
 [@Elowitz2002; @Eling2019]. 
 Classically, extrinsic noise is defined as stochastic fluctuations in cellular 
 components induced by cells residing in different dynamic states (e.g. cell 
-size, cell cycle, metabolism, intra- and inter-cellular signalling) [@Zopf2013; @Iwamoto2016; @Kiviet2014]. 
+size, cell cycle, metabolism, intra- and inter-cellular signalling) 
+[@Zopf2013; @Iwamoto2016; @Kiviet2014]. 
 In contrast, intrinsic noise arises from stochastic effects on biochemical 
 processes such as transcription and translation [@Elowitz2002].
 Intrinsic noise can be modulated by genetic and epigenetic modifications (such 
@@ -228,8 +278,8 @@ positioning) [@Eberwine2015; @Faure2017; @Morgan2018] and is usually measured
 at the level of individual genes [@Elowitz2002]. Cell-to-cell gene expression 
 variability estimates derived from scRNA-seq data capture a combination of 
 these effects, as well as deterministic regulatory mechanisms [@Eling2019]. 
-These variability estimates can also be inflated by the technical noise that is 
-typically observed in scRNA-seq assays [@Brennecke2013].
+Moreover, these variability estimates can also be inflated by the technical 
+noise that is typically observed in scRNA-seq assays [@Brennecke2013].
 
 <!--- Experimental strategies to tackle technical noise --->
 Different strategies can be incorporated into scRNA-seq protocols in order to 
@@ -237,8 +287,9 @@ control or attenuate technical noise.
 For example, external RNA spike-in molecules (such as the set introduced by the 
 External RNA Controls Consortium, ERCC [@Rna2005]) can be added to each cell’s 
 lysate in a (theoretically) known fixed quantity.
-Spike-ins can be used to assist quality control steps [@McCarthy2017], data 
-normalisation [@Vallejos2017] as well as to infer technical background noise [@Brennecke2013].
+Spike-ins can assist quality control steps [@McCarthy2017], data normalisation
+[@Vallejos2017] and be used to infer background technical noise 
+[@Brennecke2013].
 Another strategy is to tag individual cDNA molecules using unique molecular 
 identifiers (UMIs) before PCR amplification [@Islam2014]. 
 Reads that contain the same UMI can be collapsed into a single molecule count,
@@ -249,6 +300,11 @@ However, despite the benefits associated to the use of spike-ins and UMIs,
 these are not available for all scRNA-seq protocols [@Haque2017]. 
 
 # Methods {#methods}
+
+
+```{r overview, out.width='50%', fig.cap = 'Computational workflow highlighting the use of BASiCS to analyse single groups or two groups of cells. HVG: highly variable genes; LVG: lowly variable genes.', echo=FALSE, fig.pos='h'}
+knitr::include_graphics("figure/Overview.png")
+```
 
 In this workflow, we use a number of Bioconductor and CRAN packages for 
 different parts of the analyses. Here, we will briefly highlight the main 
