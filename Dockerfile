@@ -13,13 +13,13 @@ LABEL name="bioconductor/bioconductor_docker_basics" \
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
     apt-utils \
-  	texlive \
-  	texlive-latex-extra \
-  	texlive-fonts-extra \
-  	texlive-bibtex-extra \
-  	texlive-science \
-  	texi2html \
-  	texinfo \
+	texlive \
+	texlive-latex-extra \
+	texlive-fonts-extra \
+	texlive-bibtex-extra \
+	texlive-science \
+	texi2html \
+	texinfo \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/*
 
@@ -41,6 +41,7 @@ RUN Rscript -e 'install.packages(c( \
   "hexbin", \
   "survival"), Ncpus = 4)'
 
+RUN Rscript -e 'devtools::install_github("tidyverse/dbplyr", ref="f3529c3f4dc69c862384baf2d7bc387a5b89b83b")'
 
 RUN Rscript -e 'BiocManager::install(c( \
   "AnnotationDbi", \
