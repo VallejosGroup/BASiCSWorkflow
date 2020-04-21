@@ -1,0 +1,179 @@
+---
+title: "BASiCS workflow: a step-by-step analysis of expression variability using single cell RNA sequencing data"
+author: 
+  - name: Nils Eling
+    affiliation: 
+    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
+      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+    email: eling@ebi.ac.uk
+  - name: Alan O'Callaghan
+    affiliation: 
+    - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
+      University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
+      EH4 2XU, UK
+  - name: John C. Marioni
+    affiliation: 
+    - *EBI
+    - *CRUK
+  - name: Catalina A. Vallejos
+    affiliation: 
+    - *MRC 
+    - The Alan Turing Institute, British Library, 96 Euston Road, London, 
+      NW1 2DB, UK
+    email: catalina.vallejos@igmm.ed.ac.uk
+abstract: |
+  Cell-to-cell gene expression variability is an inherent feature of complex 
+  biological systems, such as immunity and development. Single-cell RNA 
+  sequencing is a powerful tool to quantify this heterogeneity, but it is prone 
+  to strong technical noise. In this article, we describe a step-by-step 
+  computational workflow which uses the BASiCS Bioconductor package to robustly 
+  quantify expression variability within and between known groups of cells (such 
+  as experimental conditions or cell types). BASiCS uses an integrated framework 
+  for data normalisation, technical noise quantification and downstream 
+  analyses, whilst propagating statistical uncertainty across these steps. 
+  Within a single seemingly homogeneous cell population, BASiCS can identify 
+  highly variable genes that exhibit strong heterogeneity as well as lowly 
+  variable genes with stable expression. BASiCS also uses a probabilistic 
+  decision rule to identify changes in expression variability between cell 
+  populations, whilst avoiding confounding effects related to differences in 
+  technical noise or in overall abundance. Using two publicly available 
+  datasets, we guide users through a complete pipeline which includes 
+  preliminary steps for quality control as well as data exploration 
+  using the scater and scran Bioconductor packages. Data for the first case 
+  study was generated using the Fluidigm\@ C1 system, in which extrinsic 
+  spike-in RNA molecules were added as a control. The second dataset was 
+  generated using a droplet-based system, for which spike-in RNA is not 
+  available. This analysis provides an example, in which differential 
+  variability testing reveals insights regarding a possible early cell fate 
+  commitment process. The workflow is accompanied by a Docker image that 
+  ensures the reproducibility of our results. 
+keywords: Single-cell RNA sequencing, expression variability, 
+  transcriptional noise, differential expression testing
+bibliography: Workflow.bib
+urlcolor: Orange
+output:
+  BiocWorkflowTools::f1000_article: default
+  BiocStyle::html_document: default
+---
+
+
+```{r setup_knitr, include = FALSE, cache = FALSE}
+library("BiocStyle")
+## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
+on.bioc <- FALSE
+library("knitr")
+library("ggplot2")
+# Use fig.width = 7 for html and fig.width = 6 for pdf
+fig.width <- ifelse(on.bioc, 7, 6)
+knitr::opts_chunk$set(
+  cache = TRUE, warning = FALSE, message = FALSE, error = FALSE,
+  cache.path = "cache/", fig.path = "figure/", fig.width = fig.width
+)
+```
+
+
+# Introduction
+
+<!--- scRNA-seq and the different types of heterogeneity ---> 
+<!--- Nils to revisit and add additional references if required --->
+Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
+transcriptional heterogeneity in cell populations that remains otherwise 
+undetected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
+Applications of scRNA-seq range from characterising cell types in immunity 
+[@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018; 
+@Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms for cell fate 
+commitment [@Goolam2016; @Ohnishi2014]. 
+Transcriptional heterogeneity within a population of cells can relate to 
+different underlying structures. 
+On the broadest level, this heterogeneity can relate to the presence of distinct 
+expression profiles associated to cell subtypes or discrete states, which 
+could be characterised through clustering [@Kiselev2019]. 
+Alternatively, cell-to-cell expression heterogeneity can reflect gradual 
+changes along processes that evolve over time and that can be characterised 
+using pseudotime inference methods [@Saelens2019]. 
+The focus of this article is on more subtle expression variability that can 
+occur within a seemingly homogeneous cell population. This variability can be 
+due to deterministic or stochastic events that regulate gene expression and has 
+been reported to increase prior to cell phate decisions [@Mojtahedi2016] as well 
+as throughout ageing [@Martinez-jimenez2017]. 
+
+<!--- TBC intro to BASiCS ---> 
+<!--- FINAL SENTENCES TO BE EDITED ---> 
+This article complements existing workflows that use the Bioconductor package 
+ecosystem to analyse scRNA-seq datasets [@Lun2016; @Kim2019], including the use 
+of `r Biocpkg("scater")` and `r Biocpkg("scran")` to perform quality control 
+steps and low-level preliminary analysis [@McCarthy2017; @Lun2016]. 
+We present a step-by-step computational workflow to robustly quantify 
+transcriptional variability using the `r Biocpkg("BASiCS")` package 
+[@Vallejos2015; @Vallejos2016; @Eling2017]. 
+`r Biocpkg("BASiCS")` implements a Bayesian hierarchical framework that 
+simultaneously performs data normalisation (global scaling), technical noise quantification and selected downstream analyses whilst propagating 
+statistical uncertainty across these steps. 
+Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
+observed variability in gene expression measurements into technical and 
+biological components. This enables the identification of highly variable genes
+that [TBC]. Moreover, this variance decomposition enables detection of lowly
+variable genes with stable expression [TBC - CITE GIGASCIENCE PAPER]. When two 
+or more groups of cells are available (e.g. experimental conditions or
+cell types), `r Biocpkg("BASiCS")` uses differential expression analysis to identify genes whose expression patterns change [@Vallejos2016]. 
+
+<!--- TBC description of BASiCS downstream analysis, with focus on differential --->
+<!--- add brief description for LVG/HVG 
+<!--- Differential analyses ---> 
+<!--- add reference to 11 challenges paper, flexible changes in expression ---> 
+<!-- DE testing isn't always between (2) conditions (blocking, continuous, etc) -->
+Since the era of RNA sequencing, methods for differential expression testing 
+of transcript counts across conditions have been developed 
+[@Anders2010; @Robinson2009]. 
+Due to high technical variability and sparsity in scRNA-seq data, new 
+approaches were developed for differential expression testing 
+for scRNA-seq data [@Katayama2013; @Kharchenko2014; @Delmans2016]. 
+In contrast to bulk samples, scRNA-seq measures variations in gene expression 
+across a population of cells, and can therefore be used to test for changes in 
+expression variability between two conditions. 
+To do this, `BASiCS` compares the gene-specific over-dispersion parameters 
+between two conditions. These parameters are independent of technical noise 
+and can be used as proxy for biological variability [@Vallejos2016]. 
+Similar to the mean-variability trend observed for normalised scRNA-seq data 
+[@Brennecke2013], the estimates for over-dispersion parameters decrease with 
+mean expression [@Vallejos2016].
+To correct for this, BASiCS has been extended to model the mean-variability 
+relationship and capture residual over-dispersion estimates that show no 
+association to mean expression. 
+Therefore, this extension allows to test changes in mean expression in parallel 
+to changes in variability [@Eling2018]. 
+
+<!--- TBC Outline - wider use of bioc libraries + case studies ---> 
+Two case studies exemplify the use of `BASiCS` for non-UMI and UMI 
+scRNA-seq data. In the first case, `BASiCS` can be used to detect highly and 
+lowly variable genes and to obtain robust, gene-specific estimates to assess
+biological variability in naive CD4^+^ T cells 
+[@Martinez-jimenez2017]; for a similar workflow see [@Kim2019].
+Furthermore, we compare naive to activated CD4^+^ T cells to highlight the use 
+of `BASiCS` to test for changes in mean expression and expression variability.
+In the second case, we use droplet-based scRNA-seq data to detect more subtle 
+transcriptional changes during embryonic somitogenesis [@Ibarra-Soria2018]
+
+<!---
+In particular, 
+the `r Biocpkg("BASiCS")` Bioconductor package implements a Bayesian 
+hierarchical framework that propagates statistical 
+uncerstainty into down-stream analyses, and allows the decomposition of total 
+variance into biological and technical components by incorporating spike-in 
+reads [@Vallejos2015]. Furthermore, `BASiCS` has been extended to perform 
+differential mean expression and differential variability testing 
+[@Vallejos2016].
+
+package estimates gene- and cell-specific model parameters that can be used to, 
+for example, normalise raw scRNA-seq counts and to detect highly and lowly 
+variable genes [@Vallejos2015BASiCS]. 
+`BASiCS` is a hierarchical Bayesian framework that propagates statistical 
+uncerstainty into down-stream analyses, and allows the decomposition of total 
+variance into biological and technical components by incorporating spike-in 
+reads [@Vallejos2015]. Furthermore, `BASiCS` has been extended to perform 
+differential mean expression and differential variability testing 
+[@Vallejos2016].
+--->
+\newpage

@@ -77,6 +77,7 @@ knitr::opts_chunk$set(
 # Introduction
 
 <!--- scRNA-seq and the different types of heterogeneity ---> 
+<!--- Nils to revisit and add additional references if required --->
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
 transcriptional heterogeneity in cell populations that remains otherwise 
 undetected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
@@ -86,18 +87,37 @@ Applications of scRNA-seq range from characterising cell types in immunity
 commitment [@Goolam2016; @Ohnishi2014]. 
 Transcriptional heterogeneity within a population of cells can relate to 
 different underlying structures. 
-On the broadest level, this heterogeneity can be due to the presence of distinct 
+On the broadest level, this heterogeneity can relate to the presence of distinct 
 expression profiles associated to cell subtypes or discrete states, which 
 could be characterised through clustering [@Kiselev2019]. 
 Alternatively, cell-to-cell expression heterogeneity can reflect gradual 
-changes throughout processes that evolve over time (such as development and differentiation) and that can be characterised using pseudotime inference 
-methods [@Saelens2019]. 
-More subtle expression variability within a seemingly homogeneous cell 
-population can be due to deterministic or stochastic events [ADD EXAMPLES AND
-A BRIEF SENTENCE ABOUT WHY THIS TYPE OF VARIABILITY IS IMPORTANT]. 
+changes along processes that evolve over time and that can be characterised 
+using pseudotime inference methods [@Saelens2019]. 
+The focus of this article is on more subtle expression variability that can 
+occur within a seemingly homogeneous cell population. This variability can be 
+due to deterministic or stochastic events that regulate gene expression and has 
+been reported to increase prior to cell phate decisions [@Mojtahedi2016] as well 
+as throughout ageing [@Martinez-jimenez2017]. 
 
 <!--- TBC intro to BASiCS ---> 
-
+<!--- FINAL SENTENCES TO BE EDITED ---> 
+This article complements existing workflows that use the Bioconductor package 
+ecosystem to analyse scRNA-seq datasets [@Lun2016; @Kim2019], including the use 
+of `r Biocpkg("scater")` and `r Biocpkg("scran")` to perform quality control 
+steps and low-level preliminary analysis [@McCarthy2017; @Lun2016]. 
+We present a step-by-step computational workflow to robustly quantify 
+transcriptional variability using the `r Biocpkg("BASiCS")` package 
+[@Vallejos2015; @Vallejos2016; @Eling2017]. 
+`r Biocpkg("BASiCS")` implements a Bayesian hierarchical framework that 
+simultaneously performs data normalisation (global scaling), technical noise quantification and selected downstream analyses whilst propagating 
+statistical uncertainty across these steps. 
+Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
+observed variability in gene expression measurements into technical and 
+biological components. This enables the identification of highly variable genes
+that [TBC]. Moreover, this variance decomposition enables detection of lowly
+variable genes with stable expression [TBC - CITE GIGASCIENCE PAPER]. When two 
+or more groups of cells are available (e.g. experimental conditions or
+cell types), `r Biocpkg("BASiCS")` uses differential expression analysis to identify genes whose expression patterns change [@Vallejos2016]. 
 
 <!--- TBC description of BASiCS downstream analysis, with focus on differential --->
 <!--- add brief description for LVG/HVG 
@@ -126,14 +146,7 @@ Therefore, this extension allows to test changes in mean expression in parallel
 to changes in variability [@Eling2018]. 
 
 <!--- TBC Outline - wider use of bioc libraries + case studies ---> 
-Here we present a computational workflow for differential expression and 
-differential variability testing of scRNA-seq data using the previously 
-published BASiCS package [@Vallejos2015; @Vallejos2016; @Eling2017] implemented 
-in the statistical computing language R. 
-We highlight the use of the `r Biocpkg("scater")` and `r Biocpkg("scran")` 
-Bioconductor packages to perform initial quality control and low-level analysis 
-[@McCarthy2017; @Lun2016], which is comparable to analyses performed using 
-`BASiCS`. Two case studies exemplify the use of `BASiCS` for non-UMI and UMI 
+Two case studies exemplify the use of `BASiCS` for non-UMI and UMI 
 scRNA-seq data. In the first case, `BASiCS` can be used to detect highly and 
 lowly variable genes and to obtain robust, gene-specific estimates to assess
 biological variability in naive CD4^+^ T cells 
