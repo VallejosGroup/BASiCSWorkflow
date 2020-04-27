@@ -1,4 +1,5 @@
 # BASiCSWorkflow
+
 Bioconductor workflow to quantify and test changes in variability using BASiCS
 
 To build the docker image, run:
@@ -6,14 +7,18 @@ To build the docker image, run:
 docker build . -t bioconductor_docker_basics
 ```
 
-To use with rstudio:
+To run the docker image via Rstudio server. The code below ensures that the 
+files in /home/rstudio/mycode are available within the docker.
+
 ```bash
 docker run -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc bioconductor_docker_basics
 ```
 
-Or to launch a shell:
+Then access [http://localhost:8787](http://localhost:8787).
+Username: rstudio, password = bioc.
+
+
+Equivalently, to launch bash:
 ```bash
 docker run -v $(pwd):/home/rstudio/mycode -it bioconductor_docker_basics /bin/bash
 ```
-
-
