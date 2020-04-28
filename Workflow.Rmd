@@ -332,31 +332,35 @@ diagnostics, removing low quality samples (wells or droplets, depending on
 the protocol) that may distort downstream analyses. 
 Among others, QC can help to identify samples that contain broken cells, that 
 are empty or that contain multiple cells [@Ilicic2016classification]. 
-Moreover, lowly expressed genes for which less reliable information is available 
-are typically also removed. 
+Moreover, lowly expressed genes for which less reliable information is 
+available are typically also removed. 
+To perform QC of scRNA-seq data, we use the `r Biocpkg("scater")` Bioconductor 
+package [@McCarthy2017].
+In `r Biocpkg("scater")`, the `calculateQCMetrics` function can be used to 
+calculate standard QC metrics for each cell (e.g. percentage of mitochondrial 
+reads) and gene (e.g. percentage of zeroes across all cells). 
+The package also provides a suite of visualisation tools that can be used to 
+explore the data under study and its associated QC diagnostic metrics. 
 
-<!--- edited until here only
-removed comment about normalisation as we primarily use scran for that 
-add something about gene-level metrics --->
-The `r Biocpkg("scater")` Bioconductor package was developed to facilitate 
-this process [@McCarthy2017].
-It can be used to calculate standard QC metrics (e.g. total reads per cell, 
-percentage of mitochondrial reads) and for data visualisation.  
-Here, we primarily use the `calculateQCMetrics` function to calculate cell- 
-and gene-specific QC metrics and the `plotPCA` function to visualise QC metrics, 
-exploring how these interact with available metadata. 
-
-The `r Biocpkg("scran")` Bioconductor package offers a variety of functions 
-for low-level scRNA-seq data analysis [@Lun2016].
-While it contains function for doublet detection, and estimation 
-of cell cycle states, we will use it primarily for normalisation in conjunction
-with the `scater` package [@Lun2016pooling], and for modelling the mean-variance 
-trend across all genes. The `trendVar` and `decomposeVar` functions will be used to fit a 
-trend between the gene-specific variances and gene-specific mean expression,
-before decomposing the overall variance into technical and biological 
-components. Furthermore, we will use the `DM` function to calculate the distance
-of gene-specific squared coefficients of variation (CV^2) to a rolling median 
-along mean expression [@Kolodziejczyk2015cell].
+The `r Biocpkg("scran")` package offers additional tools for QC 
+diagnostics and a variety of functions scRNA-seq data analysis [@Lun2016].
+In particular, it can perform *global scaling* data normalisation, calculating 
+cell-specific scaling factors that capture global differences in read-counts 
+across cells (e.g. due to variability in sequencing depth and PCR amplification) 
+[@Lun2016pooling].
+In `r Biocpkg("scran")`, users can also explore how the observed variability in
+gene expression counts can be decomposed into technical and biological 
+components (see the `decomposeVar` function). 
+Moreover, the `trendVar` function can be used to infer an overall trend between 
+gene-specific mean and variance estimates. 
+To derive gene-specific variability estimates that are not confounded by this 
+overall trend, the `DM` function calculates the distance between gene-specific 
+squared coefficients of variation (CV$^2$) and a rolling median along the range
+of mean expression values [@Kolodziejczyk2015cell].
+DM variability estimates enable exploratory analyses of cell-to-cell 
+heterogeneity, but a measure of uncertainty is not readily available. 
+As such, gene-specific downstream inference (such as differential variability 
+testing) is precluded.
 
 ## Quantifying cell-to-cell transcriptional variability - `BASiCS`
 

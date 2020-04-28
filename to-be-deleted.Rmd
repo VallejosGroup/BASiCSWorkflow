@@ -73,63 +73,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Methods {#methods}
-
-This step-by-step scRNA-seq analysis workflow is primarily based on the 
-Bioconductor package ecosystem [@Amezquita2019]. 
-A graphical overview for the workflow is provided in Figure \@ref(fig:overview) 
-and its main components are described below. 
-
-```{r overview, out.width='50%', fig.cap = 'Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a SingleCellExperiment object, we use the scater and scran Bioconductor packages to perform quality control and initial exploratory analyses. The primary focus of this workflow is to robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations. For this purpose, we apply the BASiCS Bioconductor package, illustrating how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.', echo=FALSE, fig.pos='h'}
-knitr::include_graphics("figure/Overview.png")
-```
-
-## Input data - `SingleCellExperiment`
-
-Here, we use the `r Biocpkg("SingleCellExperiment")` package to convert an input 
-matrix of raw read-counts (molecule counts for UMI-based protocols) into a 
-`SingleCellExperiment` object.
-Such object can be used to store scRNA-seq data and its associated metadata, 
-such as gene- and cell-specific information. 
-Moreover, when available, the same object can be used to store read-counts for 
-technical spike-in molecules (these can be accessed via the `altExp()` method).
-A major advantage of using a `SingleCellExperiment` object as the input for 
-scRNA-seq analyses is that it enables interoperability across a large number of 
-Bioconductor packages [@Amezquita2019]. 
-
-## Quality control and exploratory analyses - `scater` and `scran`
-
-An critical step in scRNA-seq analyses is to apply quality control (QC) 
-diagnostics, removing low quality samples (wells or droplets, depending on 
-the protocol) that may distort downstream analyses. 
-Among others, QC can help to identify samples that contain broken cells, that 
-are empty or that contain multiple cells [@Ilicic2016classification]. 
-Moreover, lowly expressed genes for which less reliable information is available 
-are typically also removed. 
-
-<!--- edited until here only
-removed comment about normalisation as we primarily use scran for that 
-add something about gene-level metrics --->
-The `r Biocpkg("scater")` Bioconductor package was developed to facilitate 
-this process [@McCarthy2017].
-It can be used to calculate standard QC metrics (e.g. total reads per cell, 
-percentage of mitochondrial reads) and for data visualisation.  
-Here, we primarily use the `calculateQCMetrics` function to calculate cell- 
-and gene-specific QC metrics and the `plotPCA` function to visualise QC metrics, 
-exploring how these interact with available metadata. 
-
-The `r Biocpkg("scran")` Bioconductor package offers a variety of functions 
-for low-level scRNA-seq data analysis [@Lun2016].
-While it contains function for doublet detection, and estimation 
-of cell cycle states, we will use it primarily for normalisation in conjunction
-with the `scater` package [@Lun2016pooling], and for modelling the mean-variance 
-trend across all genes. The `trendVar` and `decomposeVar` functions will be used to fit a 
-trend between the gene-specific variances and gene-specific mean expression,
-before decomposing the overall variance into technical and biological 
-components. Furthermore, we will use the `DM` function to calculate the distance
-of gene-specific squared coefficients of variation (CV^2) to a rolling median 
-along mean expression [@Kolodziejczyk2015cell].
-
 ## Quantifying cell-to-cell transcriptional variability - `BASiCS`
 
 The `r Biocpkg("BASiCS")` Bioconductor package contains an assembly of 
