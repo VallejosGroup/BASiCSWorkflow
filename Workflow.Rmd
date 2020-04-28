@@ -386,9 +386,9 @@ gene-specific *mean* ($\mu_i$) and *over-dispersion* ($\delta_i$) parameters.
 Mean parameters $\mu_i$ quantify the overall expression for each gene $i$
 across the population of cells under study.
 Instead, $\delta_i$ captures the excess of variability that is observed with 
-respect to what would be expected in a homogeneous cell population, after taking 
-into account technical noise. 
-These are used as a proxy to quantify transcriptional variability.
+respect to what would be expected in a homogeneous cell population, after 
+taking into account technical noise. 
+This is used as a proxy to quantify transcriptional variability.
 Moreover, to account for the strong association that is typically observed 
 between mean expression and over-dispersion estimates, we recently introduced 
 gene-specific *residual over-dispersion* parameters $\epsilon_i$ [@Eling2018]. 
@@ -396,15 +396,17 @@ Similar to DM values implemented in `r Biocpkg("scran")`, these are defined as
 deviations with respect to an overall regression trend that captures the 
 relationship between mean and over-dispersion values.
 
-Parameter estimation is performed using an adaptive Metropolis within Gibbs
-algorithm [@Roberts2009].
-This is implemented in the `BASiCS_MCMC` function, which can be run using four 
-different major settings (see Table 1). 
-If spike-in molecules and the user sets `WithSpikes = TRUE` (default), the
-model uses this information in order to infer technical noise.
-Alternatively, if `WithSpikes = FALSE` [TEXT TBC].
-We recommend users to select `Regression = TRUE` as a default option, as it
-[TEXT TBC].
+Parameter estimation is implemented in the `BASiCS_MCMC` function, which can be 
+run using four different major settings (Table 1). 
+If spike-in molecules are available and `WithSpikes = TRUE` (default), the model 
+uses this information in order to infer technical noise.
+Alternatively, if `WithSpikes = FALSE`, the approach introduced in [@Eling2018]
+is applied.
+We recommend to use `Regression = TRUE` (default) as the underlying informative
+prior improves the stability of posterior estimates for small sample sizes and 
+lowly expressed genes [@Eling2018]. 
+Moreover, it provides additional flexibility for downstream analysis as it also
+infers gene-specific residual over-dispersion parameters $\epsilon_i$. 
 
 <!---
 If the regression between over-dispersion and mean expression should be 
@@ -423,6 +425,9 @@ No spike-ins available  `WithSpikes = FALSE`  `WithSpikes = FALSE`
                         `Regression = FALSE`  `Regression = TRUE`
 ----------------------- --------------------  -------------------
 
+<!-- Paragraph to be edited --->
+The algorithm implemented in the `BASiCS_MCMC` function is an adaptive 
+Metropolis within Gibbs sampler [@Roberts2009].
 The `BASiCS_MCMC` function returns a `BASiCS_Chain` object, which can be used 
 for further downstream analyses, many of which are detailed in this workflow.
 These objects contain draws from Markov chain Monte Carlo (MCMC) samplers,
