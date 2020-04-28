@@ -100,51 +100,51 @@ Single-cell RNA sequencing, expression variability, transcriptional noise, diffe
 \hypertarget{quantifying-cell-to-cell-transcriptional-variability---basics}{%
 \subsection{\texorpdfstring{Quantifying cell-to-cell transcriptional variability - \texttt{BASiCS}}{Quantifying cell-to-cell transcriptional variability - BASiCS}}\label{quantifying-cell-to-cell-transcriptional-variability---basics}}
 
-The \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} Bioconductor package contains an assembly of
-functions to estimate and analyse gene- and cell-specific model parameters
-\citep{Vallejos2015BASiCS, Vallejos2016, Eling2018}.
-\texttt{BASiCS} is build upon a hierarchical Baysian framework and as such samples
-posterior distribution for each model parameter.
-In mathematical terms, the gene expression count \(X_{ij}\) for gene \(i\) in cell
-\(j\) is modelled as:
+The \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} package implements a Bayesian hierarchical framework
+which borrows information across all genes and cells to robustly quantify
+transcriptional variability \citep{Vallejos2015BASiCS}.
+Similar to the approach adopted in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
+infers cell-specific global scaling normalisation parameters.
+However, instead of inferring these as a pre-processing step,
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses an integrated approach in which data normalisation
+and downstream analyses are performed simultaneously --- whilst propagating
+statistical uncertainty.
+To quantify technical noise, the original implementation of
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses information from extrinsic spike-in molecules as
+control features, but the model has been extended to address situations in which
+spike-ins are not available \citep{Eling2018}.
 
-\[
-\begin{aligned}
-X_{ij}|\mu_i,\nu_j&\sim{}\text{Poisson}(\nu_j\mu_i)\\
-\nu_j|s_j,\theta&\sim{}\text{Gamma}(1/\theta,1/(s_j\theta))\\
-\rho_{ij}|\delta_i&\sim{}\text{Gamma}(1/\delta_i,1/\delta_i)
-\end{aligned}
-\]
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} summarises the distribution of gene expression through
+gene-specific \emph{mean} (\(\mu_i\)) and \emph{over-dispersion} (\(\delta_i\)) parameters.
+Mean parameters \(\mu_i\) quantify the overall expression for each gene \(i\)
+across the population of cells under study.
+Instead, \(\delta_i\) captures the excess of variability that is observed with
+respect to what would be expected in a homogeneous cell population, after taking
+into account technical noise.
+These are used as a proxy to quantify transcriptional variability.
+Moreover, to account for the strong association that is typically observed
+between mean expression and over-dispersion estimates, we recently introduced
+gene-specific \emph{residual over-dispersion} parameters \(\epsilon_i\) \citep{Eling2018}.
+Similar to DM values implemented in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, these are defined as
+deviations with respect to an overall regression trend that captures the
+relationship between mean and over-dispersion values.
 
-where \(\mu_i\) explains the gene's mean expression, \(\nu_j\) the technical effect
-characterised by the mRNA capture efficiency \(s_j\) and the unexplained technical
-noise parameter \(\theta\).
-Here, \(\rho_{ij}\) the biological
-random effect fluctuating around the gene-specific over-dispersion
-hyper-parameter \(\delta_i\).
-It is important to note that, in further analyses, \(\mu_i\) represents the
-mean expression and \(\delta_i\) the biological over-dispersion of each gene.
+Parameter estimation is performed using an adaptive Metropolis within Gibbs
+algorithm \citep{Roberts2009}.
+This is implemented in the \texttt{BASiCS\_MCMC} function, which can be run using four
+different major settings (see Table 1).
+The default {[}describe the overall setting and recommend regression = true{]}.
 
-Due to a strong association between mean expression and biological
-over-dispersion, the model has been extended to correct for such confounding
-effect. To this end, the prior distribution for the over-dispersion parameters
-has been changed to:
-
-\[
-\delta_i | \mu_i \sim \text{log-t}_{\eta}\left( \text{f}(\mu_i), \sigma^2 \right).
-\]
-
-where \(\text{f}(\mu_i)\) describes a smooth regression trend between the
-over-dispersion and the mean expression parameters.
-This extension introduced the residual over-dispersion parameters
-\(\epsilon_i=\delta_i-\text{f}(\mu_i)\) that do not scale with mean expression
-\citep{Eling2018}.
-
-From a data analysis perspective, the \texttt{BASiCS\_MCMC} function is the heart of
-the \texttt{BASiCS} package, and can be run in four different settings (see Table 1).
+If spike-in counts are availabe and should be used to estimate technical noise,
+the parameter \texttt{WithSpikes} is set to \texttt{TRUE} (default).
+If the regression between over-dispersion and mean expression should be
+performed, the \texttt{Regression} parameters is set to \texttt{TRUE} (default).
+If the user decides to set \texttt{Regression\ =\ FALSE}, \texttt{BASiCS} will not estimate
+the regression trend, and will not supply the residual over-dispersion
+parameters \(\epsilon_i\).
 
 \begin{table}[htbp]
-\caption{Four settings that can be used to run the \texttt{BASiCS\_MCMC} function.}
+\caption{Four settings available for the the \texttt{BASiCS\_MCMC} function.}
 \centering
 \begin{tabledata}{@{}lll@{}}
 \header & No regression & Regression\\
@@ -154,14 +154,6 @@ the \texttt{BASiCS} package, and can be run in four different settings (see Tabl
 \row & \texttt{Regression\ =\ FALSE} & \texttt{Regression\ =\ TRUE}\\
 \end{tabledata}
 \end{table}
-
-If spike-in counts are availabe and should be used to estimate technical noise,
-the parameter \texttt{WithSpikes} is set to \texttt{TRUE} (default).
-If the regression between over-dispersion and mean expression should be
-performed, the \texttt{Regression} parameters is set to \texttt{TRUE} (default).
-If the user decides to set \texttt{Regression\ =\ FALSE}, \texttt{BASiCS} will not estimate
-the regression trend, and will not supply the residual over-dispersion
-parameters \(\epsilon_i\).
 
 The \texttt{BASiCS\_MCMC} function returns a \texttt{BASiCS\_Chain} object, which can be used
 for further downstream analyses, many of which are detailed in this workflow.
@@ -181,6 +173,14 @@ function. \texttt{BASiCS} also offers a number of functions to visualise and ass
 convergence of MCMC chains. In particular, we will use
 \texttt{BASiCS\_EffectiveSize} and \texttt{BASiCS\_DiagPlot} to calculate and visualise the
 effective sample size generated by the MCMC samplers.
+
+contains an assembly of
+functions to estimate and analyse gene- and cell-specific model parameters
+\citep{Vallejos2015BASiCS, Vallejos2016, Eling2018}.
+
+{[}talk about mean and over-dispersion parameters; how can these be used to select hvg/lvg;
+then mention the ability to perform differential testing;
+finally the extention to account for mean/over-dispersion{]}
 
 \hypertarget{other-steps-title-tbc}{%
 \subsection{Other steps {[}title tbc{]}}\label{other-steps-title-tbc}}
