@@ -16,3 +16,9 @@ docker run -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc biocondu
 
 Then access [http://localhost:8787](http://localhost:8787).
 Username: rstudio, password = bioc.
+
+
+Equivalently, to launch bash:
+```bash
+docker run -v $(pwd):/home/rstudio/mycode -it bioconductor_docker_basics /bin/bash
+```
