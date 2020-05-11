@@ -116,7 +116,7 @@ This variability can be due to deterministic or stochastic events that regulate 
 This article complements existing scRNA-seq workflows based on the
 Bioconductor package ecosystem (e.g. \citep{Lun2016, Kim2019}).
 We describe a step-by-step analysis which uses \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} and
-\emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} to perform quality control as well as
+\emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} to perform quality control (QC) as well as
 initial exploratory analyses \citep{McCarthy2017, Lun2016}.
 To robustly quantify transcriptional variability within and
 between pre-specified cell populations (such as experimental conditions or
@@ -169,36 +169,33 @@ available at \url{https://github.com/VallejosGroup/BASiCSWorkflow}. To ensure th
 reproducibility of this workflow, the analysis environment and all software
 dependencies are provided as a Docker \citep{Boettiger2014} image at: {[}ADD LINK{]}.
 
-\newpage
-
 \hypertarget{sources-of-variability-in-scrna-seq-datasets}{%
 \subsection{Sources of variability in scRNA-seq datasets}\label{sources-of-variability-in-scrna-seq-datasets}}
 
-An overarching goal of scRNA-seq experiments is to characterise gene expression
-heterogeneity with cellular resolution.
-The focus of this article is to quantify the strength of this heterogeneity
-within seemingly homogeneous cell populations.
+The focus of this article is to use scRNA-seq data in order to quantify the
+strength of cell-to-cell expression heterogeneity within seemingly homogeneous
+cell populations.
 Here, we briefly describe the underlying sources of heterogeneity that can be
 captured by cell-to-cell variability estimates derived from scRNA-seq data.
 
-Stochastic variability within a population of cells is often referred to as
-transcriptional \emph{noise} and can arise from intrinsic and extrinsic sources
+Stochastic variability within a cell population --- often referred to as
+transcriptional \emph{noise} --- can arise from intrinsic and extrinsic sources
 \citep{Elowitz2002, Eling2019}.
-Classically, extrinsic noise is defined as stochastic fluctuations in cellular
-components induced by cells residing in different dynamic states (e.g.~cell
-size, cell cycle, metabolism, intra- and inter-cellular signalling)
+Classically, extrinsic noise is defined as stochastic fluctuations induced by
+different dynamic cellular states (e.g.~cell cycle, metabolism, intra- and
+inter-cellular signalling)
 \citep{Zopf2013, Iwamoto2016, Kiviet2014}.
 In contrast, intrinsic noise arises from stochastic effects on biochemical
 processes such as transcription and translation \citep{Elowitz2002}.
 Intrinsic noise can be modulated by genetic and epigenetic modifications (such
 as mutations, histone modifications, CpG island length and nucleosome
 positioning) \citep{Eberwine2015, Faure2017, Morgan2018} and is usually measured
-at the level of individual genes \citep{Elowitz2002}.
+at the gene level \citep{Elowitz2002}.
 Cell-to-cell gene expression variability estimates derived from scRNA-seq data
 capture a combination of these effects, as well as deterministic regulatory
 mechanisms \citep{Eling2019}.
 Moreover, these variability estimates can also be inflated by the technical
-noise that is typically observed in scRNA-seq assays \citep{Brennecke2013}.
+noise that is typically observed in scRNA-seq data \citep{Brennecke2013}.
 
 Different strategies have been incorporated into scRNA-seq protocols to control
 or attenuate technical noise.
@@ -219,9 +216,9 @@ these are not available for all scRNA-seq protocols \citep{Haque2017}.
 \hypertarget{methods}{%
 \section{Methods}\label{methods}}
 
-This step-by-step scRNA-seq analysis workflow is primarily based on the
-Bioconductor package ecosystem \citep{Amezquita2019}.
-A graphical overview for the workflow is provided in Figure \ref{fig:overview}
+This step-by-step scRNA-seq workflow is primarily based on the Bioconductor
+package ecosystem \citep{Amezquita2019}.
+A graphical overview is provided in Figure \ref{fig:overview}
 and its main components are described below.
 
 \begin{figure}[h]
@@ -238,9 +235,7 @@ and its main components are described below.
 
 Here, we use the \emph{\href{https://bioconductor.org/packages/3.11/SingleCellExperiment}{SingleCellExperiment}} package to convert an input
 matrix of raw read-counts (molecule counts for UMI-based protocols) into a
-\texttt{SingleCellExperiment} object.
-Such object can be used to store scRNA-seq data and its associated metadata,
-such as gene- and cell-specific information.
+\texttt{SingleCellExperiment} object which can store scRNA-seq data and its associated metadata, such as gene- and cell-specific information.
 Moreover, when available, the same object can be used to store read-counts for
 technical spike-in molecules (these can be accessed via the \texttt{altExp()} method).
 A major advantage of using a \texttt{SingleCellExperiment} object as the input for
@@ -250,9 +245,9 @@ Bioconductor packages \citep{Amezquita2019}.
 \hypertarget{quality-control-and-exploratory-analyses---scater-and-scran}{%
 \subsection{\texorpdfstring{Quality control and exploratory analyses - \texttt{scater} and \texttt{scran}}{Quality control and exploratory analyses - scater and scran}}\label{quality-control-and-exploratory-analyses---scater-and-scran}}
 
-An critical step in scRNA-seq analyses is to apply quality control (QC)
-diagnostics, removing low quality samples (wells or droplets, depending on
-the protocol) that may distort downstream analyses.
+An critical step in scRNA-seq analyses is to apply QC diagnostics, removing low
+quality samples (wells or droplets, depending on the protocol) that may distort
+downstream analyses.
 Among others, QC can help to identify samples that contain broken cells, that
 are empty or that contain multiple cells \citep{Ilicic2016classification}.
 Moreover, lowly expressed genes for which less reliable information is
@@ -267,42 +262,37 @@ explore the data under study and its associated QC diagnostic metrics.
 
 The \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} package offers additional tools for QC
 diagnostics and a variety of functions scRNA-seq data analysis \citep{Lun2016}.
-In particular, it can perform \emph{global scaling} data normalisation, calculating
-cell-specific scaling factors that capture global differences in read-counts
-across cells (e.g.~due to variability in sequencing depth and PCR amplification)
-\citep{Lun2016pooling}.
+It can perform \emph{global scaling} data normalisation, calculating cell-specific scaling factors that capture global differences in read-counts across cells (e.g.~due to sequencing depth and PCR amplification) \citep{Lun2016pooling}.
 In \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, users can also explore how the observed variability in
-gene expression counts can be decomposed into technical and biological
-components (see the \texttt{decomposeVar} function).
+expression counts can be decomposed into technical and biological
+sources (see \texttt{decomposeVar}).
 Moreover, the \texttt{trendVar} function can be used to infer an overall trend between
 gene-specific mean and variance estimates.
 To derive gene-specific variability estimates that are not confounded by this
 overall trend, the \texttt{DM} function calculates the distance between gene-specific
 squared coefficients of variation (CV\(^2\)) and a rolling median along the range
 of mean expression values \citep{Kolodziejczyk2015cell}.
-DM variability estimates enable exploratory analyses of cell-to-cell
-heterogeneity, but a measure of uncertainty is not readily available.
-As such, gene-specific downstream inference (such as differential variability
-testing) is precluded.
+DM estimates enable exploratory analyses of cell-to-cell heterogeneity, but a measure of uncertainty is not readily available. As such, gene-specific
+downstream inference (e.g.~differential variability testing) is precluded.
 
-\hypertarget{quantifying-cell-to-cell-transcriptional-variability---basics}{%
-\subsection{\texorpdfstring{Quantifying cell-to-cell transcriptional variability - \texttt{BASiCS}}{Quantifying cell-to-cell transcriptional variability - BASiCS}}\label{quantifying-cell-to-cell-transcriptional-variability---basics}}
+\hypertarget{analysis-of-cell-to-cell-transcriptional-variability---basics}{%
+\subsection{\texorpdfstring{Analysis of cell-to-cell transcriptional variability - \texttt{BASiCS}}{Analysis of cell-to-cell transcriptional variability - BASiCS}}\label{analysis-of-cell-to-cell-transcriptional-variability---basics}}
 
-The \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} package implements a Bayesian hierarchical framework
+The \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} package uses a Bayesian hierarchical framework
 which borrows information across all genes and cells to robustly quantify
 transcriptional variability \citep{Vallejos2015BASiCS}.
 Similar to the approach adopted in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
 infers cell-specific global scaling normalisation parameters.
 However, instead of inferring these as a pre-processing step,
 \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses an integrated approach in which data normalisation
-and downstream analyses are performed simultaneously --- whilst propagating
+and downstream analyses are performed simultaneously, thereby propagating
 statistical uncertainty.
 To quantify technical noise, the original implementation of
 \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses information from extrinsic spike-in molecules as
 control features, but the model has been extended to address situations in which
 spike-ins are not available \citep{Eling2018}.
 
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} summarises the distribution of gene expression through
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} summarises expression patterns through
 gene-specific \emph{mean} (\(\mu_i\)) and \emph{over-dispersion} (\(\delta_i\)) parameters.
 Mean parameters \(\mu_i\) quantify the overall expression for each gene \(i\)
 across the population of cells under study.
@@ -317,17 +307,16 @@ Similar to DM values implemented in \emph{\href{https://bioconductor.org/package
 deviations with respect to an overall regression trend that captures the
 relationship between mean and over-dispersion values.
 
-Parameter estimation is implemented in the \texttt{BASiCS\_MCMC} function, which can be
+Parameter estimates are obtained via the \texttt{BASiCS\_MCMC} function, which can be
 run using four different major settings (Table 1).
-If spike-in molecules are available and \texttt{WithSpikes\ =\ TRUE} (default), the model
-uses this information in order to infer technical noise.
-Alternatively, if \texttt{WithSpikes\ =\ FALSE}, the approach introduced in \citep{Eling2018}
-is applied.
-We recommend to use \texttt{Regression\ =\ TRUE} (default) as the underlying informative
-prior improves the stability of posterior estimates for small sample sizes and
+\texttt{WithSpikes} indicates whether spike-in molecules are used to infer technical
+noise (default: \texttt{WithSpikes\ =\ TRUE}).
+We recommend to use \texttt{Regression\ =\ TRUE} (default) as the underlying prior
+improves the stability of posterior estimates for small sample sizes and
 lowly expressed genes \citep{Eling2018}.
-Moreover, it provides additional flexibility for downstream analysis as it also
-infers gene-specific residual over-dispersion parameters \(\epsilon_i\).
+Moreover, it provides additional flexibility for downstream analysis, inferring
+gene-specific residual over-dispersion parameters \(\epsilon_i\) that are not
+confounded by changes in mean expression.
 
 \begin{table}[htbp]
 \caption{Four settings available for the the \texttt{BASiCS\_MCMC} function.}
@@ -341,10 +330,13 @@ infers gene-specific residual over-dispersion parameters \(\epsilon_i\).
 \end{tabledata}
 \end{table}
 
-The algorithm implemented in the \texttt{BASiCS\_MCMC} function is an adaptive
-Metropolis within Gibbs sampler \citep{Roberts2009}.
+An adaptive Metropolis within Gibbs sampler \citep{Roberts2009} algorithm is
+implemented in \texttt{BASiCS\_MCMC}.
+The total number of iterations for the algorithm is indicated by \texttt{N}.
 The \texttt{BASiCS\_MCMC} function returns a \texttt{BASiCS\_Chain} object, which can be used
-for further downstream analyses, many of which are detailed in this workflow.
+for further downstream analyses.
+The output object contains
+
 These objects contain draws from Markov chain Monte Carlo (MCMC) samplers,
 which are used to infer the posterior distribution over the model parameters
 \citep{Smith1993}.
