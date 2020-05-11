@@ -81,34 +81,31 @@ knitr::opts_chunk$set(
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
 transcriptional heterogeneity in cell populations that remains otherwise 
 undetected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
-Applications of scRNA-seq range from characterising cell types in immunity 
+<!--- Applications of scRNA-seq range from characterising cell types in immunity 
 [@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018; 
 @Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms for cell fate 
-commitment [@Goolam2016; @Ohnishi2014]. 
-Transcriptional heterogeneity within a population of cells can relate to 
-different underlying structures. 
-On the broadest level, this heterogeneity can relate to the presence of distinct 
-expression profiles associated to cell subtypes or discrete states, which 
-could be characterised through clustering [@Kiselev2019]. 
-Alternatively, cell-to-cell expression heterogeneity can reflect gradual 
-changes along processes that evolve over time and that can be characterised 
-using pseudotime inference methods [@Saelens2019]. 
-The focus of this article is on more subtle variability that can 
-occur within a seemingly homogeneous cell population. This variability can be 
-due to deterministic or stochastic events that regulate gene expression and,
-among others, has been reported to increase prior to cell phate decisions 
-[@Mojtahedi2016] as well as throughout ageing [@Martinez-jimenez2017]. 
+commitment [@Goolam2016; @Ohnishi2014]. ---> 
+On the broadest level, this heterogeneity can reflect the presence of distinct 
+cell subtypes or states. <!---, which could be characterised through 
+clustering [@Kiselev2019]. --->
+Alternatively, cell-to-cell expression heterogeneity can be due to gradual 
+changes along processes that evolve over time, such as development and differentiation. <!--- and that can be characterised 
+using pseudotime inference methods [@Saelens2019]. --->
+Several clustering and pseudotime inference methods have been developed to
+characterise these sources of heterogeneity [@Kiselev2019; @Saelens2019].
+However, there is a limited availability of computational tools tailored 
+to study more subtle variability within a seemingly homogeneous cell population. 
+This variability can be due to deterministic or stochastic events that regulate gene expression and, among others, has been reported to increase prior to cell phate decisions [@Mojtahedi2016] as well as throughout ageing [@Martinez-jimenez2017]. 
 
 <!--- Describes aims for the workflow and introduces BASiCS ---> 
-This article complements existing workflows that use the Bioconductor package 
-ecosystem to analyse scRNA-seq data [@Lun2016; @Kim2019]. 
-We present a step-by-step workflow which combines the `r Biocpkg("scater")` and 
-`r Biocpkg("scran")` packages to perform quality control steps as well as 
-low-level exploratory analyses [@McCarthy2017; @Lun2016]. 
-Our main focus is to robustly quantify transcriptional variability within and
-between pre-specified cell populations, such as experimental conditions or
-cell types.
-For this purpose, we use `r Biocpkg("BASiCS")` [@Vallejos2015; @Vallejos2016;
+This article complements existing scRNA-seq workflows based on the
+Bioconductor package ecosystem (e.g. [@Lun2016; @Kim2019]). 
+We describe a step-by-step analysis which uses `r Biocpkg("scater")` and 
+`r Biocpkg("scran")` to perform quality control as well as 
+initial exploratory analyses [@McCarthy2017; @Lun2016]. 
+To robustly quantify transcriptional variability within and
+between pre-specified cell populations (such as experimental conditions or
+cell types) we use `r Biocpkg("BASiCS")` [@Vallejos2015; @Vallejos2016;
 @Eling2017] --- a Bayesian hierarchical framework that simultaneously performs 
 data normalisation (global scaling), technical noise quantification and selected 
 downstream analyses, whilst propagating statistical uncertainty across these 
@@ -117,16 +114,14 @@ heterogeneity of immune cells [@Martinez-jimenez2017].
 
 <!--- BASiCS downstream analyses within a single population --->
 Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
-observed variability in gene expression measurements into technical and 
-biological components [@Vallejos2015]. 
+observed variability in expression measurements into technical and biological components [@Vallejos2015]. 
 This enables the identification of *highly variable genes* (HVGs) that capture
 the major sources of heterogeneity within the analysed cells [@Brennecke2013]. 
-HVG detection is often used as a feature selection step to identify the input 
+HVG detection is often used as feature selection, to identify the input 
 set of genes for subsequent analyses. 
-The variance decomposition obtained by `r Biocpkg("BASiCS")` can also be used
-to highlight *lowly variable genes* (LVGs) that exhibit stable expression 
-across the population of cells.
-LVGs may relate to essential cellular functions and can assist the development
+`r Biocpkg("BASiCS")` can also highlight *lowly variable genes* (LVGs) that 
+exhibit stable expression across the population of cells.
+These may relate to essential cellular functions and can assist the development
 of new data normalisation or integration strategies [@Lin2019]. 
 
 <!--- BASiCS downstream analyses between populations --->
@@ -200,6 +195,7 @@ All source code used to generate the results presented in this article is
 available at https://github.com/VallejosGroup/BASiCSWorkflow. To ensure the 
 reproducibility of this workflow, the analysis environment and all software 
 dependencies are provided as a Docker [@Boettiger2014] image at: [ADD LINK].
+
 
 <!---
 In particular, 

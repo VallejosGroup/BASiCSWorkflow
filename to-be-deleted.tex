@@ -97,6 +97,194 @@ Single-cell RNA sequencing, expression variability, transcriptional noise, diffe
 \clearpage
 \pagestyle{main}
 
+\hypertarget{introduction}{%
+\section{Introduction}\label{introduction}}
+
+Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide
+transcriptional heterogeneity in cell populations that remains otherwise
+undetected in bulk experiments \citep{Stegle2015, Prakadan2017, Patange2018}.
+On the broadest level, this heterogeneity can reflect the presence of distinct
+cell subtypes or states.
+Alternatively, cell-to-cell expression heterogeneity can be due to gradual
+changes along processes that evolve over time, such as development and differentiation.
+Several clustering and pseudotime inference methods have been developed to
+characterise these sources of heterogeneity \citep{Kiselev2019, Saelens2019}.
+However, there is a limited availability of computational tools tailored
+to study more subtle variability within a seemingly homogeneous cell population.
+This variability can be due to deterministic or stochastic events that regulate gene expression and, among others, has been reported to increase prior to cell phate decisions \citep{Mojtahedi2016} as well as throughout ageing \citep{Martinez-jimenez2017}.
+
+This article complements existing scRNA-seq workflows based on the
+Bioconductor package ecosystem (e.g. \citep{Lun2016, Kim2019}).
+We describe a step-by-step analysis which uses \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} and
+\emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} to perform quality control as well as
+initial exploratory analyses \citep{McCarthy2017, Lun2016}.
+To robustly quantify transcriptional variability within and
+between pre-specified cell populations (such as experimental conditions or
+cell types) we use \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} \citep{Vallejos2015, Vallejos2016, Eling2017} --- a Bayesian hierarchical framework that simultaneously performs
+data normalisation (global scaling), technical noise quantification and selected
+downstream analyses, whilst propagating statistical uncertainty across these
+steps. Among others, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}, has led to new insights about the
+heterogeneity of immune cells \citep{Martinez-jimenez2017}.
+
+Within a population of cells, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} decomposes the total
+observed variability in expression measurements into technical and biological components \citep{Vallejos2015}.
+This enables the identification of \emph{highly variable genes} (HVGs) that capture
+the major sources of heterogeneity within the analysed cells \citep{Brennecke2013}.
+HVG detection is often used as feature selection, to identify the input
+set of genes for subsequent analyses.
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} can also highlight \emph{lowly variable genes} (LVGs) that
+exhibit stable expression across the population of cells.
+These may relate to essential cellular functions and can assist the development
+of new data normalisation or integration strategies \citep{Lin2019}.
+
+In order to compare expression patterns between two or more pre-specified
+groups of cells, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} provides a probabilistic decision rule to
+perform differential expression analyses \citep{Vallejos2016, Eling2018}.
+Whilst several differential expression tools have been proposed for scRNA-seq
+data (e.g. \citep{Kharchenko2014, Finak2015}), some evidence suggests that
+these do not generally outperform popular bulk RNA-seq tools \citep{Soneson2018}.
+Moreover, most of these methods are only designed to uncover changes in overall
+expression, ignoring the more complex patterns that can arise at the single cell
+level \citep{Lahnemann2020}.
+Instead, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} embraces the high granularity of scRNA-seq data,
+uncovering changes in cell-to-cell expression variability that are not
+confounded by differences in technical noise or in overall expression.
+
+In this manuscript, we briefly discuss the sources of variability that arise in
+scRNA-seq data and some of the strategies that have been designed to control or
+attenuate technical noise in these assays.
+We also summarise the main features of the Bioconductor packages that are used
+throughout this workflow and provide a description for the underlying statistical
+model implemented in \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
+This includes practical guidance to assess the convergence of the Markov Chain
+Monte Carlo (MCMC) algorithm that is used to infer model parameters as well as
+recommendations to interpret and to post-process the model outputs.
+Finally, we provide two step-by-step case studies using naive CD4\textsuperscript{+} T cells
+\citep{Martinez-jimenez2017} and samples collected during embryonic somitogenesis
+\citep{Ibarra-Soria2018}. These examples were chosen to illustate the usage of
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} in the context of different scRNA-seq protocols.
+
+All source code used to generate the results presented in this article is
+available at \url{https://github.com/VallejosGroup/BASiCSWorkflow}. To ensure the
+reproducibility of this workflow, the analysis environment and all software
+dependencies are provided as a Docker \citep{Boettiger2014} image at: {[}ADD LINK{]}.
+
+\newpage
+
+\hypertarget{sources-of-variability-in-scrna-seq-datasets}{%
+\subsection{Sources of variability in scRNA-seq datasets}\label{sources-of-variability-in-scrna-seq-datasets}}
+
+An overarching goal of scRNA-seq experiments is to characterise gene expression
+heterogeneity with cellular resolution.
+The focus of this article is to quantify the strength of this heterogeneity
+within seemingly homogeneous cell populations.
+Here, we briefly describe the underlying sources of heterogeneity that can be
+captured by cell-to-cell variability estimates derived from scRNA-seq data.
+
+Stochastic variability within a population of cells is often referred to as
+transcriptional \emph{noise} and can arise from intrinsic and extrinsic sources
+\citep{Elowitz2002, Eling2019}.
+Classically, extrinsic noise is defined as stochastic fluctuations in cellular
+components induced by cells residing in different dynamic states (e.g.~cell
+size, cell cycle, metabolism, intra- and inter-cellular signalling)
+\citep{Zopf2013, Iwamoto2016, Kiviet2014}.
+In contrast, intrinsic noise arises from stochastic effects on biochemical
+processes such as transcription and translation \citep{Elowitz2002}.
+Intrinsic noise can be modulated by genetic and epigenetic modifications (such
+as mutations, histone modifications, CpG island length and nucleosome
+positioning) \citep{Eberwine2015, Faure2017, Morgan2018} and is usually measured
+at the level of individual genes \citep{Elowitz2002}.
+Cell-to-cell gene expression variability estimates derived from scRNA-seq data
+capture a combination of these effects, as well as deterministic regulatory
+mechanisms \citep{Eling2019}.
+Moreover, these variability estimates can also be inflated by the technical
+noise that is typically observed in scRNA-seq assays \citep{Brennecke2013}.
+
+Different strategies have been incorporated into scRNA-seq protocols to control
+or attenuate technical noise.
+For example, external RNA spike-in molecules (such as the set introduced by the
+External RNA Controls Consortium, ERCC \citep{Rna2005}) can be added to each cell's
+lysate in a (theoretically) known fixed quantity.
+Spike-ins can assist quality control steps \citep{McCarthy2017}, data normalisation
+\citep{Vallejos2017} and can be used to infer technical noise \citep{Brennecke2013}.
+Another strategy is to tag individual cDNA molecules using unique molecular
+identifiers (UMIs) before PCR amplification \citep{Islam2014}.
+Reads that contain the same UMI can be collapsed into a single molecule count,
+attenuating technical variability associated to cell-to-cell differences
+in amplification and sequencing depth (these technical biases are not fully
+removed unless sequencing to saturation \citep{Vallejos2017}).
+However, despite the benefits associated to the use of spike-ins and UMIs,
+these are not available for all scRNA-seq protocols \citep{Haque2017}.
+
+\hypertarget{methods}{%
+\section{Methods}\label{methods}}
+
+This step-by-step scRNA-seq analysis workflow is primarily based on the
+Bioconductor package ecosystem \citep{Amezquita2019}.
+A graphical overview for the workflow is provided in Figure \ref{fig:overview}
+and its main components are described below.
+
+\begin{figure}[h]
+
+{\centering \includegraphics[width=0.5\linewidth]{figure/Overview} 
+
+}
+
+\caption{Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a SingleCellExperiment object, we use the scater and scran Bioconductor packages to perform quality control and initial exploratory analyses. The primary focus of this workflow is to robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations. For this purpose, we apply the BASiCS Bioconductor package, illustrating how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.}\label{fig:overview}
+\end{figure}
+
+\hypertarget{input-data---singlecellexperiment}{%
+\subsection{\texorpdfstring{Input data - \texttt{SingleCellExperiment}}{Input data - SingleCellExperiment}}\label{input-data---singlecellexperiment}}
+
+Here, we use the \emph{\href{https://bioconductor.org/packages/3.11/SingleCellExperiment}{SingleCellExperiment}} package to convert an input
+matrix of raw read-counts (molecule counts for UMI-based protocols) into a
+\texttt{SingleCellExperiment} object.
+Such object can be used to store scRNA-seq data and its associated metadata,
+such as gene- and cell-specific information.
+Moreover, when available, the same object can be used to store read-counts for
+technical spike-in molecules (these can be accessed via the \texttt{altExp()} method).
+A major advantage of using a \texttt{SingleCellExperiment} object as the input for
+scRNA-seq analyses is that it enables interoperability across a large number of
+Bioconductor packages \citep{Amezquita2019}.
+
+\hypertarget{quality-control-and-exploratory-analyses---scater-and-scran}{%
+\subsection{\texorpdfstring{Quality control and exploratory analyses - \texttt{scater} and \texttt{scran}}{Quality control and exploratory analyses - scater and scran}}\label{quality-control-and-exploratory-analyses---scater-and-scran}}
+
+An critical step in scRNA-seq analyses is to apply quality control (QC)
+diagnostics, removing low quality samples (wells or droplets, depending on
+the protocol) that may distort downstream analyses.
+Among others, QC can help to identify samples that contain broken cells, that
+are empty or that contain multiple cells \citep{Ilicic2016classification}.
+Moreover, lowly expressed genes for which less reliable information is
+available are typically also removed.
+To perform QC of scRNA-seq data, we use the \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} Bioconductor
+package \citep{McCarthy2017}.
+In \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}}, the \texttt{calculateQCMetrics} function can be used to
+calculate standard QC metrics for each cell (e.g.~percentage of mitochondrial
+reads) and gene (e.g.~percentage of zeroes across all cells).
+The package also provides a suite of visualisation tools that can be used to
+explore the data under study and its associated QC diagnostic metrics.
+
+The \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} package offers additional tools for QC
+diagnostics and a variety of functions scRNA-seq data analysis \citep{Lun2016}.
+In particular, it can perform \emph{global scaling} data normalisation, calculating
+cell-specific scaling factors that capture global differences in read-counts
+across cells (e.g.~due to variability in sequencing depth and PCR amplification)
+\citep{Lun2016pooling}.
+In \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, users can also explore how the observed variability in
+gene expression counts can be decomposed into technical and biological
+components (see the \texttt{decomposeVar} function).
+Moreover, the \texttt{trendVar} function can be used to infer an overall trend between
+gene-specific mean and variance estimates.
+To derive gene-specific variability estimates that are not confounded by this
+overall trend, the \texttt{DM} function calculates the distance between gene-specific
+squared coefficients of variation (CV\(^2\)) and a rolling median along the range
+of mean expression values \citep{Kolodziejczyk2015cell}.
+DM variability estimates enable exploratory analyses of cell-to-cell
+heterogeneity, but a measure of uncertainty is not readily available.
+As such, gene-specific downstream inference (such as differential variability
+testing) is precluded.
+
 \hypertarget{quantifying-cell-to-cell-transcriptional-variability---basics}{%
 \subsection{\texorpdfstring{Quantifying cell-to-cell transcriptional variability - \texttt{BASiCS}}{Quantifying cell-to-cell transcriptional variability - BASiCS}}\label{quantifying-cell-to-cell-transcriptional-variability---basics}}
 
@@ -177,25 +365,6 @@ effective sample size generated by the MCMC samplers.
 {[}talk about downstream analyses; hvg/lvg; differential testing
 then mention the ability to perform differential testing;
 finally the extention to account for mean/over-dispersion{]}
-
-\hypertarget{other-steps-title-tbc}{%
-\subsection{Other steps {[}title tbc{]}}\label{other-steps-title-tbc}}
-
-The \emph{\href{https://bioconductor.org/packages/3.11/goseq}{goseq}} Bioconductor package offers functions to detect the
-enrichment of gene ontologies (GOs) among user-specified gene sets \citep{Young2010}.
-Furthermore, \texttt{goseq} corrects for gene length biases, which is useful for full
-length scRNA-seq data as highlighted in the first section.
-In this workflow, we will use \texttt{goseq} to detect GO enrichment among
-differentially expressed sets of genes.
-
-For downstream analysis, such as GO enrichment analysis or the biological
-interpretation of individual genes, we need to (i) link each gene's ID to its
-symbol and (ii) calculate each gene's length.
-For the first task, the \emph{\href{https://bioconductor.org/packages/3.11/biomaRt}{biomaRt}} Bioconductor package annotates a
-wide range of gene and gene product identifiers \citep{Durinck2005} by accessing the
-BioMart software suite (\url{http://www.biomart.org}).
-We can use \texttt{biomaRt} to link the \textbf{Mus musculus} gene IDs and to their gene
-symbols (also referred to as `gene name'):
 
 {\small\bibliography{Workflow.bib}}
 
