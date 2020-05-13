@@ -228,7 +228,7 @@ ETC --- CREATE SECTION IN MANUSCRIPT!]
   
 ---> 
 
-## Sources of variability in scRNA-seq datasets
+# Sources of variability in scRNA-seq data
 
 <!--- text to be revisited ---> 
 <!--- An overarching goal of scRNA-seq is to characterise gene expression 
@@ -313,22 +313,22 @@ Among others, QC can help to identify samples that contain broken cells, that
 are empty or that contain multiple cells [@Ilicic2016classification]. 
 Moreover, lowly expressed genes for which less reliable information is 
 available are typically also removed. 
-The `r Biocpkg("SimpleSingleCell")` Bioconductor workflow and
-the `OSCA` online book each provide an extensive 
-overview on important aspects of how to perform QC of scRNA-seq 
-data, including standard exploratory analyses [@Lun2016;@Amezquita2019].
+The `OSCA` online book each provide an extensive overview on important aspects 
+of how to perform QC of scRNA-seq data, including standard exploratory analyses 
+[@Lun2016;@Amezquita2019].
 
-To perform QC, we use the `r Biocpkg("scater")` Bioconductor 
-package [@McCarthy2017].
-In `r Biocpkg("scater")`, the `calculateQCMetrics` function can be used to 
-calculate standard QC metrics for each cell (e.g. percentage of mitochondrial 
-reads) and gene (e.g. percentage of zeroes across all cells). 
+To perform QC, we use the `r Biocpkg("scater")` package [@McCarthy2017].
+The `addPerCellQC` and `addPerFeatureQC` functions are applied to calculate 
+standard QC metrics for each cell (e.g. percentage of mitochondrial reads) and 
+gene (e.g. percentage of zeroes across all cells), respectively. 
 The package also provides a suite of visualisation tools that can be used to 
 explore the data under study and its associated QC diagnostic metrics. 
 
 The `r Biocpkg("scran")` package offers additional tools for QC 
 diagnostics and a variety of functions scRNA-seq data analysis [@Lun2016].
-It can perform *global scaling* data normalisation, calculating cell-specific scaling factors that capture global differences in read-counts across cells (e.g. due to sequencing depth and PCR amplification) [@Lun2016pooling].
+It can perform *global scaling* data normalisation, calculating cell-specific 
+scaling factors that capture global differences in read-counts across cells 
+(e.g. due to sequencing depth and PCR amplification) [@Lun2016pooling].
 In `r Biocpkg("scran")`, users can also explore how the observed variability in
 expression counts can be decomposed into technical and biological 
 sources (see `decomposeVar`). 
@@ -529,7 +529,7 @@ genenames$gene_length <- genelength[genenames$ensembl_gene_id]
 
 --->
 
-## Reproducibility
+# Reproducibility
 
 The following software versions were used throughout this workflow:
 
@@ -547,9 +547,17 @@ A Docker image containing all software requirements is available at [ADD LINK].
 
 For the first case study, we use scRNA-seq data generated for CD4^+^ T cells
 using the C1 Single-Cell Auto Prep System (Fluidigm^®^). 
-Martinez-Jimenez _et al._ profiled naive (hereafter also referred to as *unstimulated*) and activated (3 hours using _in vitro_ antibody stimulation) CD4^+^ T cells from young and old animals across two mouse strains to study changes in expression variability during ageing and upon immune activation [@Martinez-jimenez2017].
-They extracted naive or effector memory CD4^+^ T cells from spleens of young or old animals, obtaining purified populations using either magnetic-activated cell sorting (MACS) or fluorescence activated cell sorting (FACS).
-External ERCC spike-in RNA [@Rna2005] was added to aid the quantification of technical variability across all cells and all experiments were performed in replicates (also referred to as batches) to control for batch effects.
+Martinez-Jimenez _et al._ profiled naive (hereafter also referred to as 
+*unstimulated*) and activated (3 hours using _in vitro_ antibody stimulation) 
+CD4^+^ T cells from young and old animals across two mouse strains to study 
+changes in expression variability during ageing and upon immune activation 
+[@Martinez-jimenez2017].
+They extracted naive or effector memory CD4^+^ T cells from spleens of young or 
+old animals, obtaining purified populations using either magnetic-activated cell 
+sorting (MACS) or fluorescence activated cell sorting (FACS).
+External ERCC spike-in RNA [@Rna2005] was added to aid the quantification of 
+technical variability across all cells and all experiments were performed in 
+replicates (also referred to as batches) to control for batch effects.
 
 ## Obtaining the data
 
@@ -581,7 +589,8 @@ CD4_raw <- as.matrix(CD4_raw)
 
 The input matrix contains data for`r ncol(CD4_raw)` cells and `r nrow(CD4_raw)`
 genes (including `sum(grepl("ERCC", rownames(CD4_raw)))` ERCC spike-ins). 
-Information about experimental conditions and batches is available in a metadata file under the same accession number. 
+Information about experimental conditions and batches is available in a metadata 
+file under the same accession number. 
 
 ```{r selecting-serum-cells}
 if (!file.exists("downloads/metadata_file.txt")) {
@@ -609,9 +618,13 @@ names(CD4_metadata)
 ```
 
 The metadata contains library identifiers (`X`), strain information (`Strain`;
-*Mus musculus castaneus* or *Mus musculus domesticus*), the age of the animals (`Age`; young or old), stimulation state of the cells (`Stimulus`; naive or activated), batch information (`Individuals`; associated to different mice), and cell type information (`Celltype`; via FACS or MACS purification). 
+*Mus musculus castaneus* or *Mus musculus domesticus*), the age of the animals 
+(`Age`; young or old), stimulation state of the cells (`Stimulus`; naive or 
+activated), batch information (`Individuals`; associated to different mice), 
+and cell type information (`Celltype`; via FACS or MACS purification). 
 
-Finally, we transform the data and metadata into a `r Biocpkg("SingleCellExperiment")` object. 
+The data and metadata described above is then converted into a 
+`r Biocpkg("SingleCellExperiment")` object. 
 
 ```{r CD4-SCE-object}
 # Separate intrinsic from ERCC counts
@@ -626,12 +639,12 @@ sce_CD4_all <- SingleCellExperiment(
 altExp(sce_CD4_all, "spike-ins") <- SummarizedExperiment(
   assays = list(counts = spike_counts)
 )
+sce_CD4_all
 ```
 
-## QC and exploratory analysis
-
-In this analysis, we focus on naive and activated CD4^+^ T cells obtained from
-young *Mus musculus domesticus* (hereafter also referred to as black 6; B6) animals, purified using MACS-based cell sorting. 
+Throughout our analysis, we focus on naive and activated CD4^+^ T cells obtained 
+from young *Mus musculus domesticus* (hereafter also referred to as black 6; B6) 
+animals, purified using MACS-based cell sorting. 
 The following code is used to extract these samples from the full dataset.
 
 ```{r naive-activated-CD4-SCE-object}
@@ -639,35 +652,93 @@ ind_select <- sce_CD4_all$Strain == "Mus musculus domesticus" &
   sce_CD4_all$Age == "Young" &
   sce_CD4_all$Celltype == "MACS-purified Naive"
 sce_naive_active <- sce_CD4_all[, ind_select]
+sce_naive_active
 ```
 
-Prior to cell-specific quality control, we will remove all genes that are not
-detected in at least 2 cells across both conditions.
-Furthermore, we remove genes that are not expressed with an average count of 1 
-across all cells.
-These thresholds need to be set specifically for each dataset, and careful
-gene-specific quality metrics need to be closely examined as suggested by the 
-`r Biocpkg("SimpleSingleCell")` Bioconductor workflow [@Lun2016].
+## QC and exploratory analysis
 
-```{r gene-selection}
-# Remove genes
-ind_expressed <- rowSums(counts(sce_naive_active) > 0) > 1 &
-  rowMeans(counts(sce_naive_active)) >= 1
-sce_naive_active <- sce_naive_active[ind_expressed, ]
+#### Cell-level QC. 
+The data available at 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/) has
+been already filtered to remove poor quality samples.
+The QC applied in [@Martinez-jimenez2017] removed cells with: (i) fewer 
+than 1,000,000 total reads, (ii) less than 20% of reads mapped to 
+endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and 
+(iv) more than 10% or less than 0.5% reads mapping to mitochondrial genes.
+Here, we visualise some of these metrics.
+
+```{r PerCellQC}
+# Calculate per cell QC metrics
+sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
+plotColData(sce_naive_active, x = "sum", y = "detected") +
+  xlab("Total number of reads (excludes non-mapped and intronic reads)") +
+  ylab("Number of detected genes")
 ```
 
-In the next step, we will use the `r Biocpkg("scran")` and 
-`r Biocpkg("scater")` Bioconductor packages for initial normalisation and 
-visualisation of quality metrics [@Lun2016,@McCarthy2017].
-The normalisation at this point is needed to avoid biases in the visualisation 
-due to differences in the mRNA content between cells.
-In line with the normalisation strategy of BASiCS, we use the spike-in reads 
-for normalisation.
+<!--- CV: I am unsure about this additional filter, we can also argure that
+there are 3 cells with unusually large total endogenous reads. My suggestion is 
+to remove and retain the same QC as applied in the original study. ---> 
+
+<!---
+Another widely used QC diagnostic plot is to compare the total number (or 
+fraction) of spike-in counts versus the total number (or fraction) of 
+endogeneous counts (Figure \@ref(fig:ERCC-endogeneous)).
+In such a plot, low quality samples are characterised by a high fraction of 
+spike-in counts and a low fraction of endogeneous counts.
+
+```{r ERCC-endogeneous, fig.height=3, fig.width=3, fig.cap="The number of spike-in counts per cells is plotted against the number of endogeneous counts per cell. A dashed line indicates the minimum level of endogenous counts, below which cells are removed.", fig.pos='h', eval = FALSE}
+plotColData(sce_naive_active, x = "sum", y = "altexps_spike-ins_sum") +
+  xlab("Total number of reads (excludes non-mapped and intronic reads)") +
+  ylab("Total number of spike-in reads") + 
+  geom_vline(xintercept = 10^5.8, linetype = "dashed", colour = "grey60") 
+```
+
+Since we are lacking the information of the total reads per cell (including the 
+non-mapped and intronic reads), we can solely filter cells based on the total 
+number of endogeneous counts (assuming equal numbers of spike-in molecules per 
+well). Nevertheless, we remove two cells that showed unusually low number of 
+reads mapping to endogeneous genes. We indicate the threshold used for filtering
+on the plot using a dashed line.
+
+```{r, eval = FALSE}
+# Remove two cells that appear to be outliers
+ind_retain <- log10(sce_naive_active$sum) > 5.8
+sce_naive_active <- sce_naive_active[, ind_retain]
+```
+
+--->
+
+These QC metrics can also be visualised with respect to cell-level metadata.
+For example, the following figures show how these metrics relate to the 
+experimental conditions (active vs unstimulated) and to the different mice 
+from which cells were collected. 
+
+```{r}
+p_stimulus <- plotColData(sce_naive_active, x = "sum", y = "detected", 
+                          colour_by = "Stimulus") +
+  xlab("Total number of reads (excludes non-mapped and intronic reads)") +
+  ylab("Number of detected genes") +
+  ggtitle("Coloured according to experimental condition")
+
+p_batch <- plotColData(sce_naive_active, x = "sum", y = "detected", 
+                       colour_by = "Individuals") +
+  xlab("Total number of reads (excludes non-mapped and intronic reads)") +
+  ylab("Number of detected genes") +
+  ggtitle("Coloured according to the source animal (batch)")
+
+multiplot(p_stimulus, p_batch, cols = 2)
+```
+
+<!--- CV: not sure we need the PCA analysis here --->
+
+<!---
 
 ```{r pre-normalisation}
-# Pre-normalisation of data for visualisation purposes
-sce_naive_active <- computeSpikeFactors(sce_naive_active, spikes = "spike-ins")
+# Normalisation
+sce_naive_active <- computeSumFactors(sce_naive_active)
 sce_naive_active <- logNormCounts(sce_naive_active)
+# Calculate PCA
+sce_naive_active <- runPCA(sce_naive_active)
 ```
 
 The `Biocpkg("SimpleSingleCell")` Bioconductor workflow and
@@ -686,29 +757,7 @@ sce_naive_active <- addPerFeatureQC(sce_naive_active)
 
 clean_colnames <- make.names(colnames(colData(sce_naive_active)))
 colnames(colData(sce_naive_active)) <- clean_colnames
-
-# Calculate PCA
-sce_naive_active <- scater::runPCA(sce_naive_active)
 ```
-
-For the CD4^+^ T cell dataset, the authors removed empty capture sites and 
-sites containing multiple cells or debris, as observed by visual inspection. 
-Furthermore, they removed cells which had fewer than 1,000,000 total reads, 
-cells where less than 20% of reads mapped to endogenous genes, cells in which 
-less than 1,250 or more than 3,000 genes were detected, and cells with more than 
-10% or less than 0.5% reads mapping to mitochondrial genes 
-[@Martinez-jimenez2017].
-
-Since these data have been quality filtered in the original publication, we will 
-only visualise the distribution of quality metrics across the cells.
-The highlighted quality metrics can otherwise be used to identify low quality 
-cells. These metrics include: number of endogeneous genes 
-detected per cell, total number of reads per cell, the fraction of reads mapping
-to spike-in and endogeneous genes.
-The main aim is to identify broken or dying cells, cells for which a very
-small quantity of mRNA was captured, and possibly empty wells.
-For an extenive discussion on quality metrics for scRNA-seq data, see Ilicic 
-*et al.* [@Ilicic2016].
 
 The activation status and batch information for each individual cell of the 
 selected dataset can be seen in Figure \@ref(fig:visualisation-stimulus-batch).
@@ -723,7 +772,6 @@ multiplot(p_stimulus, p_batch, cols = 2)
 The cells split into two conditions: naive and activated CD4^+^ T cells.
 Furthermore, we detect neither obvious batch effects nor outlier cells.
 
-<!-- What is a doublet? -->
 In the next step, we will visualise selected cell-specific quality metrics 
 overlayed on the principal components.
 Figure \@ref(fig:no-genes_total-counts) highlights the number of endogeneous 
@@ -752,40 +800,24 @@ We detect a higher number of expressed genes and a higher total read count in
 activated cells. Furthermore, cells within each group show a wide distribution
 of these quality measures, without clear outlying cells.
 
-A widely used quality visualisation is to plot the total number (or fraction) of 
-spike-in counts versus the total number (or fraction) of endogeneous counts 
-(Figure \@ref(fig:ERCC-endogeneous)).
-In such a plot, low quality wells are characterised by a high fraction of 
-spike-in counts and a low fraction of endogeneous counts.
+--->
 
-```{r ERCC-endogeneous, fig.height=3, fig.width=3, fig.cap="The number of spike-in counts per cells is plotted against the number of endogeneous counts per cell. A dashed line indicates the minimum level of spike-in counts, below which cells are removed.", fig.pos='h'}
-# Plot the fraction of reads mapping to spike-ins
-# versus the number of reads mapping to endogeneous genes
-ggplot(as.data.frame(colData(sce_naive_active))) +
-  geom_point(aes(sum, altexps_spike.ins_sum)) +
-  geom_vline(xintercept = 10^5.8, linetype = "dashed", colour = "grey60") +
-  scale_x_log10() +
-  scale_y_log10()
+<!--- CV: this text has not been edited ---> 
+#### Gene-level QC. 
+Prior to cell-specific quality control, we will remove all genes that are not
+detected in at least 2 cells across both conditions.
+Furthermore, we remove genes that are not expressed with an average count of 1 
+across all cells.
+These thresholds need to be set specifically for each dataset, and careful
+gene-specific quality metrics need to be closely examined as suggested by the 
+`r Biocpkg("SimpleSingleCell")` Bioconductor workflow [@Lun2016].
+
+```{r gene-selection}
+# Remove genes
+ind_expressed <- rowSums(counts(sce_naive_active) > 0) >= 2 &
+  rowMeans(counts(sce_naive_active)) >= 1
+sce_naive_active <- sce_naive_active[ind_expressed, ]
 ```
-
-Since we are lacking the information of the total reads per cell (including the 
-non-mapped and intronic reads), we can solely filter cells based on the total 
-number of endogeneous counts (assuming equal numbers of spike-in molecules per 
-well). Nevertheless, we remove two cells that showed unusually low number of 
-reads mapping to endogeneous genes. We indicate the threshold used for filtering
-on the plot using a dashed line.
-
-```{r}
-# Remove two cells that appear to be outliers
-ind_retain <- log10(sce_naive_active$sum) > 5.8
-sce_naive_active <- sce_naive_active[, ind_retain]
-```
-
-It is crucial that an in-depth quality control is performed to remove 
-low-quality or outlying cells. Furthermore, these quality control steps can
-help users to understand possible confounding effects that may influence
-the interpretation of downstream analyses.
-
 
 ## Calculating the molecule count for spike-in genes
 

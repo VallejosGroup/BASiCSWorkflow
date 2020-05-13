@@ -149,14 +149,18 @@ Single-cell RNA sequencing, expression variability, transcriptional noise, diffe
 \hypertarget{qc-and-exploratory-analysis}{%
 \subsection{QC and exploratory analysis}\label{qc-and-exploratory-analysis}}
 
-As an initial step, we remove lowly expressed genes whose expression was
-largely not detected through sequencing.
-More specifically, we exclude genes whose expression was detected in less than
-2 cells and those for which their average read count is below 1.
+These QC metrics can also be visualised with respect to cell-level metadata.
+For example, the following figures show how these metrics relate to the
+experimental conditions (active vs unstimulated) and to the different mice
+from which cells were collected.
 
-These thresholds need to be set specifically for each dataset, and careful
-gene-specific quality metrics need to be closely examined as suggested by the
-\emph{\href{https://bioconductor.org/packages/3.11/SimpleSingleCell}{SimpleSingleCell}} Bioconductor workflow \citep{Lun2016}.
+For this purpose, we apply a Principal Component Analysis (PCA) after \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} normalisation.
+
+In the next step, we will use the and
+\emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} Bioconductor packages for initial normalisation and
+visualisation of quality metrics.
+The normalisation at this point is needed to avoid biases in the visualisation
+due to differences in the mRNA content between cells.
 
 {\small\bibliography{Workflow.bib}}
 

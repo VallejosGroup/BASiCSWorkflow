@@ -80,15 +80,6 @@ library(scran)
 library(BASiCS)
 ```
 
-
 ## QC and exploratory analysis
-
-As an initial step, we remove lowly expressed genes whose expression was 
-largely not detected through sequencing. 
-More specifically, we exclude genes whose expression was detected in less than
-2 cells and those for which their average read count is below 1. 
-The choice of these thresholds is generally arbitrary and needs to be set specifically for each dataset, and careful
-gene-specific quality metrics need to be closely examined as suggested by the 
-`r Biocpkg("SimpleSingleCell")` Bioconductor workflow [@Lun2016].
 
 
