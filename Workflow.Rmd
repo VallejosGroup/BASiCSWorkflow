@@ -286,7 +286,11 @@ and its main components are described below.
 knitr::include_graphics("figure/Overview.png")
 ```
 
-## Input data - `SingleCellExperiment`
+## Input data
+
+```{r}
+library(SingleCellExperiment)
+```
 
 Here, we use the `r Biocpkg("SingleCellExperiment")` package to convert an input 
 matrix of raw read-counts (molecule counts for UMI-based protocols) into a 
@@ -297,7 +301,12 @@ A major advantage of using a `SingleCellExperiment` object as the input for
 scRNA-seq analyses is that it enables interoperability across a large number of 
 Bioconductor packages [@Amezquita2019]. 
 
-## Quality control and exploratory analyses - `scater` and `scran`
+## Quality control and exploratory analyses
+
+```{r}
+library(scater)
+library(scran)
+```
 
 An critical step in scRNA-seq analyses is to apply QC diagnostics, removing low
 quality samples (wells or droplets, depending on the protocol) that may distort
@@ -332,7 +341,11 @@ downstream inference (e.g. differential variability testing) is precluded.
 <!-- I simplified this section to avoid too much mathematical formulation.
 Readers can go to the original papers for more details.
 I think it is important to emphasise the intution/interpretation instead. -->
-## Analysis of cell-to-cell transcriptional variability - `BASiCS`
+## Analysis of cell-to-cell transcriptional variability
+
+```{r}
+library(BASiCS)
+```
 
 The `r Biocpkg("BASiCS")` package uses a Bayesian hierarchical framework 
 which borrows information across all genes and cells to robustly quantify 
@@ -513,19 +526,19 @@ genenames$gene_length <- genelength[genenames$ensembl_gene_id]
 
 --->
 
-## Operation
+## Reproducibility
 
-The following R, Bioconductor and package version were used for this workflow:
+The following software versions were used throughout this workflow:
 
-**R version**: `r R.version.string`
+- **R version**: `r R.version.string`
 
-**Bioconductor version**: `r BiocManager::version()`
+- **Bioconductor version**: `r BiocManager::version()`
 
-**Packages**: BASiCS `r packageVersion("BASiCS")`, scran 
-`r packageVersion("scran")`, scater `r packageVersion("scater")`, coda 
-`r packageVersion("coda")`, goseq `r packageVersion("goseq")`    
+- **R packages**: BASiCS `r packageVersion("BASiCS")`, scran 
+`r packageVersion("scran")`, scater `r packageVersion("scater")`. Version 
+numbers for all remaining packages is available at [Session Info](#session-info).
 
-For the full list of packages used, please see the [Session Info](#session-info).
+A Docker image containing all software requirements is available at [ADD LINK].
 
 # C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
 
