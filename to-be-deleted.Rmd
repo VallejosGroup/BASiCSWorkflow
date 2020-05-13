@@ -73,114 +73,60 @@ knitr::opts_chunk$set(
 )
 ```
 
-<!-- I simplified this section to avoid too much mathematical formulation.
-Readers can go to the original papers for more details.
-I think it is important to emphasise the intution/interpretation instead. -->
-## Quantifying cell-to-cell transcriptional variability - `BASiCS`
+## Reproducibility
 
-The `r Biocpkg("BASiCS")` package implements a Bayesian hierarchical framework 
-which borrows information across all genes and cells to robustly quantify 
-transcriptional variability [@Vallejos2015BASiCS].
-Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
-infers cell-specific global scaling normalisation parameters. 
-However, instead of inferring these as a pre-processing step, 
-`r Biocpkg("BASiCS")` uses an integrated approach in which data normalisation 
-and downstream analyses are performed simultaneously --- whilst propagating 
-statistical uncertainty. 
-To quantify technical noise, the original implementation of 
-`r Biocpkg("BASiCS")` uses information from extrinsic spike-in molecules as 
-control features, but the model has been extended to address situations in which 
-spike-ins are not available [@Eling2018]. 
+The following R, Bioconductor and package version were used for this workflow:
 
-`r Biocpkg("BASiCS")` summarises the distribution of gene expression through 
-gene-specific *mean* ($\mu_i$) and *over-dispersion* ($\delta_i$) parameters. 
-Mean parameters $\mu_i$ quantify the overall expression for each gene $i$
-across the population of cells under study.
-Instead, $\delta_i$ captures the excess of variability that is observed with 
-respect to what would be expected in a homogeneous cell population, after 
-taking into account technical noise. 
-This is used as a proxy to quantify transcriptional variability.
-Moreover, to account for the strong association that is typically observed 
-between mean expression and over-dispersion estimates, we recently introduced 
-gene-specific *residual over-dispersion* parameters $\epsilon_i$ [@Eling2018]. 
-Similar to DM values implemented in `r Biocpkg("scran")`, these are defined as 
-deviations with respect to an overall regression trend that captures the 
-relationship between mean and over-dispersion values.
+**R version**: `r R.version.string`
 
-Parameter estimation is implemented in the `BASiCS_MCMC` function, which can be 
-run using four different major settings (Table 1). 
-If spike-in molecules are available and `WithSpikes = TRUE` (default), the model 
-uses this information in order to infer technical noise.
-Alternatively, if `WithSpikes = FALSE`, the approach introduced in [@Eling2018]
-is applied.
-We recommend to use `Regression = TRUE` (default) as the underlying informative
-prior improves the stability of posterior estimates for small sample sizes and 
-lowly expressed genes [@Eling2018]. 
-Moreover, it provides additional flexibility for downstream analysis as it also
-infers gene-specific residual over-dispersion parameters $\epsilon_i$. 
+**Bioconductor version**: `r BiocManager::version()`
 
-<!---
-If the regression between over-dispersion and mean expression should be 
-performed, the `Regression` parameters is set to `TRUE` (default).
-If the user decides to set `Regression = FALSE`, `BASiCS` will not estimate 
-the regression trend, and will not supply the residual over-dispersion 
-parameters $\epsilon_i$. ---> 
+**Packages**: BASiCS `r packageVersion("BASiCS")`, scran 
+`r packageVersion("scran")`, scater `r packageVersion("scater")`, coda 
+`r packageVersion("coda")`, goseq `r packageVersion("goseq")`    
 
-: Four settings available for the the `BASiCS_MCMC` function.
+For the full list of packages used, please see the [Session Info](#session-info).
 
-                        No regression         Regression           
------------------------ --------------------  -------------------
-Using spike-in reads    `WithSpikes = TRUE`   `WithSpikes = TRUE`  
-                        `Regression = FALSE`  `Regression = TRUE` 
-No spike-ins available  `WithSpikes = FALSE`  `WithSpikes = FALSE` 
-                        `Regression = FALSE`  `Regression = TRUE`
------------------------ --------------------  -------------------
+# C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
 
-<!-- Paragraph to be edited --->
-The algorithm implemented in the `BASiCS_MCMC` function is an adaptive 
-Metropolis within Gibbs sampler [@Roberts2009].
-The `BASiCS_MCMC` function returns a `BASiCS_Chain` object, which can be used 
-for further downstream analyses, many of which are detailed in this workflow.
-These objects contain draws from Markov chain Monte Carlo (MCMC) samplers,
-which are used to infer the posterior distribution over the model parameters
-[@Smith1993].
-Briefly, the posterior distribution quantifies how probable different parameter 
-values are given the observed data. However, before assessing the posterior
-distribution, we must first ensure that the MCMC sampler has converged to
-its stationary distribution, and has sampled efficiently from this distribution
-[@Cowles1996]. If these conditions are not met, then the estimated parameters
-may be inaccurate. The `r CRANpkg("coda")` CRAN package contains a variety of 
-functions to assess the convergence of a sampled MCMC chain. 
-To use `coda` functions, the individual chains returned by `BASiCS` need to be 
-transformed into a MCMC object that `coda` recognises using the `coda::mcmc` 
-function. `BASiCS` also offers a number of functions to visualise and assess the 
-convergence of MCMC chains. In particular, we will use 
-`BASiCS_EffectiveSize` and `BASiCS_DiagPlot` to calculate and visualise the
-effective sample size generated by the MCMC samplers.
+For the first case study, we will use scRNA-seq data of CD4^+^ T cells, which 
+were processed using the C1 Single-Cell Auto Prep System (Fluidigm^®^) using 
+10–17 $\mu{}m$ integrated fluidic circuits (IFCs). 
+Martinez-Jimenez _et al._ profiled naive and activated CD4^+^ T cells from 
+young and old animals across two mouse strains to test for changes in 
+expression variability that occur during organismal ageing 
+[@Martinez-jimenez2017]. They extracted naive or effector memory CD4^+^ T cells
+from spleens of young or old animals and filtered using either 
+magnetic-activated cell sorting (MACS) or fluorescence activated cell sorting 
+(FACS) (labelled as MACS-purified Naive, FACS-purified Naive or FACS-purified 
+Effector Memory).
+For clarification, naive CD4^+^ T cells are also referred to as 'unstimulated' 
+CD4^+^ T cells.
 
-[talk about downstream analyses; hvg/lvg; differential testing 
-then mention the ability to perform differential testing;
-finally the extention to account for mean/over-dispersion]
+In addition to profiling naive CD4^+^ T cells, the authors stimulated half 
+of the naive cells for 3 hours using _in vitro_ antibody stimulation (labelled 
+as Active).
+They processed naive as well as activated CD4^+^ T cells using the 
+C1 Fluidigm^®^ system to capture and lyse cells, and to reverse transcribe 
+and amplify mRNA prior to sequencing.
+The authors isolated cells from B6 (C57BL/6J, _Mus musculus domesticus_) and
+CAST (_Mus musculus castaneus_) animals to profile the evolutionary conservation
+of transcriptional dynamics during ageing.
+Additionally, the authors added external spike-in RNA to aid in quantifying
+technical variability across all cells. They performed all experiments in
+replicates (also referred to as batches) to control for batch effects.
 
-## Other steps [title tbc]
-
-The `r Biocpkg("goseq")` Bioconductor package offers functions to detect the 
-enrichment of gene ontologies (GOs) among user-specified gene sets [@Young2010].
-Furthermore, `goseq` corrects for gene length biases, which is useful for full 
-length scRNA-seq data as highlighted in the first section. 
-In this workflow, we will use `goseq` to detect GO enrichment among 
-differentially expressed sets of genes.
-
-For downstream analysis, such as GO enrichment analysis or the biological 
-interpretation of individual genes, we need to (i) link each gene's ID to its 
-symbol and (ii) calculate each gene's length.
-For the first task, the `r Biocpkg("biomaRt")` Bioconductor package annotates a 
-wide range of gene and gene product identifiers [@Durinck2005] by accessing the 
-BioMart software suite ([http://www.biomart.org](http://www.biomart.org)).
-We can use `biomaRt` to link the **Mus musculus** gene IDs and to their gene 
-symbols (also referred to as 'gene name'): 
+We will begin the workflow with obtaining the data before quality control, 
+running the BASiCS model, and performing further downstream analysis.
 
 
+## Obtaining the data
 
-
+The raw counts of the full dataset can be obtained from ArrayExpress under the 
+accession number 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
+In this dataset, the column names contain the library identifier of the original 
+experiment, while the row names of the matrix store gene names. 
+The dataset contains reads mapped to ERCC spike-in genes [@Rna2005], which 
+`BASiCS` uses to estimate and remove technical noise.
 

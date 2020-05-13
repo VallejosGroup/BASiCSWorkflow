@@ -97,105 +97,64 @@ Single-cell RNA sequencing, expression variability, transcriptional noise, diffe
 \clearpage
 \pagestyle{main}
 
-\hypertarget{quantifying-cell-to-cell-transcriptional-variability---basics}{%
-\subsection{\texorpdfstring{Quantifying cell-to-cell transcriptional variability - \texttt{BASiCS}}{Quantifying cell-to-cell transcriptional variability - BASiCS}}\label{quantifying-cell-to-cell-transcriptional-variability---basics}}
+\hypertarget{reproducibility}{%
+\subsection{Reproducibility}\label{reproducibility}}
 
-The \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} package implements a Bayesian hierarchical framework
-which borrows information across all genes and cells to robustly quantify
-transcriptional variability \citep{Vallejos2015BASiCS}.
-Similar to the approach adopted in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
-infers cell-specific global scaling normalisation parameters.
-However, instead of inferring these as a pre-processing step,
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses an integrated approach in which data normalisation
-and downstream analyses are performed simultaneously --- whilst propagating
-statistical uncertainty.
-To quantify technical noise, the original implementation of
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses information from extrinsic spike-in molecules as
-control features, but the model has been extended to address situations in which
-spike-ins are not available \citep{Eling2018}.
+The following R, Bioconductor and package version were used for this workflow:
 
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} summarises the distribution of gene expression through
-gene-specific \emph{mean} (\(\mu_i\)) and \emph{over-dispersion} (\(\delta_i\)) parameters.
-Mean parameters \(\mu_i\) quantify the overall expression for each gene \(i\)
-across the population of cells under study.
-Instead, \(\delta_i\) captures the excess of variability that is observed with
-respect to what would be expected in a homogeneous cell population, after
-taking into account technical noise.
-This is used as a proxy to quantify transcriptional variability.
-Moreover, to account for the strong association that is typically observed
-between mean expression and over-dispersion estimates, we recently introduced
-gene-specific \emph{residual over-dispersion} parameters \(\epsilon_i\) \citep{Eling2018}.
-Similar to DM values implemented in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, these are defined as
-deviations with respect to an overall regression trend that captures the
-relationship between mean and over-dispersion values.
+\textbf{R version}: R Under development (unstable) (2020-01-28 r77738)
 
-Parameter estimation is implemented in the \texttt{BASiCS\_MCMC} function, which can be
-run using four different major settings (Table 1).
-If spike-in molecules are available and \texttt{WithSpikes\ =\ TRUE} (default), the model
-uses this information in order to infer technical noise.
-Alternatively, if \texttt{WithSpikes\ =\ FALSE}, the approach introduced in \citep{Eling2018}
-is applied.
-We recommend to use \texttt{Regression\ =\ TRUE} (default) as the underlying informative
-prior improves the stability of posterior estimates for small sample sizes and
-lowly expressed genes \citep{Eling2018}.
-Moreover, it provides additional flexibility for downstream analysis as it also
-infers gene-specific residual over-dispersion parameters \(\epsilon_i\).
+\textbf{Bioconductor version}: 3.11
 
-\begin{table}[htbp]
-\caption{Four settings available for the the \texttt{BASiCS\_MCMC} function.}
-\centering
-\begin{tabledata}{@{}lll@{}}
-\header & No regression & Regression\\
-\row Using spike-in reads & \texttt{WithSpikes\ =\ TRUE} & \texttt{WithSpikes\ =\ TRUE}\\
-\row & \texttt{Regression\ =\ FALSE} & \texttt{Regression\ =\ TRUE}\\
-\row No spike-ins available & \texttt{WithSpikes\ =\ FALSE} & \texttt{WithSpikes\ =\ FALSE}\\
-\row & \texttt{Regression\ =\ FALSE} & \texttt{Regression\ =\ TRUE}\\
-\end{tabledata}
-\end{table}
+\textbf{Packages}: BASiCS 1.99.1, scran
+1.15.29, scater 1.15.32, coda
+0.19.3, goseq 1.39.0
 
-The algorithm implemented in the \texttt{BASiCS\_MCMC} function is an adaptive
-Metropolis within Gibbs sampler \citep{Roberts2009}.
-The \texttt{BASiCS\_MCMC} function returns a \texttt{BASiCS\_Chain} object, which can be used
-for further downstream analyses, many of which are detailed in this workflow.
-These objects contain draws from Markov chain Monte Carlo (MCMC) samplers,
-which are used to infer the posterior distribution over the model parameters
-\citep{Smith1993}.
-Briefly, the posterior distribution quantifies how probable different parameter
-values are given the observed data. However, before assessing the posterior
-distribution, we must first ensure that the MCMC sampler has converged to
-its stationary distribution, and has sampled efficiently from this distribution
-\citep{Cowles1996}. If these conditions are not met, then the estimated parameters
-may be inaccurate. The \emph{\href{https://CRAN.R-project.org/package=coda}{coda}} CRAN package contains a variety of
-functions to assess the convergence of a sampled MCMC chain.
-To use \texttt{coda} functions, the individual chains returned by \texttt{BASiCS} need to be
-transformed into a MCMC object that \texttt{coda} recognises using the \texttt{coda::mcmc}
-function. \texttt{BASiCS} also offers a number of functions to visualise and assess the
-convergence of MCMC chains. In particular, we will use
-\texttt{BASiCS\_EffectiveSize} and \texttt{BASiCS\_DiagPlot} to calculate and visualise the
-effective sample size generated by the MCMC samplers.
+For the full list of packages used, please see the \protect\hyperlink{session-info}{Session Info}.
 
-{[}talk about downstream analyses; hvg/lvg; differential testing
-then mention the ability to perform differential testing;
-finally the extention to account for mean/over-dispersion{]}
+\hypertarget{Tcells}{%
+\section{\texorpdfstring{C1 Fluidigm data: Analysis of naive CD4\textsuperscript{+} T cells}{C1 Fluidigm data: Analysis of naive CD4+ T cells}}\label{Tcells}}
 
-\hypertarget{other-steps-title-tbc}{%
-\subsection{Other steps {[}title tbc{]}}\label{other-steps-title-tbc}}
+For the first case study, we will use scRNA-seq data of CD4\textsuperscript{+} T cells, which
+were processed using the C1 Single-Cell Auto Prep System (Fluidigm\textsuperscript{®}) using
+10--17 \(\mu{}m\) integrated fluidic circuits (IFCs).
+Martinez-Jimenez \emph{et al.} profiled naive and activated CD4\textsuperscript{+} T cells from
+young and old animals across two mouse strains to test for changes in
+expression variability that occur during organismal ageing
+\citep{Martinez-jimenez2017}. They extracted naive or effector memory CD4\textsuperscript{+} T cells
+from spleens of young or old animals and filtered using either
+magnetic-activated cell sorting (MACS) or fluorescence activated cell sorting
+(FACS) (labelled as MACS-purified Naive, FACS-purified Naive or FACS-purified
+Effector Memory).
+For clarification, naive CD4\textsuperscript{+} T cells are also referred to as `unstimulated'
+CD4\textsuperscript{+} T cells.
 
-The \emph{\href{https://bioconductor.org/packages/3.11/goseq}{goseq}} Bioconductor package offers functions to detect the
-enrichment of gene ontologies (GOs) among user-specified gene sets \citep{Young2010}.
-Furthermore, \texttt{goseq} corrects for gene length biases, which is useful for full
-length scRNA-seq data as highlighted in the first section.
-In this workflow, we will use \texttt{goseq} to detect GO enrichment among
-differentially expressed sets of genes.
+In addition to profiling naive CD4\textsuperscript{+} T cells, the authors stimulated half
+of the naive cells for 3 hours using \emph{in vitro} antibody stimulation (labelled
+as Active).
+They processed naive as well as activated CD4\textsuperscript{+} T cells using the
+C1 Fluidigm\textsuperscript{®} system to capture and lyse cells, and to reverse transcribe
+and amplify mRNA prior to sequencing.
+The authors isolated cells from B6 (C57BL/6J, \emph{Mus musculus domesticus}) and
+CAST (\emph{Mus musculus castaneus}) animals to profile the evolutionary conservation
+of transcriptional dynamics during ageing.
+Additionally, the authors added external spike-in RNA to aid in quantifying
+technical variability across all cells. They performed all experiments in
+replicates (also referred to as batches) to control for batch effects.
 
-For downstream analysis, such as GO enrichment analysis or the biological
-interpretation of individual genes, we need to (i) link each gene's ID to its
-symbol and (ii) calculate each gene's length.
-For the first task, the \emph{\href{https://bioconductor.org/packages/3.11/biomaRt}{biomaRt}} Bioconductor package annotates a
-wide range of gene and gene product identifiers \citep{Durinck2005} by accessing the
-BioMart software suite (\url{http://www.biomart.org}).
-We can use \texttt{biomaRt} to link the \textbf{Mus musculus} gene IDs and to their gene
-symbols (also referred to as `gene name'):
+We will begin the workflow with obtaining the data before quality control,
+running the BASiCS model, and performing further downstream analysis.
+
+\hypertarget{obtaining-the-data}{%
+\subsection{Obtaining the data}\label{obtaining-the-data}}
+
+The raw counts of the full dataset can be obtained from ArrayExpress under the
+accession number
+\href{https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/}{E-MTAB-4888}.
+In this dataset, the column names contain the library identifier of the original
+experiment, while the row names of the matrix store gene names.
+The dataset contains reads mapped to ERCC spike-in genes \citep{Rna2005}, which
+\texttt{BASiCS} uses to estimate and remove technical noise.
 
 {\small\bibliography{Workflow.bib}}
 
