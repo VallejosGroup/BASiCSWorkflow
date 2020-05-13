@@ -292,8 +292,7 @@ knitr::include_graphics("figure/Overview.png")
 library(SingleCellExperiment)
 ```
 
-Here, we use the `r Biocpkg("SingleCellExperiment")` package to convert an input 
-matrix of raw read-counts (molecule counts for UMI-based protocols) into a 
+Here, we use the `r Biocpkg("SingleCellExperiment")` package to convert an input matrix of raw read-counts (molecule counts for UMI-based protocols) into a 
 `SingleCellExperiment` object which can store scRNA-seq data and its associated metadata, such as gene- and cell-specific information. 
 Moreover, when available, the same object can be used to store read-counts for 
 technical spike-in molecules (these can be accessed via the `altExp()` method).
@@ -301,7 +300,7 @@ A major advantage of using a `SingleCellExperiment` object as the input for
 scRNA-seq analyses is that it enables interoperability across a large number of 
 Bioconductor packages [@Amezquita2019]. 
 
-## Quality control and exploratory analyses
+## Quality control and exploratory analysis
 
 ```{r}
 library(scater)
@@ -309,13 +308,17 @@ library(scran)
 ```
 
 An critical step in scRNA-seq analyses is to apply QC diagnostics, removing low
-quality samples (wells or droplets, depending on the protocol) that may distort
-downstream analyses. 
+quality samples that may distort downstream analyses. 
 Among others, QC can help to identify samples that contain broken cells, that 
 are empty or that contain multiple cells [@Ilicic2016classification]. 
 Moreover, lowly expressed genes for which less reliable information is 
 available are typically also removed. 
-To perform QC of scRNA-seq data, we use the `r Biocpkg("scater")` Bioconductor 
+The `r Biocpkg("SimpleSingleCell")` Bioconductor workflow and
+the `OSCA` online book each provide an extensive 
+overview on important aspects of how to perform QC of scRNA-seq 
+data, including standard exploratory analyses [@Lun2016;@Amezquita2019].
+
+To perform QC, we use the `r Biocpkg("scater")` Bioconductor 
 package [@McCarthy2017].
 In `r Biocpkg("scater")`, the `calculateQCMetrics` function can be used to 
 calculate standard QC metrics for each cell (e.g. percentage of mitochondrial 
@@ -542,46 +545,19 @@ A Docker image containing all software requirements is available at [ADD LINK].
 
 # C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
 
-For the first case study, we will use scRNA-seq data of CD4^+^ T cells, which 
-were processed using the C1 Single-Cell Auto Prep System (Fluidigm^®^) using 
-10–17 $\mu{}m$ integrated fluidic circuits (IFCs). 
-Martinez-Jimenez _et al._ profiled naive and activated CD4^+^ T cells from 
-young and old animals across two mouse strains to test for changes in 
-expression variability that occur during organismal ageing 
-[@Martinez-jimenez2017]. They extracted naive or effector memory CD4^+^ T cells
-from spleens of young or old animals and filtered using either 
-magnetic-activated cell sorting (MACS) or fluorescence activated cell sorting 
-(FACS) (labelled as MACS-purified Naive, FACS-purified Naive or FACS-purified 
-Effector Memory).
-For clarification, naive CD4^+^ T cells are also referred to as 'unstimulated' 
-CD4^+^ T cells.
-
-In addition to profiling naive CD4^+^ T cells, the authors stimulated half 
-of the naive cells for 3 hours using _in vitro_ antibody stimulation (labelled 
-as Active).
-They processed naive as well as activated CD4^+^ T cells using the 
-C1 Fluidigm^®^ system to capture and lyse cells, and to reverse transcribe 
-and amplify mRNA prior to sequencing.
-The authors isolated cells from B6 (C57BL/6J, _Mus musculus domesticus_) and
-CAST (_Mus musculus castaneus_) animals to profile the evolutionary conservation
-of transcriptional dynamics during ageing.
-Additionally, the authors added external spike-in RNA to aid in quantifying
-technical variability across all cells. They performed all experiments in
-replicates (also referred to as batches) to control for batch effects.
-
-We will begin the workflow with obtaining the data before quality control, 
-running the BASiCS model, and performing further downstream analysis.
-
+For the first case study, we use scRNA-seq data generated for CD4^+^ T cells
+using the C1 Single-Cell Auto Prep System (Fluidigm^®^). 
+Martinez-Jimenez _et al._ profiled naive (hereafter also referred to as *unstimulated*) and activated (3 hours using _in vitro_ antibody stimulation) CD4^+^ T cells from young and old animals across two mouse strains to study changes in expression variability during ageing and upon immune activation [@Martinez-jimenez2017].
+They extracted naive or effector memory CD4^+^ T cells from spleens of young or old animals, obtaining purified populations using either magnetic-activated cell sorting (MACS) or fluorescence activated cell sorting (FACS).
+External ERCC spike-in RNA [@Rna2005] was added to aid the quantification of technical variability across all cells and all experiments were performed in replicates (also referred to as batches) to control for batch effects.
 
 ## Obtaining the data
 
-The raw counts of the full dataset can be obtained from ArrayExpress under the 
+The matrix with raw read counts can be obtained from ArrayExpress under the 
 accession number 
 [E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
-In this dataset, the column names contain the library identifier of the original 
-experiment, while the row names of the matrix store gene names. 
-The dataset contains reads mapped to ERCC spike-in genes [@Rna2005], which 
-`BASiCS` uses to estimate and remove technical noise.
+In the matrix, column names contain library identifiers and row names
+display gene Ensembl identifiers. 
 
 ```{r naive-data}
 if (!file.exists("downloads/raw_data.txt")) {
@@ -601,26 +577,13 @@ if (!file.exists("downloads/raw_data.txt")) {
 # Read in raw data
 CD4_raw <- read.table("downloads/raw_data.txt", header = TRUE, sep = "\t")
 CD4_raw <- as.matrix(CD4_raw)
-
-# Show row and column names
-head(colnames(CD4_raw))
-head(rownames(CD4_raw))
-
-# ERCC spike-in genes
-head(rownames(CD4_raw)[grepl("ERCC", rownames(CD4_raw))])
 ```
 
-To link the library identifiers to the experimental conditions, the authors 
-provide a metadata file that can be accessed online under the same accession 
-number.
+The input matrix contains data for`r ncol(CD4_raw)` cells and `r nrow(CD4_raw)`
+genes (including `sum(grepl("ERCC", rownames(CD4_raw)))` ERCC spike-ins). 
+Information about experimental conditions and batches is available in a metadata file under the same accession number. 
 
 ```{r selecting-serum-cells}
-download_file <- function(file, website, folder, destfile = file) {
-  if (!file.exists(destfile)) {
-    download.file(paste0(website, folder, file), destfile)
-  }
-}
-
 if (!file.exists("downloads/metadata_file.txt")) {
   # Download raw counts file
   website <- "https://www.ebi.ac.uk/"
@@ -635,35 +598,23 @@ if (!file.exists("downloads/metadata_file.txt")) {
   file.remove("downloads/metadata.txt.zip")
 }
 # Read in metadata file
-CD4_metadata <- read.table("downloads/metadata_file.txt", header = TRUE, sep = "\t")
+CD4_metadata <- read.table("downloads/metadata_file.txt", 
+                           header = TRUE, sep = "\t")
 
 # Save library identifier as rownames
 rownames(CD4_metadata) <- CD4_metadata$X
 
 # Show metadata entries
-head(CD4_metadata)
+names(CD4_metadata)
 ```
 
-This metadata file contains the library identifiers (*X*), the strain 
-information (*Strain*), the relative age of the animals (*Age*), the 
-stimulation state of the cells (*Stimulus*), the batch information indicating 
-the different mice used (*Individuals*), and the purification method used 
-(*Celltype*). 
+The metadata contains library identifiers (`X`), strain information (`Strain`;
+*Mus musculus castaneus* or *Mus musculus domesticus*), the age of the animals (`Age`; young or old), stimulation state of the cells (`Stimulus`; naive or activated), batch information (`Individuals`; associated to different mice), and cell type information (`Celltype`; via FACS or MACS purification). 
 
-
-## Filtering the data
-
-In the next step, we will first generate a `r Biocpkg("SingleCellExperiment")` 
-(SCE) object that contains all cells and that stores cell- and gene-specific 
-metadata.
-This data class offers convenient ways to subset, set and retrieve cell- 
-and gene-specific information. We will also store information on the spike-in
-molecules using the `altExp` 
-accessor. This allows us to store alternative experimental assays other
-than endogenous genes --- in this case, technical (spike-in) genes.
+Finally, we transform the data and metadata into a `r Biocpkg("SingleCellExperiment")` object. 
 
 ```{r CD4-SCE-object}
-# Load library
+# Separate intrinsic from ERCC counts
 bio_counts <- CD4_raw[!grepl("ERCC", rownames(CD4_raw)), ]
 spike_counts <- CD4_raw[grepl("ERCC", rownames(CD4_raw)), ]
 # Generate the SingleCellExperiment object
@@ -671,17 +622,17 @@ sce_CD4_all <- SingleCellExperiment(
   assays = list(counts = as.matrix(bio_counts)),
   colData = CD4_metadata[colnames(CD4_raw), ]
 )
-
+# Add read-counts for spike-ins 
 altExp(sce_CD4_all, "spike-ins") <- SummarizedExperiment(
   assays = list(counts = spike_counts)
 )
 ```
 
-For further downstream analysis, we select naive and activated CD4^+^ T cells 
-from young B6 animals that were obtained using the MACS-based cell selection.
-It is crucial that proper quality control (QC) and filtering is performed 
-before running BASiCS, and, in general, before performing any computational
-analysis on biological data.
+## QC and exploratory analysis
+
+In this analysis, we focus on naive and activated CD4^+^ T cells obtained from
+young *Mus musculus domesticus* (hereafter also referred to as black 6; B6) animals, purified using MACS-based cell sorting. 
+The following code is used to extract these samples from the full dataset.
 
 ```{r naive-activated-CD4-SCE-object}
 ind_select <- sce_CD4_all$Strain == "Mus musculus domesticus" &
