@@ -73,60 +73,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Reproducibility
+```{r}
+library(SingleCellExperiment)
+library(scater)
+library(scran)
+library(BASiCS)
+```
 
-The following R, Bioconductor and package version were used for this workflow:
+## QC and exploratory analysis
 
-**R version**: `r R.version.string`
-
-**Bioconductor version**: `r BiocManager::version()`
-
-**Packages**: BASiCS `r packageVersion("BASiCS")`, scran 
-`r packageVersion("scran")`, scater `r packageVersion("scater")`, coda 
-`r packageVersion("coda")`, goseq `r packageVersion("goseq")`    
-
-For the full list of packages used, please see the [Session Info](#session-info).
-
-# C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
-
-For the first case study, we will use scRNA-seq data of CD4^+^ T cells, which 
-were processed using the C1 Single-Cell Auto Prep System (Fluidigm^®^) using 
-10–17 $\mu{}m$ integrated fluidic circuits (IFCs). 
-Martinez-Jimenez _et al._ profiled naive and activated CD4^+^ T cells from 
-young and old animals across two mouse strains to test for changes in 
-expression variability that occur during organismal ageing 
-[@Martinez-jimenez2017]. They extracted naive or effector memory CD4^+^ T cells
-from spleens of young or old animals and filtered using either 
-magnetic-activated cell sorting (MACS) or fluorescence activated cell sorting 
-(FACS) (labelled as MACS-purified Naive, FACS-purified Naive or FACS-purified 
-Effector Memory).
-For clarification, naive CD4^+^ T cells are also referred to as 'unstimulated' 
-CD4^+^ T cells.
-
-In addition to profiling naive CD4^+^ T cells, the authors stimulated half 
-of the naive cells for 3 hours using _in vitro_ antibody stimulation (labelled 
-as Active).
-They processed naive as well as activated CD4^+^ T cells using the 
-C1 Fluidigm^®^ system to capture and lyse cells, and to reverse transcribe 
-and amplify mRNA prior to sequencing.
-The authors isolated cells from B6 (C57BL/6J, _Mus musculus domesticus_) and
-CAST (_Mus musculus castaneus_) animals to profile the evolutionary conservation
-of transcriptional dynamics during ageing.
-Additionally, the authors added external spike-in RNA to aid in quantifying
-technical variability across all cells. They performed all experiments in
-replicates (also referred to as batches) to control for batch effects.
-
-We will begin the workflow with obtaining the data before quality control, 
-running the BASiCS model, and performing further downstream analysis.
-
-
-## Obtaining the data
-
-The raw counts of the full dataset can be obtained from ArrayExpress under the 
-accession number 
-[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
-In this dataset, the column names contain the library identifier of the original 
-experiment, while the row names of the matrix store gene names. 
-The dataset contains reads mapped to ERCC spike-in genes [@Rna2005], which 
-`BASiCS` uses to estimate and remove technical noise.
 
