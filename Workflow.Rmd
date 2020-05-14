@@ -192,9 +192,10 @@ Finally, we provide two step-by-step case studies using naive CD4^+^ T cells
 `r Biocpkg("BASiCS")` in the context of different scRNA-seq protocols. 
 
 All source code used to generate the results presented in this article is 
-available at https://github.com/VallejosGroup/BASiCSWorkflow. To ensure the 
+available at [https://github.com/VallejosGroup/BASiCSWorkflow]. To ensure the 
 reproducibility of this workflow, the analysis environment and all software 
-dependencies are provided as a Docker [@Boettiger2014] image at: [ADD LINK].
+dependencies are provided as a Docker [@Boettiger2014] image at: 
+[https://hub.docker.com/repository/docker/alanocallaghan/bocker].
 
 <!--- 
 
