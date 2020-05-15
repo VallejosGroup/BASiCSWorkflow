@@ -21,5 +21,6 @@ figure/*
 *.blg
 *.dvi
 *.out
-
+*.fdb_latexmk
+*.fls
 !figure/Overview.png
