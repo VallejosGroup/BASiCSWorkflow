@@ -54,9 +54,12 @@ keywords: Single-cell RNA sequencing, expression variability,
 bibliography: Workflow.bib
 urlcolor: Orange
 output:
+  BiocStyle::html_document:
+    fig_width: 8
+    fig_height: 5
   BiocWorkflowTools::f1000_article: default
-  BiocStyle::html_document: default
 ---
+
 
 
 ```{r setup_knitr, include = FALSE, cache = FALSE}
@@ -65,14 +68,14 @@ library("BiocStyle")
 on.bioc <- FALSE
 library("knitr")
 library("ggplot2")
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 15))
 # Use fig.width = 7 for html and fig.width = 6 for pdf
-fig.width <- ifelse(on.bioc, 7, 6)
+# fig.width <- ifelse(on.bioc, 10, 6)
 knitr::opts_chunk$set(
+  # fig.width = fig.width,
   warning = FALSE, message = FALSE, error = FALSE,
-  cache = FALSE,
-  # cache.path = "cache/",
-  fig.path = "figure/", fig.width = fig.width
+  # cache = TRUE, cache.path = "cache/",
+  fig.path = "figure/"
 )
 ```
 
@@ -291,7 +294,7 @@ package ecosystem [@Amezquita2019].
 A graphical overview is provided in Figure \@ref(fig:overview) 
 and its main components are described below. 
 
-```{r overview, out.width='50%', fig.cap = 'Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a SingleCellExperiment object, we use the scater and scran Bioconductor packages to perform quality control and initial exploratory analyses. The primary focus of this workflow is to robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations. For this purpose, we apply the BASiCS Bioconductor package, illustrating how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.', echo=FALSE, fig.pos='h'}
+```{r overview, fig.cap = 'Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a SingleCellExperiment object, we use the scater and scran Bioconductor packages to perform quality control and initial exploratory analyses. The primary focus of this workflow is to robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations. For this purpose, we apply the BASiCS Bioconductor package, illustrating how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.', echo=FALSE}
 knitr::include_graphics("figure/Overview.png")
 ```
 
@@ -689,7 +692,7 @@ endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and
 (iv) more than 10% or less than 0.5% reads mapping to mitochondrial genes.
 Here, we visualise some of these metrics.
 
-```{r PerCellQC}
+```{r PerCellQC, fig.cap="The number of detected genes per cell is plotted against the number of endogeneous counts per cell."}
 # Calculate per cell QC metrics
 sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
 plotColData(sce_naive_active, x = "sum", y = "detected") +
@@ -707,7 +710,7 @@ endogeneous counts.
 In such a plot, low quality samples are characterised by a high fraction of 
 spike-in counts and a low fraction of endogeneous counts.
 
-```{r ERCC, fig.height=3, fig.width=3, fig.cap="The number of spike-in counts per cells is plotted against the number of endogeneous counts per cell. Dashed lines indicates the minimum and maximum levels of endogenous counts, outside which cells are removed.", fig.pos='h', eval = FALSE}
+```{r ERCC, fig.cap="The number of spike-in counts per cells is plotted against the number of endogeneous counts per cell."}
 min_reads <- 600000
 max_reads <- 2300000
 plotColData(sce_naive_active, x = "sum", y = "altexps_spike-ins_sum") +
@@ -738,7 +741,7 @@ For example, the following figures show how these metrics relate to the
 experimental conditions (active vs unstimulated) and to the different mice 
 from which cells were collected. 
 
-```{r}
+```{r experimental-condition-batch, fig.cap="The number of detected genes per cell is plotted against the number of endogeneous counts per cell. Colour indicates the stimulus status (left) and animal of origin (right) of cells. Cells from two animals were captured either in the naive or activated state."}
 p_stimulus <- plotColData(sce_naive_active, x = "sum", y = "detected", 
                           colour_by = "Stimulus") +
   xlab("Number of mapped exonic reads") +
@@ -793,10 +796,12 @@ colnames(colData(sce_naive_active)) <- clean_colnames
 The activation status and batch information for each individual cell of the 
 selected dataset can be seen in Figure \@ref(fig:visualisation-stimulus-batch).
 
-```{r visualisation-stimulus-batch,fig.height=2, fig.cap="Visualisation of the cell stimulus (left) and the batch information per cell (right). Cells from two animals were captured either in the naive or activated state.", fig.pos='h'}
+```{r visualisation-stimulus-batch, fig.cap="Principal component plots of the molecule count matrix. Colour indicates cell stimulus (left) and the batch information per cell (right)."}
 # Visualise the conditions and batch structure
-p_stimulus <- scater::plotPCA(sce_naive_active, colour_by = "Stimulus")
-p_batch <- scater::plotPCA(sce_naive_active, colour_by = "Individuals")
+p_stimulus <- plotPCA(sce_naive_active, colour_by = "Stimulus") +
+  theme(legend.position = "bottom")
+p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
+  theme(legend.position = "bottom")
 multiplot(p_stimulus, p_batch, cols = 2)
 ```
 
@@ -810,19 +815,18 @@ genes detected per cell and the total number of counts.
 Both of these metrics can be used to detect empty wells or broken cells 
 (low values) and possible doublets (high values).
 
-```{r no-genes-total-counts, fig.height=2, fig.cap="Visualisation of the number of biological genes detected per cell (left) and the total number of reads per cell (right).", fig.pos='h'}
+```{r no-genes-total-counts, fig.cap="Principal component plots of the molecule count matrix. Colour indicates the number of biological genes detected per cell (left) and the total number of reads per cell (right)."}
 # Visualise number of endogeneous genes detected
-p_total_features <- scater::plotPCA(
-    sce_naive_active, 
-    colour_by = "detected"
-  ) +
+p_total_features <- plotPCA(sce_naive_active, colour_by = "detected") +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)) +
   scale_fill_viridis_c(name = "Number of genes", trans = "log10")
 
 # Visualise log10-transformed total number of counts
-p_total_counts <- scater::plotPCA(
-    sce_naive_active, 
-    colour_by = "sum"
-  ) +
+p_total_counts <- plotPCA(sce_naive_active, colour_by = "sum") +
+  theme(legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)) +
   scale_fill_viridis_c(name = "Number of counts", trans = "log10")
 multiplot(p_total_features, p_total_counts, cols = 2)
 ```
@@ -884,7 +888,7 @@ ERCC_conc <- read.table(
 The concentration is given in units of $aM\mu{}l^{-1}$. 
 We will first calculate the concentration in $M\mu{}l^{-1}$.
 
-```{r}
+```{r, ercc-mul}
 # Moles per micro litre
 ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
 ```
@@ -892,7 +896,7 @@ ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
 From this, we can calculate the molecule count per $\mu{}l$ using the fact that
 1 mole is comprised of $6.02214076 \times 10^{23}$ molecules.
 
-```{r}
+```{r, ercc-count-mul}
 # Molecule count per micro litre
 ERCC_countmul <- ERCC_mmul * (6.02214076 * (10^23))
 ```
@@ -901,7 +905,7 @@ During the preparation of the reaction mix, the authors diluted this mix by a
 factor of 1:50,000 [@Martinez-jimenez2017].
 The actual molecule number of spike-ins can therefore be calculated per $\mu{}l$:
 
-```{r}
+```{r, ercc-count}
 ERCC_count <- ERCC_countmul / 50000
 ```
 
@@ -909,7 +913,7 @@ The volume per well in the IFC chip is $9nl$
 [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9).
 We therfore need to calculate the number of molecules in $9nl$ reaction mix.
 
-```{r}
+```{r, ercc-final}
 ERCC_count_final <- ERCC_count * 0.009
 ```
 
@@ -1075,7 +1079,7 @@ For convenience, the MCMC chain can be obtained online at
 download_file(
   file = "MCMC_naive.rds",
   website = "https://git.ecdf.ed.ac.uk/vallejosgroup/",
-  folder = "basicsworkflow2020/raw/master/MCMCs/",
+  folder = "basicsworkflow2020/raw/master/",
   destfile = "rds/MCMC_naive.rds"
 )
 
@@ -1144,42 +1148,52 @@ mean expression or over-dispersion for all genes.
 plot(MCMC_naive, Param = "mu", Gene = 1)
 plot(MCMC_naive, Param = "mu", Gene = 7216)
 
-# Effective sample size
-BASiCS_DiagPlot(MCMC_naive, Param = "mu")
-
-# Histogram of sample size for mu, as some genes seem to have low values for mu.
-BASiCS_DiagHist(MCMC_naive, Param = "mu")
-
 # Convergence of over-dispersion parameters
 # Trace plot, sample histogram and autocorrelation
 plot(MCMC_naive, Param = "delta", Gene = 100)
 plot(MCMC_naive, Param = "delta", Gene = 5000)
-
-# Effective sample size
-BASiCS_DiagPlot(MCMC_naive, Param = "delta")
 
 # Convergence of residual over-dispersion parameters
 # Trace plot, sample histogram and autocorrelation
 plot(MCMC_naive, Param = "epsilon", Gene = 200)
 plot(MCMC_naive, Param = "epsilon", Gene = 8000)
 
-# Effective sample size
-BASiCS_DiagPlot(MCMC_naive, Param = "epsilon")
-
 # Convergence of mRNA capture efficiency parameters
 # Trace plot, sample histogram and autocorrelation
 plot(MCMC_naive, Param = "s", Cell = 10)
 plot(MCMC_naive, Param = "s", Cell = 50)
+```
 
-# Effective sample size
-BASiCS_DiagPlot(MCMC_naive, Param = "s")
+```{r diag-hist-naive, fig.cap="Distribution of effective sample size across all genes for mu, delta and epsilon parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests."}
+mu_ess <- BASiCS_DiagHist(MCMC_naive, Param = "mu") +
+  xlab("ESS: mu") +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+delta_ess <- BASiCS_DiagHist(MCMC_naive, Param = "delta") +
+  xlab("ESS: delta") +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+epsilon_ess <- BASiCS_DiagHist(MCMC_naive, Param = "epsilon") +
+  xlab("ESS: epsilon") +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+multiplot(mu_ess, delta_ess, epsilon_ess, cols = 2)
+```
+
+```{r diag-plot-naive, fig.cap="Effective sample size is plotted against parameter estimates for mu, delta and epsilon parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
+mu_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "mu") +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+delta_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "delta") +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+epsilon_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "epsilon") +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+multiplot(mu_ess2, delta_ess2, epsilon_ess2, cols = 2)
 ```
 
 We can see several genes show very low sample size for mu. We can identify 
 these using `BASiCS_EffectiveSize`.
 
-```{r low-ess-genes}
-
+```{r low-ess-genes, fig.cap="Distribution of effective sample size for the mu mean expression parameter across all genes. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests."}
 ess <- BASiCS_EffectiveSize(MCMC_naive, Param = "mu")
 low_ess_genes <- names(ess[ess < 100])
 hist(
@@ -1287,7 +1301,7 @@ HVGs can be defined as those genes displaying a biolgical variance component of
 larger than 0.5, while controlling the FDR to 5% [@Lun2016;@Amezquita2019].
 We can then compare the the overlap of the HVG identified by scran and by BASiCS.
 
-```{r scran-HVG}
+```{r scran-HVG, fig.cap="Epsilon (residual over-dispersion) is plotted against log(mu) (log mean expression). Colour indicates the results of scran and BASiCS HVG tests."}
 is_hvg <- var_out$ratio > 2 & var_out$FDR < 0.05
 # is_hvg <- var_out$FDR < 0.1
 ind_hvg <- which(is_hvg)
@@ -1332,7 +1346,7 @@ abundance [@Ritchie2015;@Grun2014;@Love2014;@McCarthy2012].
 BASiCS provides the `BASiCS_ShowFit` function that plots the gene-specific 
 over-dispersion parameters (delta) versus mean expression parameters (mu). 
 
-```{r naive-fit}
+```{r naive-fit, fig.cap="Over-dispersion is plotted against mean expression for all genes in naive cells, on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95% credible interval."}
 BASiCS_ShowFit(MCMC_naive)
 ```
 
@@ -1366,7 +1380,7 @@ These genes can be identified in the
 We will use the `r CRANpkg("ggpointdensity")` to visualise the density of
 the genes along the axes of mean and variability.
 
-```{r variability-measures}
+```{r variability-measures, fig.cap="Variance is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
 library("ggpointdensity")
 library("viridis")
 # Exclude ERCCs
@@ -1388,7 +1402,9 @@ ggplot(
   ) +
   geom_pointdensity(aes(log(mean), log(variance))) +
   scale_color_viridis()
+```
 
+```{r fano-fig, fig.cap="Fano factor is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
 # Fano factor
 ggplot(
     data.frame(
@@ -1398,7 +1414,9 @@ ggplot(
   ) +
   geom_pointdensity(aes(log(mean), log(fano))) +
   scale_color_viridis()
+```
 
+```{r cv-fig, fig.cap="Squared coefficient of variation is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
 # Squared coefficient of variation
 ggplot(
     data.frame(
@@ -1415,7 +1433,7 @@ The same is true for the over-dispersion parameters estimated by BASiCS, as
 shown below. Again, for this comparison, we exclude genes that are not observed
 to be expressed in at least 2 cells
 
-```{r CV-comparison-BASiCS}
+```{r CV-comparison-BASiCS, fig.cap="Over-dispersion estimates from BASiCS are plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
 summary_naive <- Summary(MCMC_naive)
 # Remove genes
 eps_not_na <- !is.na(displaySummaryBASiCS(summary_naive, Param = "epsilon")[, "median"])
@@ -1431,7 +1449,9 @@ ggplot(
   ) +
   geom_pointdensity(aes(log(mu), log(delta))) +
   scale_color_viridis()
+```
 
+```{r cv-basics, fig.cap="Over-dispersion estimates from BASiCS are plotted against squared coefficient of variation for all genes. Colour represents local density, with lighter colours representing higher density."}
 # Compare delta to CV2
 ggplot(
     data.frame(
@@ -1453,7 +1473,7 @@ along the mean-variability trend to correct for this confounding factor
 Here, we highlight how to obtain the residual variability estimates using 
 `BASiCS` and `scran`.
 
-```{r mean-dispersion-plots}
+```{r mean-dispersion-basics, fig.cap="Epsilon residual over-dispersion estimates are plotted against mean expression."}
 # Residual over-dispersion estimates
 epsilon_naive <- displaySummaryBASiCS(summary_naive, Param = "epsilon")[eps_not_na, ]
 
@@ -1466,7 +1486,9 @@ ggplot(
   ) +
   geom_pointdensity(aes(log(mu), epsilon)) +
   scale_color_viridis()
+```
 
+```{r mean-dispersion-dm, fig.cap="DM dispersion estimates are plotted against mean expression."}
 # DM values
 DM.naive <- scran::DM(mean = mean_genes, cv2 = var_genes / mean_genes^2)
 
@@ -1479,7 +1501,9 @@ ggplot(
   ) +
   geom_pointdensity(aes(log(mean), DM)) +
   scale_color_viridis()
+```
 
+```{r epsilon-dm, fig.cap="DM dispersion estimates are plotted against epsilon values."}
 # Compare residual over-dispersion and DM
 ggplot(
     data.frame(
@@ -1605,7 +1629,7 @@ For convenience, this MCMC chain can be again obtained online at
 download_file(
   file = "MCMC_active.rds",
   website = "https://git.ecdf.ed.ac.uk/vallejosgroup/",
-  folder = "basicsworkflow2020/raw/master/MCMCs/",
+  folder = "basicsworkflow2020/raw/master/",
   destfile = "rds/MCMC_active.rds"
 )
 MCMC_active <- readRDS("rds/MCMC_active.rds")
@@ -1625,40 +1649,56 @@ effective sample size of all chains per parameter class.
 plot(MCMC_active, Param = "mu", Gene = 1)
 plot(MCMC_active, Param = "mu", Gene = 1000)
 
-# Effective sample size
-BASiCS_DiagPlot(MCMC_active, Param = "mu")
-
-# Histogram of effective sample size for mu, as some genes seem to have low values for mu.
-BASiCS_DiagHist(MCMC_active, Param = "mu")
-
 # Convergence of over-dispersion parameters
 # Trace plot, sample histogram and autocorrelation
 plot(MCMC_active, Param = "delta", Gene = 100)
 plot(MCMC_active, Param = "delta", Gene = 5000)
-
-# Effective sample size
-BASiCS_DiagPlot(MCMC_active, Param = "delta")
 
 # Convergence of residual over-dispersion parameters
 # Trace plot, sample histogram and autocorrelation
 plot(MCMC_active, Param = "epsilon", Gene = 200)
 plot(MCMC_active, Param = "epsilon", Gene = 5000)
 
-# Effective sample size
-BASiCS_DiagPlot(MCMC_active, Param = "epsilon")
-
 # Convergence of mRNA capture efficiency parameters
 # Trace plot, sample histogram and autocorrelation
 plot(MCMC_active, Param = "s", Cell = 10)
 plot(MCMC_active, Param = "s", Cell = 50)
-
-# Effective sample size
-BASiCS_DiagPlot(MCMC_active, Param = "s")
 ```
+
+
+```{r ess-diag-hist, fig.cap="Distribution of effective sample size across all genes for mu, delta and epsilon parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests."}
+mu_ess <- BASiCS_DiagHist(MCMC_active, Param = "mu") +
+  xlab("ESS: mu") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+delta_ess <- BASiCS_DiagHist(MCMC_active, Param = "delta") +
+  xlab("ESS: mu") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+epsilon_ess <- BASiCS_DiagHist(MCMC_active, Param = "delta") +
+  xlab("ESS: mu") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+multiplot(mu_ess, delta_ess, epsilon_ess, cols = 2)
+```
+
+```{r ess-diag-plot, fig.cap="Effective sample size is plotted against parameter estimates for mu, delta and epsilon parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
+mu_ess2 <- BASiCS_DiagPlot(MCMC_active, Param = "mu") +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+delta_ess2 <- BASiCS_DiagPlot(MCMC_active, Param = "delta") +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+epsilon_ess2 <- BASiCS_DiagPlot(MCMC_active, Param = "epsilon") +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+multiplot(mu_ess2, delta_ess2, epsilon_ess2, cols = 2)
+```
+
 
 To highlight the regression trend, we can use the `BASiCS_ShowFit` function.
 
-```{r active-fit}
+```{r active-fit, fig.cap="Over-dispersion is plotted against mean expression for all genes in active cells, on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95% credible interval."}
 BASiCS_ShowFit(MCMC_active)
 ```
 
@@ -1668,14 +1708,6 @@ We can therefore move on to perform differential testing between naive and
 activated CD4^+^ T cells.
 
 ## Differential testing
-
-```{r convergence-ess}
-BASiCS_DiagHist(MCMC_active, Param = "mu")
-BASiCS_DiagHist(MCMC_active, Param = "delta")
-
-BASiCS_DiagPlot(MCMC_active, Param = "mu")
-BASiCS_DiagPlot(MCMC_active, Param = "delta")
-```
 
 ### Differential mean expression
 
@@ -1715,44 +1747,48 @@ After running the test, we can now visaulize the results in form of a MA-plot
 (log ratio _versus_ mean average) and volcano plot (posterior probability
 _versus_ log ratio).
 
-```{r visualise-MA-plot}
-colour_map <- c(
-  "Naive+" = "dark blue",
-  "Active+" = "dark red",
-  "NoDiff" = "black",
-  "ExcludedLowESS" = "grey60",
-  "ExcludedByUser" = "grey80"
-)
+```{r visualise-MA-plot, fig.cap="Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
 
 BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "MA")
+```
+
+
+```{r visualise-volcano-plot, fig.cap="Posterior probability of differential expression is plotted again log fold change. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
 BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "Volcano")
 
 TableMean <- format(Test_DE, Which = "Mean", Filter = FALSE)
-TableMean$ResultDiffMean <- factor(
-  TableMean$ResultDiffMean,
-  levels = names(colour_map)
-)
-ord <- order(TableMean$ResultDiffMean, decreasing = TRUE)
-TableMean <- TableMean[ord, ]
-colour_scale <- scale_color_manual(values = colour_map)
+
+# colour_map <- c(
+#   "Naive+" = "dark blue",
+#   "Active+" = "dark red",
+#   "NoDiff" = "black",
+#   "ExcludedLowESS" = "grey60",
+#   "ExcludedByUser" = "grey80"
+# )
+# TableMean$ResultDiffMean <- factor(
+#   TableMean$ResultDiffMean,
+#   levels = names(colour_map)
+# )
+# ord <- order(TableMean$ResultDiffMean, decreasing = TRUE)
+# TableMean <- TableMean[ord, ]
+# colour_scale <- scale_color_manual(values = colour_map)
 # Visualise MA plot
-ggplot(TableMean) +
-  geom_point(
-    aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean),
-    shape = 16,
-    alpha = 0.5
-  ) +
-  colour_scale
-# Visualise MA plot
-ggplot(TableMean) +
-  geom_point(
-    aes(MeanLog2FC, ProbDiffMean, colour = ResultDiffMean),
-    shape = 16,
-    alpha = 0.5
-  ) +
-  colour_scale
+# ggplot(TableMean) +
+#   geom_point(
+#     aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean),
+#     shape = 16,
+#     alpha = 0.5
+#   ) +
+#   colour_scale
+# Visualise volcano plot
+# ggplot(TableMean) +
+#   geom_point(
+#     aes(MeanLog2FC, ProbDiffMean, colour = ResultDiffMean),
+#     shape = 16,
+#     alpha = 0.5
+#   ) +
+#   colour_scale
 ```
-**TODO: we can also plot this using BASiCS_PlotDE**
 
 
 As we can see for the comparison of naive and activated CD4^+^ T cells, most 
@@ -1921,17 +1957,17 @@ Test_DE_LFC0 <- BASiCS_TestDE(
 ```
 
 We first select the genes that remain similarly expressed between both 
-conditions and highlight the differential over-dispersion results in form of MA- 
-and boxplots.
+conditions and highlight the differential over-dispersion results in 
+the form of MA plots and boxplots.
 
-```{r over-dispersion-result}
+```{r over-dispersion-result, fig.cap="Over-dispersion log fold change (naive relative to active) is plotted against mean expression."}
 # Select genes with no changes in mean expression
 TableMean0 <- format(Test_DE_LFC0, Which = "Mean", Filter = FALSE)
 ind_nochange <- TableMean0$ResultDiffMean == "NoDiff"
 TableDisp0 <- format(Test_DE_LFC0, Which = "Disp", Filter = FALSE)
 
 BASiCS_PlotDE(Test_DE_LFC0, Parameters = "Disp", Plot = "MA")
-# # MA plot
+# MA plot
 # ggplot(TableDisp0[ind_nochange, ]) +
 #   geom_point(
 #     aes(
@@ -1949,7 +1985,10 @@ BASiCS_PlotDE(Test_DE_LFC0, Parameters = "Disp", Plot = "MA")
 #       "NoDiff" = "black"
 #     )
 #   )
+```
 
+
+```{r over-dispersion-boxplot, fig.cap="Boxplot of over-dispersion log fold changes across all genes. The red line indicates a value of zero, corresponding to no difference."}
 # Boxplot
 wilcox.test(TableDisp0$DispLog2FC[ind_nochange])
 boxplot(TableDisp0$DispLog2FC[ind_nochange],
@@ -2011,7 +2050,7 @@ residual over-dispersion parameters $\epsilon$ is shown on the y-axis.
 Epsilon values for genes that are not expressed in at least 2 cells per 
 conditions are marked as `NA` and are therefore not being displayed.
 
-```{r diff-res-plot}
+```{r diff-res-plot, fig.cap="Distance of residual over-dispersion in naive cells relative to active cells. Colour indicates whether genes were excluded from testing, and whether a significant difference was identified between the two groups for that gene."}
 TableResDisp <- format(Test_DE, Which = "ResDisp", Filter = FALSE)
 colour_map <- c(
   "Naive+" = "dodgerblue",
@@ -2060,9 +2099,7 @@ res_df <- res_df[!ind_exclude, ]
 Next, we can visualise the regulation of each individual gene based on its 
 changes in mean expression and expression variability.
 
-```{r DV-DE-vis}
-BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plot = "MA")
-
+```{r DV-DE-vis, fig.cap="Difference in residual over-dispersion is plotted against log fold change for all genes. Colour indicates whether significant differences were detected between the groups for each parameter."}
 res_df$ResultDiffMean[grep("Excluded", res_df$ResultDiffMean)] <- "NoDiff"
 res_df$ResultDiffResDisp[grep("Excluded", res_df$ResultDiffResDisp)] <- "NoDiff"
 ggplot(res_df) +
@@ -2215,7 +2252,7 @@ cluster_labels <- cluster_labels[ind_som, ]
 For pre-processing and visualisation purposes, we load the data into a 
 SingleCellExperiment object. The metadata will be stored in the `colData` slot.
 
-```{r droplet-sce, cache = FALSE}
+```{r droplet-sce, fig.cap="Principal component plot of presomitic and somitic mesoderm cells. Colour indicates the inferred cell type [@Ibarra-Soria2018]."}
 droplet_sce <- SingleCellExperiment(
   assays = list(counts = as(as.matrix(rawCounts), "dgCMatrix"))
 )
@@ -2251,7 +2288,7 @@ droplet_sce <- runPCA(droplet_sce)
 
 We can now visualise the different factors stored in the `colData` slot.
 
-```{r drop_pca_plot}
+```{r drop_pca_plot, fig.cap="Principal component plot of pre-somitic and somitic mesoderm cells. Colour indicates cell type."}
 # Cell types identified by clustering
 plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
   scale_fill_manual(name = "cellType", values = c("coral4", "steelblue", "limegreen"))
@@ -2344,7 +2381,7 @@ Running these MCMC will take around 8-12 hours on a standard PC (2.6 GHz i5,
 
 ```{r droplet-chain-download}
 website <- "https://git.ecdf.ed.ac.uk/"
-folder <- "vallejosgroup/basicsworkflow2020/raw/master/MCMCs/"
+folder <- "vallejosgroup/basicsworkflow2020/raw/master/"
 PSM_MCMC <- readRDS(
   file = url(
     paste0(website, folder, "PSM_MCMC.rds")
@@ -2389,8 +2426,10 @@ correctly, we plot posterior estimates for over-dispersion paramters $\delta_i$
 against posterior estimates of mean expression parameters $\mu_i$.
 For this, the `BASiCS_ShowFit` function can be used.
 
-```{r droplet-regression-trend}
+```{r droplet-regression-trend-psm, fig.cap="Over-dispersion is plotted against mean expression for all genes in pre-somitic mesoderm cells, on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95% credible interval."}
 BASiCS_ShowFit(PSM_MCMC)
+```
+```{r droplet-regression-trend-sm, fig.cap="Over-dispersion is plotted against mean expression for all genes in somitic mesoderm cells, on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95% credible interval."}
 BASiCS_ShowFit(SM_MCMC)
 ```
 
@@ -2418,11 +2457,16 @@ Droplet_Test_logFC0 <- BASiCS_TestDE(
   CheckESS = TRUE,
   MinESS = 100
 )
+```
+
+```{r droplet-tested-boxplot, fig.cap="Boxplot of log over-dispersion parameters in pre-somitic and somitic mesoderm cells, respectively."}
 DropletTableDisp <- format(Droplet_Test_logFC0, Which = "Disp", Filter = FALSE)
 not_excluded <- DropletTableDisp$ResultDiffDisp != "ExcludedFromTesting"
 for_plot <- DropletTableDisp[not_excluded, c("Disp1", "Disp2")]
 for_plot <- reshape2::melt(for_plot)
-ggplot(for_plot) + geom_boxplot(aes(variable, log(value))) +
+ggplot(for_plot, aes(variable, log(value))) +
+  geom_violin() + 
+  geom_boxplot(width = 0.25) +
   scale_x_discrete(labels = c("PSM", "SM")) +
   ylab("log(delta)") + xlab("")
 ```
@@ -2436,7 +2480,7 @@ For this, we use a log~2~ fold change threshold of 1 for mean expression testing
 and the default threshold of $\psi_0\approx0.41$ for differential variability 
 testing.
 
-```{r droplet-gene-specific-testing}
+```{r droplet-gene-specific-testing, fig.cap="Fold changes of average expression in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
 Droplet_Test <- BASiCS_TestDE(
   Chain1 = PSM_MCMC,
   Chain2 = SM_MCMC,
@@ -2449,45 +2493,45 @@ Droplet_Test <- BASiCS_TestDE(
   MinESS = 100
 )
 
-
-colour_map_sm <- c(
-  "PSM+" = "dark blue",
-  "SM+" = "dark red",
-  "NoDiff" = "black",
-  "ExcludedLowESS" = "grey60",
-  "ExcludedByUser" = "grey80"
-)
-
 BASiCS_PlotDE(Droplet_Test, Parameter = "Mean", Plot = "MA")
 Droplet_TableMean <- format(Droplet_Test, Which = "Mean", Filter = FALSE)
-# Differential expression
-ggplot(Droplet_TableMean) +
-  geom_point(
-    aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean),
-    shape = 16,
-    alpha = 0.5
-  ) +
-  scale_colour_manual(
-    name = "Differential\nexpression",
-    values = colour_map_sm
-  ) +
-  ylab(expression(mu[PSM] / mu[SM])) + xlab(expression(log(mu)))
 
+# colour_map_sm <- c(
+#   "PSM+" = "dark blue",
+#   "SM+" = "dark red",
+#   "NoDiff" = "black",
+#   "ExcludedLowESS" = "grey60",
+#   "ExcludedByUser" = "grey80"
+# )
+# # Differential expression
+# ggplot(Droplet_TableMean) +
+#   geom_point(
+#     aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean),
+#     shape = 16,
+#     alpha = 0.5
+#   ) +
+#   scale_colour_manual(
+#     name = "Differential\nexpression",
+#     values = colour_map_sm
+#   ) +
+#   ylab(expression(mu[PSM] / mu[SM])) + xlab(expression(log(mu)))
+```
 
-BASiCS_PlotDE(Droplet_Test, Parameter = "ResDisp", Plot = "MA")
+```{r droplet-gene-specific-testing-resdisp, fig.cap="Differences in residual over-dispersion parameters in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher residual over-dispersion in either group."}
 Droplet_TableResDisp <- format(Droplet_Test, Which = "ResDisp", Filter = FALSE)
+BASiCS_PlotDE(Droplet_Test, Parameter = "ResDisp", Plot = "MA")
 # Differential variability
-ggplot(Droplet_TableResDisp) +
-  geom_point(
-    aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp),
-    shape = 16,
-    alpha = 0.5
-  ) +
-  scale_colour_manual(
-    name = "Differential\nvariability",
-    values = colour_map_sm
-  ) +
-  ylab(expression(epsilon[PSM] - epsilon[SM])) + xlab(expression(log(mu)))
+# ggplot(Droplet_TableResDisp) +
+#   geom_point(
+#     aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp),
+#     shape = 16,
+#     alpha = 0.5
+#   ) +
+#   scale_colour_manual(
+#     name = "Differential\nvariability",
+#     values = colour_map_sm
+#   ) +
+#   ylab(expression(epsilon[PSM] - epsilon[SM])) + xlab(expression(log(mu)))
 ```
 
 ### Differential mean expression
@@ -2513,7 +2557,79 @@ PSM_mean$Symbol <- genenames[PSM_mean$GeneName, 2]
 ```
 
 
- 
+```{r heatmap-diffexp, fig.cap="Heatmap of 30 differentially expressed genes in PSM and SM cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the average expression for each gene."}
+library("ComplexHeatmap")
+library("circlize")
+library("RColorBrewer")
+heatmap_ngenes <- 15
+heatmap_seq <- seq_len(heatmap_ngenes)
+
+p_ind <- order(PSM_mean$ProbDiffMean, decreasing = TRUE)[heatmap_seq]
+PSM_mean_s <- PSM_mean[p_ind, ]
+psm_counts_psm <- counts(PSM_Data)[PSM_mean_s$GeneName, ]
+sm_counts_psm <- counts(SM_Data)[PSM_mean_s$GeneName, ]
+
+s_ind <- order(SM_mean$ProbDiffMean, decreasing = TRUE)[heatmap_seq]
+SM_mean_s <- SM_mean[s_ind, ]
+psm_counts_sm <- counts(PSM_Data)[SM_mean_s$GeneName, ]
+sm_counts_sm <- counts(SM_Data)[SM_mean_s$GeneName, ]
+
+all_mean <- c(
+  PSM_mean_s$Mean1, PSM_mean_s$Mean2, SM_mean_s$Mean1, SM_mean_s$Mean2
+)
+max_range <- log(max(abs(all_mean)))
+# max_range <- 5
+colour <- colorRamp2(seq(-max_range, max_range, length.out = 9),
+  brewer.pal(9, "RdBu"))
+
+counts_psm <- rbind(psm_counts_psm, psm_counts_sm)
+counts_sm <- rbind(sm_counts_psm, sm_counts_sm)
+
+split <- data.frame(
+  Upregulated = c(
+    rep("Up-regulated \nin PSM", nrow(psm_counts_psm)),
+    rep("Up-regulated \nin SM", nrow(psm_counts_sm))
+  )
+)
+syms <- genenames[rownames(counts_psm), 2]
+fontsize <- 7.5
+
+Heatmap(
+  log10(counts_sm + 1),
+  row_labels = syms,
+  row_names_gp = gpar(fontsize = fontsize),
+  name = "log10(count + 1)",
+  column_dend_height = unit(0.2, "npc"),
+  column_title_side = "bottom",
+  column_title = "SM cells",
+  cluster_rows = FALSE,
+  split = split,
+  right_annotation = rowAnnotation(
+    log_mu = log(c(PSM_mean_s$Mean2, SM_mean_s$Mean2)),
+    col = list(log_mu = colour)
+  ),
+  col = viridis(100)) +
+Heatmap(
+  log10(counts_psm + 1),
+  row_labels = syms,
+  column_dend_height = unit(0.2, "npc"),
+  row_names_gp = gpar(fontsize = fontsize),
+  column_title = "PSM cells",
+  column_title_side = "bottom",
+  name = "log10(count + 1)",
+  split = split,
+  right_annotation = rowAnnotation(
+    log_mu = log(c(PSM_mean_s$Mean1, SM_mean_s$Mean1)),
+    col = list(log_mu = colour)
+  ),
+  cluster_rows = FALSE,
+  col = viridis(100))
+```
+
+
+
+
+
 We can next perform GO analysis on up- or down-regulated genes. 
 First, we will perform GO analysis on somitic mesoderm specific genes.
 To do this, we will use the `r Biocpkg("goseq")`.
@@ -2591,7 +2707,7 @@ We can also visualise one GO category in form of heatmap. We use
 `r Biocpkg("ComplexHeatmap")` to visualise the expression level for each
 cell of the genes annotated with GO terms [@Gu2016].
 
-```{r gp-heatmap, fig.height = 7, fig.width = 5, cache = FALSE}
+```{r gp-heatmap, fig.height = 7, fig.width = 5}
 library("ComplexHeatmap")
 genes <- unlist(strsplit(PSM_GO[1, "Genes"], ", "))
 for_heatmap <- logcounts(droplet_sce)[genes, ]
@@ -2625,6 +2741,8 @@ h <- Heatmap(as.matrix(for_heatmap),
 )
 draw(h, merge_legend = TRUE)
 ```
+
+
 
 
 ### Differential variability testing
@@ -2671,6 +2789,87 @@ plotReducedDim(droplet_sce,
   colour_by = genenames[ind_meox, 1]
 )
 ```
+
+```{r gene-lists-disp}
+# Highly expressed in somitic mesoderm
+ind_sm <- Droplet_TableResDisp$ResultDiffResDisp == "SM+"
+SM_resdisp <- Droplet_TableResDisp[ind_sm, ]
+SM_resdisp <- SM_resdisp[order(SM_resdisp$ResDispDistance, decreasing = FALSE), ]
+SM_resdisp$Symbol <- genenames[SM_resdisp$GeneName, 2]
+
+# Highly expressed in pre-somitic mesoderm
+ind_psm <- Droplet_TableResDisp$ResultDiffResDisp == "PSM+"
+PSM_resdisp <- Droplet_TableResDisp[ind_psm, ]
+PSM_resdisp <- PSM_resdisp[order(PSM_resdisp$ResDispDistance, decreasing = TRUE), ]
+PSM_resdisp$Symbol <- genenames[PSM_resdisp$GeneName, 2]
+```
+
+
+```{r heatmap-diffresdisp, fig.cap="Heatmap of 30 genes with higher residual over-dispersion in PSM or SM cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the residual over-dispersion for each gene."}
+heatmap_ngenes <- 15
+heatmap_seq <- seq_len(heatmap_ngenes)
+p_ind <- order(PSM_resdisp$ProbDiffResDisp, decreasing = TRUE)[heatmap_seq]
+PSM_resdisp_s <- PSM_resdisp[p_ind, ]
+psm_counts_psm <- counts(PSM_Data)[PSM_resdisp_s$GeneName, ]
+sm_counts_psm <- counts(SM_Data)[PSM_resdisp_s$GeneName, ]
+
+s_ind <- order(SM_resdisp$ProbDiffResDisp, decreasing = TRUE)[heatmap_seq]
+SM_resdisp_s <- SM_resdisp[s_ind, ]
+psm_counts_sm <- counts(PSM_Data)[SM_resdisp_s$GeneName, ]
+sm_counts_sm <- counts(SM_Data)[SM_resdisp_s$GeneName, ]
+
+# all_resdisp <- c(PSM_resdisp_s$ResDisp1, PSM_resdisp_s$ResDisp2,
+#   SM_resdisp_s$ResDisp1, SM_resdisp_s$ResDisp2)
+# max_range <- max(abs(all_resdisp))
+max_range <- 5
+colour <- colorRamp2(seq(-max_range, max_range, length.out = 9),
+  rev(brewer.pal(9, "RdBu")))
+
+counts_psm <- rbind(psm_counts_psm, psm_counts_sm)
+counts_sm <- rbind(sm_counts_psm, sm_counts_sm)
+
+split <- data.frame(
+  Upregulated = c(
+    rep("More variable \nin PSM", nrow(psm_counts_psm)),
+    rep("More variable \nin SM", nrow(psm_counts_sm))
+  )
+)
+syms <- genenames[rownames(counts_psm), 2]
+
+fontsize <- 7.5
+Heatmap(
+  log10(counts_sm + 1),
+  row_labels = syms,
+  row_names_gp = gpar(fontsize = fontsize),
+  name = "log10(count + 1)",
+  column_dend_height = unit(0.2, "npc"),
+  column_title_side = "bottom",
+  column_title = "SM cells",
+  cluster_rows = FALSE,
+  split = split,
+  right_annotation = rowAnnotation(
+    epsilon = c(PSM_resdisp_s$ResDisp2, SM_resdisp_s$ResDisp2),
+    col = list(epsilon = colour)
+  ),
+  col = viridis(100)) +
+Heatmap(
+  log10(counts_psm + 1),
+  row_labels = syms,
+  column_dend_height = unit(0.2, "npc"),
+  row_names_gp = gpar(fontsize = fontsize),
+  column_title = "PSM cells",
+  column_title_side = "bottom",
+  name = "log10(count + 1)",
+  split = split,
+  right_annotation = rowAnnotation(
+    epsilon = c(PSM_resdisp_s$ResDisp1, SM_resdisp_s$ResDisp1),
+    col = list(epsilon = colour)
+  ),
+  cluster_rows = FALSE,
+  col = viridis(100))
+```
+
+
 
 # Discussion 
 This section is required if the paper does not include novel data or analyses.
