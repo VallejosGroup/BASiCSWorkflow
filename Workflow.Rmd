@@ -76,8 +76,8 @@ theme_set(theme_bw())
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 # fig.width <- ifelse(on.bioc, 10, 6)
 if (knitr::is_html_output()) {
-  out_width <- "500px"
-  out_height <- "700px"
+  out_width <- "700px"
+  out_height <- "600px"
 } else if (knitr::is_latex_output()) {
   out_width <- "2.5in"
   out_height <- "3.5in"
@@ -85,7 +85,7 @@ if (knitr::is_html_output()) {
 knitr::opts_chunk$set(
   warning = FALSE, message = FALSE, error = FALSE,
   cache = 2, cache.path = "cache_main/",
-  fig.pos = "h",
+  # fig.pos = "h",
   fig.path = "figure/"
 )
 ```
@@ -2321,11 +2321,13 @@ sessionInfo()
 ```
 
 
+<!-- 
+
 # Software version
 
 **TODO: Versions of all main Bioconductor packages**  
 *I think sessionInfo suffices.*
-
+ -->
 
 
 # Data availability
