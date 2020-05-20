@@ -772,7 +772,7 @@ Furthermore, we detect neither obvious batch effects nor outlier cells.
 
 In the next step, we will visualise selected cell-specific quality metrics 
 overlayed on the principal components.
-Figure \\@ref(fig:no-genes_total-counts) highlights the number of endogeneous 
+Figure \@ref(fig:no-genes_total-counts) highlights the number of endogeneous 
 genes detected per cell and the total number of counts.
 Both of these metrics can be used to detect empty wells or broken cells 
 (low values) and possible doublets (high values).
@@ -1422,7 +1422,7 @@ Similarly, Kolodziejczyk _et al._ used the distance to a rolling median (DM)
 along the mean-variability trend to correct for this confounding factor 
 [@Kolodziejczyk2015cell].
 Here, we highlight how to obtain the residual variability estimates using 
-`r Biocpkg("BASiCS")` and `r Biocpkg(scran")`.
+`r Biocpkg("BASiCS")` and `r Biocpkg("scran")`.
 
 ```{r mean-dispersion-basics, fig.cap="Residual over-dispersion estimates are plotted against mean expression."}
 # Residual over-dispersion estimates
@@ -1506,7 +1506,7 @@ T cell differentiation [@Zhu2010], meaning that any heterogeneity in the activat
 cell population does not arise from cells residing in different lineage-specific 
 differentiation states. Prior to differential testing, and as explained above, 
 we need to generate a `SingleCellExperiment` object that is compatible for
-processing using `r Biocpkg(BASiCS")`.
+processing using `r Biocpkg("BASiCS")`.
 
 ### Creating the BASiCS Data objects
 
