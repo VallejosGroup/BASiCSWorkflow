@@ -772,7 +772,7 @@ Furthermore, we detect neither obvious batch effects nor outlier cells.
 
 In the next step, we will visualise selected cell-specific quality metrics 
 overlayed on the principal components.
-Figure \@ref(fig:no-genes_total-counts) highlights the number of endogeneous 
+Figure \@ref(fig:no-genes-total-counts) highlights the number of endogeneous 
 genes detected per cell and the total number of counts.
 Both of these metrics can be used to detect empty wells or broken cells 
 (low values) and possible doublets (high values).
