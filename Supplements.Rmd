@@ -1,25 +1,35 @@
 ---
 title: "A BASiCS workflow for expression variability analysis using scRNA-Seq data"
-author:
-- name: Nils Eling
-  affiliation: 
-  - &EBI European Molecular Biology Laboratory, European Bioinformatics Institute (EMBL-EBI), Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
-  - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, Li Ka Shing Centre, Cambridge, CB2 0RE, UK
-- name: John C. Marioni
-  affiliation: 
-  - *EBI
-  - *CRUK
-- name: Catalina A. Vallejos
-  affiliation: 
-  - The Alan Turing Institute, British Library, 96 Euston Road, London NW1 2DB, UK
-  - Department of Statistical Science, University College London, 1-19 Torrington Place, London WC1E 7HB, UK
-  email: INSERT.EMAIL
-abstract: Heterogeneity in cellular responses is an inherent feature of biological systems. Stochastic and deterministic differences between individual cells on the transcriptional level introduce expression variability in cell populations. Single-cell RNA sequencing (scRNA-Seq) has been introduced to quantify expression variability across hundreds to thousands of cells.While scRNA-Seq is prone to high degrees of technical noise, the addition of external spike-in RNA or repetitions of experiments can be used to quantify technical noise. Here, we introduce a computational workflow to quantify and test for changes in biological variability in gene expression from scRNA-Seq data using the BASiCS package. The outlined analysis highlights possible confounding effects on variability measures, such as expression level and technical noise, and gives detailed analysis how to avoid these confounders. Furthermore, we exemplify analsyses of a dataset containing spike-in genes, such as data generated using the Fluidigm\@ C1 system, as well as a droplet-based dataset for which reads of spike-in RNA is not available. We will first introduce simple analyses to find highly and lowly variable genes, decompose the overall variability into a technical and biological part while later on focus on testing changes in mean expression and expression variability. The later allows the detection of global as well as gene-specific changes in variability and we exemplify a comparison that reveals heterogeneously induced genes hinting at possible, early cell fate commitment processes.  
-
-#Abstracts should be up to 300 words and provide a succinct summary of the article. Although the abstract should explain why the article might be interesting, care should be taken not to inappropriately over-emphasise the importance of the work described in the article. Citations should not be used in the abstract, and the use of abbreviations should be minimized.
-keywords: Single-cell RNA sequencing, expression variability, noise, differential expression testing
-bibliography: BASiCSworkflow.bib
-output: BiocWorkflowTools::f1000_article
+subtitle: "Supplementary material"
+author: 
+  - name: Nils Eling
+    affiliation: 
+    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
+      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+    - &UZH Department of Quantitative Biomedicine, University of Zurich,
+      Winterthurerstrasse 190, CH-8057, Zurich, Switzerland
+    email: eling@ebi.ac.uk
+  - name: Alan O'Callaghan
+    affiliation: 
+    - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
+      University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
+      EH4 2XU, UK
+  - name: John C. Marioni
+    affiliation: 
+    - *EBI
+    - *CRUK
+  - name: Catalina A. Vallejos
+    affiliation: 
+    - *MRC 
+    - The Alan Turing Institute, British Library, 96 Euston Road, London, 
+      NW1 2DB, UK
+    email: catalina.vallejos@igmm.ed.ac.uk
+output:
+  BiocWorkflowTools::f1000_article:
+    fig_width: 8
+    fig_height: 5
 #output:
 # BiocStyle::html_document:
 #   fig_caption: true
@@ -30,23 +40,29 @@ output: BiocWorkflowTools::f1000_article
 #  %\VignetteEncoding{UTF-8}
 ---
 
+
 ```{r setup_knitr, include = FALSE, cache = FALSE}
-#library(BiocStyle)
+library(BiocStyle)
 ## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
 #on.bioc <- TRUE
-#library(knitr)
+library(knitr)
 # Use fig.width = 7 for html and fig.width = 6 for pdf
 #fig.width <- ifelse(on.bioc, 7, 6)
-#knitr::opts_chunk$set(cache = 2, warning = FALSE, message = FALSE, error = FALSE,
-#  cache.path = "cache/", fig.path = "figure/", fig.width = fig.width)
+knitr::opts_chunk$set(
+  message = FALSE, error = FALSE, warning = FALSE,
+  cache = FALSE, cache.path = "cache_supp/",
+  fig.path = "figure_supp/"
+)
 ```
 
 # Methods
 
 ## The BASiCS model
 
-The BASiCS package features a hierarchical Bayesian model in which the transcript count of gene $i$ of cell $j$ is represented as a random variable $X_{ij}$. 
-For all technical genes, counts can be modelled as Poisson distributed with a random effect capturing unexplained technical noise:
+The BASiCS package features a hierarchical Bayesian model in which the 
+transcript count of gene $i$ of cell $j$ is represented as a random variable
+$X_{ij}$. For all technical genes, counts can be modelled as Poisson distributed
+with a random effect capturing unexplained technical noise:
 
 $$
 \begin{aligned}
@@ -55,46 +71,65 @@ X_{ij}|\mu_i,\nu_j&\sim{}\text{Poisson}(\nu_j\mu_i)\\
 \end{aligned}
 $$
 
-where $\mu_i$ explains the gene's mean expression, $\nu_j$ the technical effect dominated by the mRNA capture efficiency $s_j$ and the unexplained technical noise parameter $\theta$. 
+where $\mu_i$ explains the gene's mean expression, $\nu_j$ the technical effect
+dominated by the mRNA capture efficiency $s_j$ and the unexplained technical 
+noise parameter $\theta$. 
 
 This technical influence effects all biological genes in the same manner. 
-In addition to technical variations, cell-to-cell differences of biological gene expression can be cause by biological processes as explained above. 
-To model an additional random effect that captures biological cell-to-cell variability, the random variable $X_{ij}$ is modelled as: 
+In addition to technical variations, cell-to-cell differences of biological 
+gene expression can be cause by biological processes as explained above. 
+To model an additional random effect that captures biological cell-to-cell 
+variability, the random variable $X_{ij}$ is modelled as: 
 
 $$
 \begin{aligned}
-X_{ij}|\mu_i,\phi_j,\nu_j,\rho_{ij}&\sim{}\text{Poisson}(\phi_j\nu_j\mu_i\rho_{ij})\\
-\rho_{ij}|\delta_i&\sim{}\text{Gamma}(1/\delta_i,1/\delta_i)
+  X_{ij}|\mu_i,\phi_j,\nu_j,\rho_{ij} & \sim \text{Poisson}(\phi_j\nu_j\mu_i\rho_{ij})\\
+  \rho_{ij}|\delta_i & \sim \text{Gamma}(1 / \delta_i, 1 / \delta_i)
 \end{aligned}
 $$
 
-where $\phi_j$ is the cell-specifc size factor and $\rho_{ij}$ the biological random effect incoroporating the over-dispersion hyper-parameter $\delta_i$.
+where $\phi_j$ is the cell-specifc size factor and $\rho_{ij}$ the biological
+random effect incorporating the over-dispersion hyper-parameter $\delta_i$.
 
-In the further analysis, $\mu_i$ represents the mean expression and $\delta_i$ the biological over-dispersion of each gene.
+In further analysis, $\mu_i$ represents the mean expression and $\delta_i$
+the biological over-dispersion of each gene.
 
 ### Testing for changes in mean expression and over-dispersion
 
-Differential mean and differential over-dispersion testing is done by computing the tail posterior propabilities of the difference in mean expression or over-dispersion between two conditions ($A$ and $B$) being larger than an evidence threshold $\tau_0$ or $\omega_0$ [@Bochkina2007, @Vallejos2016]:
+Differential mean and differential over-dispersion testing is done by computing
+the tail posterior propabilities of the difference in mean expression or 
+over-dispersion between two conditions ($A$ and $B$) being larger than an
+evidence threshold $\tau_0$ or $\omega_0$ [@Bochkina2007, @Vallejos2016]:
 
 $$
 \begin{aligned}
-&\text{P}(\log(\mu_i^{(A)}/\mu_i^{(B)}))>\tau_0|\text{Data})>\alpha_m\\
-&\text{P}(\log(\delta_i^{(A)}/\delta_i^{(B)}))>\omega_0|\text{Data})>\alpha_d
+  &\text{P}(\log(\mu_i^{(A)} / \mu_i^{(B)}) > \tau_0 | \text{Data}) > \alpha_m\\
+  &\text{P}(\log(\delta_i^{(A)}/\delta_i^{(B)}) > \omega_0 | \text{Data}) > \alpha_d
 \end{aligned}
 $$
 
-If the tail posterior probability is larger than a given propability threshold $\alpha_m$ or $\alpha_d$, the gene is considered to be differentially expressed or differentially over-dispersed [@Vallejos2016]. 
-The evidence threshold is usually fixed \emph{a priori} and the probability threshold is defined to control the expected false discovery rate (EFDR) to (e.g. 10%) [@Newton2004, Vallejos2016].
+If the tail posterior probability is larger than a given propability threshold 
+$\alpha_m$ or $\alpha_d$, the gene is considered to be differentially expressed
+or differentially over-dispersed [@Vallejos2016]. The evidence threshold is
+usually fixed *a priori* and the probability threshold is defined to
+control the expected false discovery rate (EFDR) to 
+(e.g. 10%) [@Newton2004, Vallejos2016].
 
-As described in Vallejos \emph{et al.}, 2016 [@Vallejos2016], estimates of the over-dispersion parameters $\delta_i$ are negatively correlated to mean expression $\mu_i$. 
-This indicates that in homogeneous populations of cells, highly expressed genes tend to be less noisy than lowly expressed genes. 
-Differential over-dispersion testing is therefor confounded by mean expression changes. 
-When assessing changes in over-dispersion $\delta_i$, only genes with no changes in mean expression are considered (see Vallejos \emph{et al.}, 2016 [@Vallejos2016]).
+As described by @Vallejos2016, estimates of the
+over-dispersion parameters $\delta_i$ are negatively correlated to mean 
+expression $\mu_i$. This indicates that in homogeneous populations of cells,
+highly expressed genes tend to be less noisy than lowly expressed genes. 
+Differential over-dispersion testing is therefore confounded by mean expression
+changes. When assessing changes in over-dispersion $\delta_i$, only genes with
+no changes in mean expression are considered (see @Vallejos2016).
 
 ### Correcting the mean-variability confounding effect
 
-In Eling \emph{et al.}, 2018 [@Eling2018], we extended BASiCS to account for the confounding effect between mean expression and expression variability. 
-For this purpose, we captured the relationship between mean and over-dispersion parameters by introducing the following joint prior distribution for $(\mu_i, \delta_i)'$: 
+@Eling2018 extended BASiCS to account for the
+confounding effect between mean expression and expression variability. 
+For this purpose, we capture the relationship between mean and over-dispersion
+parameters by introducing the following joint prior distribution for 
+$(\mu_i, \delta_i)'$:
 
 $$
 \mu_i \sim \text{log-Normal}\left(0, s^2_{\mu}\right), \hspace{0.5cm}
@@ -107,17 +142,584 @@ $$
 \log(\delta_i) = \text{f}(\mu_i)+\epsilon_i, \hspace{0.5cm} \epsilon_i \sim{}\text{t}_{\eta}(0,\sigma^2), 
 $$
 
-where $\mbox{f}(\mu_i)$ represents the over-dispersion (on the log-scale) that is predicted by the global trend (across all genes) for a given mean expression $\mu_i$. 
-Therefore, $\epsilon_i$ can be interpreted as a gene-specific \emph{residual over-dispersion} parameter. 
-Positive values for $\epsilon_i$ indicate more variation than expected for genes with similar expression level. 
-Similarly, negative values of $\epsilon_i$ suggest less variation than expected [@Eling2018].
+where $\mbox{f}(\mu_i)$ represents the over-dispersion (on the log-scale) that
+is predicted by the global trend (across all genes) for a given mean expression 
+$\mu_i$. Therefore, $\epsilon_i$ can be interpreted as a gene-specific 
+*residual over-dispersion* parameter. Positive values for
+$\epsilon_i$ indicate more variation than expected for genes with similar 
+expression level. Similarly, negative values of $\epsilon_i$ suggest less 
+variation than expected [@Eling2018].
 
-In line with the probabilistic approach described above, we identified statistically significant differences in residual over-dispersion for those genes where the tail posterior probability of observing a large difference between $\epsilon_i^A$ and $\epsilon_i^B$ exceeds a certain threshold:
+In line with the probabilistic approach described above, we identified
+statistically significant differences in residual over-dispersion for those 
+genes where the tail posterior probability of observing a large difference 
+between $\epsilon_i^A$ and $\epsilon_i^B$ exceeds a certain threshold:
 
 $$
 \text{P}(\mid\epsilon_i^{A}-\epsilon_i^{B}\mid >\psi_0 \mid \text{Data} ) >\alpha_R,
 $$
 where $\psi_0 > 0$ defines the minimum tolerance threshold. 
-As a default choice, we assume $\psi_0 = \log_2(1.5) / \log_2(e) \approx 0.41$ which translates into a 50% increase in over-dispersion. 
-The posterior probability threshold $\alpha_R$ is chosen to control the EFDR (e.g. 10%) [@Newton2004]. 
-To support interpretability of the results, we exclude genes that are not expressed in at least 2 cells per condition from differential variability testing.
+As a default choice, we assume $\psi_0 = \log_2(1.5) / \log_2(e) \approx 0.41$,
+which translates into a 50\% increase in over-dispersion. 
+The posterior probability threshold $\alpha_R$ is chosen to control the EFDR
+(e.g. 10\%) [@Newton2004]. To support interpretability of the results,
+we exclude genes that are not expressed in at least 2 cells per condition from
+differential variability testing.
+
+# Trace plots
+
+```{r load-chain-naive}
+library("BASiCS")
+MCMC_naive <- readRDS("rds/MCMC_naive.rds")
+```
+
+```{r trace-naive}
+plot(MCMC_naive, Param = "mu", Gene = 1000)
+plot(MCMC_naive, Param = "delta", Gene = 100)
+plot(MCMC_naive, Param = "delta", Gene = 5000)
+plot(MCMC_naive, Param = "epsilon", Gene = 200)
+plot(MCMC_naive, Param = "epsilon", Gene = 6000)
+plot(MCMC_naive, Param = "s", Cell = 10)
+plot(MCMC_naive, Param = "s", Cell = 50)
+```
+
+
+```{r load-chain-active}
+MCMC_active <- readRDS("rds/MCMC_active.rds")
+```
+
+```{r trace-active}
+plot(MCMC_active, Param = "mu", Gene = 1000)
+plot(MCMC_active, Param = "delta", Gene = 100)
+plot(MCMC_active, Param = "delta", Gene = 5000)
+plot(MCMC_active, Param = "epsilon", Gene = 200)
+plot(MCMC_active, Param = "epsilon", Gene = 6000)
+plot(MCMC_active, Param = "s", Cell = 10)
+plot(MCMC_active, Param = "s", Cell = 50)
+```
+
+
+```{r load-chain-naive-nospikes}
+MCMC_naive_nospikes <- readRDS("rds/MCMC_naive_nospikes.rds")
+```
+
+```{r trace-naive-nospikes}
+plot(MCMC_naive_nospikes, Param = "mu", Gene = 1000)
+plot(MCMC_naive_nospikes, Param = "delta", Gene = 100)
+plot(MCMC_naive_nospikes, Param = "delta", Gene = 5000)
+plot(MCMC_naive_nospikes, Param = "epsilon", Gene = 200)
+plot(MCMC_naive_nospikes, Param = "epsilon", Gene = 6000)
+plot(MCMC_naive_nospikes, Param = "s", Cell = 10)
+plot(MCMC_naive_nospikes, Param = "s", Cell = 50)
+```
+
+
+
+
+# Differential testing using droplet-based differentiating cells {#droplet-data}
+
+The development of droplet-based scRNA-seq [@Klein2015;@Macosko2015] 
+lead to a large increase in the number of cells that can be profiled per 
+experiment at a fixed cost.
+With this, large-scale scRNA-seq datasets have been generated to study 
+development across multiple time-points and capturing multiple tissues 
+[@Ibarra-Soria2018;@Kernfeld2018]. 
+Here we describe the computational analysis of changes in mean expression 
+and transcriptional variability when data are sparse and technical spike-in 
+genes are missing. 
+For this, we compare cells of the presomitic mesoderm and somitic mesoderm 
+using droplet-based scRNA-seq data [@Ibarra-Soria2018].
+
+## Obtaining the data
+
+The full dataset is stored under the accession number E-MTAB-6153 on 
+ArrayExpress and can be obtained via:
+
+```{r load-droplet-data}
+if (!file.exists("downloads/rawCounts.tsv")) {
+  website <- "https://www.ebi.ac.uk/"
+  folder <- "arrayexpress/files/E-MTAB-6153/"
+  file <- "E-MTAB-6153.processed.2.zip"
+  download.file(
+    paste0(website, folder, file),
+    destfile = "downloads/rawCounts.zip"
+  )
+  unzip(zipfile = "downloads/rawCounts.zip", exdir = "downloads")
+  file.remove("downloads/rawCounts.zip")
+}
+rawCounts <- read.delim("downloads/rawCounts.tsv", header = TRUE)
+```
+
+*Of note:* The file is 65 MB in size while the unzipped, raw counts measure
+873 MB in size.
+
+The cluster labels of the original publication ca be obtained via:
+
+```{r cluster-labels-droplet}
+if (!file.exists("downloads/cellAnnotation.tsv")) {
+  website <- "https://www.ebi.ac.uk/"
+  folder <- "arrayexpress/files/E-MTAB-6153/"
+  file <- "E-MTAB-6153.processed.3.zip"
+  download.file(
+    paste0(website, folder, file),
+    destfile = "cluster_labels.zip"
+  )
+  unzip(zipfile = "cluster_labels.zip", exdir = "downloads")
+}
+
+cluster_labels <- read.table("downloads/cellAnnotation.tsv",
+  sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+```
+
+## Select populations of interest
+
+We select the somitic and pre-somitic mesoderm cells to perform differential 
+testing. Prior to running the MCMC, we want to control for outlying cells and 
+heterogeneous substructure in both cell populations. 
+
+```{r droplet-cell-selection, cache = FALSE}
+cluster_labels[["Cell_type"]] <- cluster_labels$cellType
+cluster_labels[["Cell_type"]] <- sub(
+  "presomiticMesoderm",
+  "PSM",
+  cluster_labels[["Cell_type"]]
+)
+cluster_labels[["Cell_type"]] <- sub("somiticMesoderm",
+  "SM", 
+  cluster_labels[["Cell_type"]]
+)
+
+ind_som <- which(cluster_labels[["Cell_type"]] == "PSM" |
+  cluster_labels[["Cell_type"]] == "SM")
+rawCounts <- rawCounts[, ind_som]
+cluster_labels <- cluster_labels[ind_som, ]
+```
+
+## Generating SingleCellExperiment object and quality control
+
+For pre-processing and visualisation purposes, we load the data into a 
+SingleCellExperiment object. The metadata will be stored in the `colData` slot.
+
+```{r droplet-sce}
+droplet_sce <- SingleCellExperiment(
+  assays = list(counts = as(as.matrix(rawCounts), "dgCMatrix"))
+)
+rm(rawCounts)
+colData(droplet_sce) <- DataFrame(
+  cluster_labels,
+  subCellType = sub("_.*", "", cluster_labels$cell)
+)
+```
+
+For further processing steps, we remove lowly expressed genes.
+
+```{r filter_drop}
+ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
+droplet_sce <- droplet_sce[ind_expressed, ]
+```
+
+To visualise possible sub-structure in the data, we normalise both cell 
+populations using the `scran` package.
+
+```{r norm_drop}
+library("scran")
+library("scater")
+droplet_sce <- computeSumFactors(droplet_sce,
+  clusters = colData(droplet_sce)$subCellType
+)
+droplet_sce <- logNormCounts(droplet_sce)
+```
+
+Next, we compute a PCA using the `scater` package. 
+
+```{r droplet_pca}
+droplet_sce <- runPCA(droplet_sce)
+```
+
+We can now visualise the different factors stored in the `colData` slot.
+
+```{r drop_pca_plot, fig.cap="Principal component plot of pre-somitic and somitic mesoderm cells. Colour indicates cell type."}
+# Cell types identified by clustering
+plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
+  scale_fill_manual(name = "cellType", values = c("coral4", "steelblue", "limegreen"))
+```
+
+The first PC separates the two different cell types while the second PC captures
+outlying cells.
+We will remove these outliers and the intermediate cell population from 
+down-stream analysis.
+
+```{r drop_filt}
+ind_retain <- reducedDims(droplet_sce)$PCA[, 2] > -5 &
+  colData(droplet_sce)$subCellType != "presomiticMesoderm.b"
+droplet_sce <- droplet_sce[, ind_retain]
+```
+
+We now collected the cells that we want to process using BASiCS. 
+For this, we will generate the BASiCS data objects.
+
+## Generating BASiCS data objects
+
+Since droplet-based scRNA-seq data are generated without including technical 
+spike-in genes, BASiCS uses measurement error models to quantify technical 
+variation through replication [@Carroll1998].
+Here, it is crucial to provide batch information to the BASiCS model.
+In the case of the somitic and pre-somoitic mesoderm cells, embryos of two mice 
+have been used to generate the data. 
+Cells isolated from the first embryo were split into two batches and processed 
+independently.
+To capture cell-type extrinsic, biological variation between the two mice, we 
+pool cells from the two batches of the first animal and only considere cells 
+from mouse 1 and mouse 2 as replicates.
+
+```{r BASiCS-droplet-data}
+# Presomitic mesoderm
+ind_presom <- colData(droplet_sce)[["Cell_type"]] == "PSM"
+cur_counts <- droplet_sce[, ind_presom]
+cur_batch <- round(colData(cur_counts)$sample, digits = 0)
+
+PSM_Data <- newBASiCS_Data(
+  Counts = as.matrix(counts(cur_counts)),
+  Tech = rep(FALSE, nrow(droplet_sce)),
+  SpikeInfo = NULL,
+  BatchInfo = cur_batch
+)
+
+# Somitic mesoderm
+ind_som <- colData(droplet_sce)[["Cell_type"]] == "SM"
+cur_counts <- droplet_sce[, ind_som]
+cur_batch <- round(colData(cur_counts)$sample, digits = 0)
+
+SM_Data <- newBASiCS_Data(
+  Counts = as.matrix(counts(cur_counts)),
+  Tech = rep(FALSE, nrow(droplet_sce)),
+  SpikeInfo = NULL,
+  BatchInfo = cur_batch
+)
+```
+
+## Running the MCMC
+
+We next estimate model parameters by running the MCMC cell-type specifically. 
+Due to the high cell number (1150 for the pre-somitic mesoderm and 739 for the 
+somitic mesoderm), we set the number of iterations to 20000. 
+In this case, we used the regression BASiCS model to additionally estimate residual 
+over-dispersion parameters.
+
+```{r, eval = FALSE}
+# Presomitic mesoderm cells
+PSM_MCMC <- BASiCS_MCMC(
+  PSM_Data,
+  N = 20000,
+  Thin = 10,
+  Burn = 10000,
+  Regression = TRUE
+)
+
+# Somitic mesoderm cells
+SM_MCMC <- BASiCS_MCMC(
+  SM_Data,
+  N = 20000,
+  Thin = 10,
+  Burn = 10000,
+  Regression = TRUE
+)
+```
+
+Running these MCMC will take around 8-12 hours on a standard PC (2.6 GHz i5,
+8 GB RAM, using 1 core). Here, we provide these chains to download from:
+
+```{r droplet-chain-download}
+website <- "https://git.ecdf.ed.ac.uk/"
+folder <- "vallejosgroup/basicsworkflow2020/raw/master/"
+PSM_MCMC <- readRDS(
+  file = url(
+    paste0(website, folder, "PSM_MCMC.rds")
+  )
+)
+SM_MCMC <- readRDS(
+  file = url(
+    paste0(website, folder, "SM_MCMC.rds")
+  )
+)
+```
+
+## Validating the model fit
+
+Next, we visualise the results of the MCMC sampler by visualizing the 
+different chains and by plotting the regression trend.
+To assess whether the chains converged, we will visualise trace plots for some 
+of the parameters. 
+The `plot` function allows us to generate trace, posterior density,
+and autocorrelation plots for different parameters.
+
+```{r droplet-chain-convergence}
+plot(PSM_MCMC, Param = "mu", Gene = 120)
+plot(PSM_MCMC, Param = "delta", Gene = 10)
+plot(PSM_MCMC, Param = "epsilon", Gene = 20)
+plot(PSM_MCMC, Param = "s", Cell = 90)
+plot(PSM_MCMC, Param = "nu", Cell = 100)
+plot(PSM_MCMC, Param = "beta", RegressionTerm = 2)
+plot(PSM_MCMC, Param = "sigma2", Column = 1)
+plot(SM_MCMC, Param = "mu", Gene = 120)
+plot(SM_MCMC, Param = "delta", Gene = 10)
+plot(SM_MCMC, Param = "epsilon", Gene = 20)
+plot(SM_MCMC, Param = "s", Cell = 90)
+plot(SM_MCMC, Param = "nu", Cell = 100)
+plot(SM_MCMC, Param = "beta", RegressionTerm = 2)
+plot(SM_MCMC, Param = "sigma2")
+```
+
+We observe that the chains for all chosen parameters appear to have converged. 
+Furthermore, to validate that the model fitted the mean-variability trend 
+correctly, we plot posterior estimates for over-dispersion paramters $\delta_i$ 
+against posterior estimates of mean expression parameters $\mu_i$.
+For this, the `BASiCS_ShowFit` function can be used.
+
+```{r droplet-regression-trend-psm, fig.cap="Over-dispersion is plotted against mean expression for all genes in pre-somitic mesoderm cells, on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95\\% credible interval."}
+BASiCS_ShowFit(PSM_MCMC)
+```
+```{r droplet-regression-trend-sm, fig.cap="Over-dispersion is plotted against mean expression for all genes in somitic mesoderm cells, on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95\\% credible interval."}
+BASiCS_ShowFit(SM_MCMC)
+```
+
+Both trends display similar behaviour which allows us to compare residual 
+over-dispersion estimates.
+
+## Differential testing 
+
+Next, we test for changes in mean expression and expression variability 
+between the somitic and pre-somitic mesoderm.
+First, we are interested in assessing global changes in expression 
+variability between the two conditions.
+For this, we compare over-dispersion parameters $\delta_i$ for genes that are
+similarly expressed in both conditions.
+
+```{r drop_testde_lfc0}
+Droplet_Test_logFC0 <- BASiCS_TestDE(
+  Chain1 = PSM_MCMC,
+  Chain2 = SM_MCMC,
+  EpsilonM = 0,
+  GroupLabel1 = "PSM",
+  GroupLabel2 = "SM",
+  Plot = FALSE,
+  PlotOffset = FALSE,
+  CheckESS = TRUE,
+  MinESS = 100
+)
+```
+
+```{r droplet-tested-boxplot, fig.cap="Boxplot of log over-dispersion parameters in pre-somitic and somitic mesoderm cells, respectively."}
+DropletTableDisp <- format(Droplet_Test_logFC0, Which = "Disp", Filter = FALSE)
+not_excluded <- DropletTableDisp$ResultDiffDisp != "ExcludedFromTesting"
+for_plot <- DropletTableDisp[not_excluded, c("Disp1", "Disp2")]
+for_plot <- reshape2::melt(for_plot)
+ggplot(for_plot, aes(variable, log(value))) +
+  geom_violin() + 
+  geom_boxplot(width = 0.25) +
+  scale_x_discrete(labels = c("PSM", "SM")) +
+  ylab("log(delta)") + xlab("")
+```
+
+### Global changes in variability
+
+With this analysis, we do not detect global changes in expression variability.
+We next profile changes in mean expression and expression variability on a 
+gene-specific level.
+For this, we use a log~2~ fold change threshold of 1 for mean expression testing 
+and the default threshold of $\psi_0\approx0.41$ for differential variability 
+testing.
+
+```{r droplet-gene-specific-testing, fig.cap="Fold changes of average expression in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
+Droplet_Test <- BASiCS_TestDE(
+  Chain1 = PSM_MCMC,
+  Chain2 = SM_MCMC,
+  EpsilonM = 1,
+  GroupLabel1 = "PSM",
+  GroupLabel2 = "SM",
+  Plot = FALSE,
+  PlotOffset = FALSE,
+  CheckESS = TRUE,
+  MinESS = 100
+)
+
+BASiCS_PlotDE(Droplet_Test, Parameter = "Mean", Plot = "MA")
+Droplet_TableMean <- format(Droplet_Test, Which = "Mean", Filter = FALSE)
+
+# colour_map_sm <- c(
+#   "PSM+" = "dark blue",
+#   "SM+" = "dark red",
+#   "NoDiff" = "black",
+#   "ExcludedLowESS" = "grey60",
+#   "ExcludedByUser" = "grey80"
+# )
+# # Differential expression
+# ggplot(Droplet_TableMean) +
+#   geom_point(
+#     aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean),
+#     shape = 16,
+#     alpha = 0.5
+#   ) +
+#   scale_colour_manual(
+#     name = "Differential\nexpression",
+#     values = colour_map_sm
+#   ) +
+#   ylab(expression(mu[PSM] / mu[SM])) + xlab(expression(log(mu)))
+```
+
+```{r droplet-gene-specific-testing-resdisp, fig.cap="Differences in residual over-dispersion parameters in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher residual over-dispersion in either group."}
+Droplet_TableResDisp <- format(Droplet_Test, Which = "ResDisp", Filter = FALSE)
+BASiCS_PlotDE(Droplet_Test, Parameter = "ResDisp", Plot = "MA")
+# Differential variability
+# ggplot(Droplet_TableResDisp) +
+#   geom_point(
+#     aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp),
+#     shape = 16,
+#     alpha = 0.5
+#   ) +
+#   scale_colour_manual(
+#     name = "Differential\nvariability",
+#     values = colour_map_sm
+#   ) +
+#   ylab(expression(epsilon[PSM] - epsilon[SM])) + xlab(expression(log(mu)))
+```
+
+### Differential mean expression
+
+We can now list the genes that were detected as differentially expressed and 
+differentially variable ordered by their difference in mean 
+expression/variability.
+We first focus on genes that are differentially expressed between the two cell 
+types.
+
+```{r gene-lists-mean}
+genenames <- readRDS("rds/genenames.rds")
+# Highly expressed in somitic mesoderm
+ind_sm <- Droplet_TableMean$ResultDiffMean == "SM+"
+SM_mean <- Droplet_TableMean[ind_sm, ]
+SM_mean <- SM_mean[order(SM_mean$MeanLog2FC, decreasing = FALSE), ]
+SM_mean$Symbol <- genenames[SM_mean$GeneName, 2]
+
+# Highly expressed in pre-somitic mesoderm
+ind_psm <- Droplet_TableMean$ResultDiffMean == "PSM+"
+PSM_mean <- Droplet_TableMean[ind_psm, ]
+PSM_mean <- PSM_mean[order(PSM_mean$MeanLog2FC, decreasing = TRUE), ]
+PSM_mean$Symbol <- genenames[PSM_mean$GeneName, 2]
+```
+
+<!-- 
+### Gene ontology analysis
+
+We can next perform GO analysis on up- or down-regulated genes. 
+First, we will perform GO analysis on somitic mesoderm specific genes.
+To do this, we will use the `r Biocpkg("goseq")`.
+
+```{r GO-analysis-mean-SM, eval = FALSE}
+library("goseq")
+# Collect significan genes as 1 and all other as 0
+SM_genes <- as.integer(Droplet_TableMean$ResultDiffMean == "SM+")
+names(SM_genes) <- Droplet_TableMean$GeneName
+
+# Build a Null distribution by correcting the gene length bias
+pwf <- nullp(SM_genes, "mm10", "ensGene", bias.data = genelength[names(SM_genes)])
+GO_wall <- goseq(pwf, "mm10", "ensGene")
+ind_signif <- p.adjust(GO_wall$over_represented_pvalue, method = "fdr") < 0.01
+SM_GO <- DataFrame(GO_wall[ind_signif, ])
+
+# Add genenames to the GO categories
+all_genes <- vector(length = nrow(SM_GO))
+for (j in 1:nrow(SM_GO)) {
+  allegs <- get(SM_GO$category[j], org.Mm.eg.db::org.Mm.egGO2ALLEGS)
+  genes <- unique(unlist(mget(allegs, org.Mm.eg.db::org.Mm.egENSEMBL)))
+  genes <- as.character(intersect(genes, SM_mean$GeneName))
+  all_genes[j] <- paste(genes, collapse = ", ")
+}
+SM_GO$Genes <- all_genes
+```
+
+Now, we perform GO analysis on pre-somitic mesoderm specific genes
+
+```{r GO-analysis-mean-PSM, eval = FALSE}
+# Collect significan genes as 1 and all other as 0
+PSM_genes <- as.integer(Droplet_TableMean$ResultDiffMean == "PSM+")
+names(PSM_genes) <- Droplet_TableMean$GeneName
+
+# Build a Null distribution by correcting the gene length bias
+pwf <- nullp(
+  PSM_genes,
+  "mm10",
+  "ensGene",
+  bias.data = genelength[names(PSM_genes)]
+)
+GO_wall <- goseq(pwf, "mm10", "ensGene")
+ind_signif <- p.adjust(GO_wall$over_represented_pvalue, method = "fdr") < 0.01
+PSM_GO <- DataFrame(GO_wall[ind_signif, ])
+
+# Add genenames to the GO categories
+all_genes <- vector(length = nrow(PSM_GO))
+for (j in 1:nrow(PSM_GO)) {
+  allegs <- get(PSM_GO$category[j], org.Mm.eg.db::org.Mm.egGO2ALLEGS)
+  genes <- unique(unlist(mget(allegs, org.Mm.eg.db::org.Mm.egENSEMBL)))
+  genes <- as.character(intersect(genes, PSM_mean$GeneName))
+  all_genes[j] <- paste(genes, collapse = ", ")
+}
+PSM_GO$Genes <- all_genes
+```
+
+
+To visualise the expression of individual genes, we can use the `scater` package.
+
+```{r plot-de-scater, eval = FALSE}
+celltype_color <- c(SM = "coral4", PSM = "limegreen")
+# Expression of Fgf8 in both conditions
+ind_fgf <- genenames$external_gene_name == "Fgf8"
+plotExpression(droplet_sce,
+  features = genenames[ind_fgf, 1],
+  x = "Cell_type", colour_by = "Cell_type"
+) + scale_fill_manual(name = "Cell type", values = celltype_color)
+plotReducedDim(droplet_sce,
+  dimred = "PCA",
+  colour_by = genenames[ind_fgf, 1]
+) + scale_fill_viridis(name = genenames[ind_fgf, 2])
+```
+
+We can also visualise one GO category in form of heatmap. We use
+`r Biocpkg("ComplexHeatmap")` to visualise the expression level for each
+cell of the genes annotated with GO terms [@Gu2016].
+
+```{r gp-heatmap, fig.height = 7, fig.width = 5, eval = FALSE}
+library("ComplexHeatmap")
+genes <- unlist(strsplit(PSM_GO[1, "Genes"], ", "))
+for_heatmap <- logcounts(droplet_sce)[genes, ]
+colnames(for_heatmap) <- colData(droplet_sce)$cell
+
+# Order cells by cell type
+for_heatmap <- for_heatmap[, order(colnames(for_heatmap))]
+
+# Order rows by log2FC
+heatmap_ind <- match(rownames(for_heatmap), PSM_mean$GeneName)
+heatmap_order <- order(PSM_mean[heatmap_ind, "MeanLog2FC"], decreasing = TRUE)
+for_heatmap <- for_heatmap[heatmap_order, ]
+rownames(for_heatmap) <- genenames[rownames(for_heatmap), 2]
+
+celltypes <- sub("_.*", "", colnames(for_heatmap))
+celltypes <- sub("presomiticMesoderm.a", "PSM", celltypes)
+celltypes <- sub("somiticMesoderm", "SM", celltypes)
+
+h <- Heatmap(as.matrix(for_heatmap),
+  cluster_columns = FALSE,
+  show_column_names = FALSE,
+  cluster_rows = FALSE,
+  # col = colorRampPalette(c("#053061", "#1B5484", "white", "#932631", "#67001f"))(100),
+  col = viridis(100),
+  row_names_gp = gpar(fontsize = 7),
+  name = "\n\nNormalised\nexpression",
+  top_annotation = columnAnnotation(
+    `Cell type` = celltypes,
+    col = list(`Cell type` = celltype_color)
+  )
+)
+draw(h, merge_legend = TRUE)
+```
+
+ -->

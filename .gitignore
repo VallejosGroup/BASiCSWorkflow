@@ -1,4 +1,5 @@
 Workflow.pdf
+Workflow.html
 Workflow.tex
 Workflow_files/*
 *.tsv
@@ -13,8 +14,8 @@ Workflow_files/*
 *.txt
 *.csv
 *.fa
-cache/*
-figure/*
+cache*/*
+figure*/*
 *.log
 *.aux
 *.bbl
