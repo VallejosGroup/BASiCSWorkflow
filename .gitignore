@@ -25,3 +25,4 @@ figure*/*
 *.fdb_latexmk
 *.fls
 !figure/Overview.png
+!figure/Overview.svg
