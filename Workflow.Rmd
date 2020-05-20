@@ -98,25 +98,17 @@ knitr::opts_chunk$set(
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
 transcriptional heterogeneity in cell populations that cannot be 
 detected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
-<!--- Applications of scRNA-seq range from characterising cell types in immunity 
-[@Lonnberg2017;  @Villani2017; @Zheng2017] and development [@Ibarra-Soria2018; 
-@Wagner2018; @Pijuan-Sala2019] to dissecting the mechanisms for cell fate 
-commitment [@Goolam2016; @Ohnishi2014]. ---> 
 On the broadest level, this heterogeneity can reflect the presence of distinct 
-cell subtypes or states. <!---, which could be characterised through 
-clustering [@Kiselev2019]. --->
-Alternatively, cell-to-cell expression heterogeneity can be due to gradual 
-changes along processes that evolve over time, such as development and 
-differentiation. <!--- and that can be characterised 
-using pseudotime inference methods [@Saelens2019]. --->
+cell subtypes or states. 
+Alternatively, it can be due to gradual changes along biological processes, such 
+as development and differentiation. 
 Several clustering and pseudotime inference methods have been developed to
-characterise these sources of heterogeneity [@Kiselev2019; @Saelens2019].
+characterise these types of heterogeneity [@Kiselev2019; @Saelens2019].
 However, there is a limited availability of computational tools tailored 
-to study more subtle variability within a seemingly homogeneous cell population. 
-This variability can be due to deterministic or stochastic events that regulate
+to study more subtle variability within seemingly homogeneous cell populations. 
+This variability can reflect deterministic or stochastic events that regulate
 gene expression and, among others, has been reported to increase prior to cell
-fate decisions [@Mojtahedi2016] as well as throughout 
-ageing [@Martinez-jimenez2017]. 
+fate decisions [@Mojtahedi2016] as well as during ageing [@Martinez-jimenez2017]. 
 
 <!--- Describes aims for the workflow and introduces BASiCS ---> 
 This article complements existing scRNA-seq workflows based on the
@@ -124,13 +116,11 @@ Bioconductor package ecosystem (e.g. [@Lun2016; @Kim2019]).
 We describe a step-by-step analysis which uses `r Biocpkg("scater")` and 
 `r Biocpkg("scran")` to perform quality control (QC) as well as 
 initial exploratory analyses [@McCarthy2017; @Lun2016]. 
-To robustly quantify transcriptional variability within and
-between pre-specified cell populations (such as experimental conditions or
-cell types) we use `r Biocpkg("BASiCS")` [@Vallejos2015; @Vallejos2016;
-@Eling2017] --- a Bayesian hierarchical framework that simultaneously performs 
-data normalisation (global scaling), technical noise quantification and selected 
-downstream analyses, whilst propagating statistical uncertainty across these 
-steps. Among others, `r Biocpkg("BASiCS")`, has led to new insights about the 
+To robustly quantify transcriptional variability we use `r Biocpkg("BASiCS")` [@Vallejos2015; @Vallejos2016; @Eling2017] --- a Bayesian hierarchical framework 
+that jointly performs data normalisation (global scaling), technical noise 
+quantification and downstream analyses, whilst propagating statistical 
+uncertainty across these steps. 
+Among others, `r Biocpkg("BASiCS")`, has led to new insights about the 
 heterogeneity of immune cells [@Martinez-jimenez2017].
 
 <!--- BASiCS downstream analyses within a single population --->
@@ -147,9 +137,9 @@ These may relate to essential cellular functions and can assist the development
 of new data normalisation or integration strategies [@Lin2019]. 
 
 <!--- BASiCS downstream analyses between populations --->
-In order to compare expression patterns between two or more pre-specified 
-groups of cells, `r Biocpkg("BASiCS")` provides a probabilistic decision rule to 
-perform differential expression analyses [@Vallejos2016; @Eling2018].
+`r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
+perform differential expression analyses between two (or more) pre-specified 
+groups of cells [@Vallejos2016; @Eling2018].
 Whilst several differential expression tools have been proposed for scRNA-seq 
 data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that 
 these do not generally outperform popular bulk RNA-seq tools [@Soneson2018]. 
@@ -160,108 +150,31 @@ Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
 uncovering changes in cell-to-cell expression variability that are not 
 confounded by differences in technical noise or in overall expression. 
 
-<!--- TBC description of BASiCS downstream analysis, with focus on differential --->
-<!--- add brief description for LVG/HVG 
-<!--- Differential analyses ---> 
-<!--- add reference to 11 challenges paper, flexible changes in expression ---> 
-<!-- DE testing isn't always between (2) conditions (blocking, continuous, etc) -->
-<!--- Since the era of RNA sequencing, methods for differential expression testing 
-of transcript counts across conditions have been developed 
-[@Anders2010; @Robinson2009]. 
-Due to high technical variability and sparsity in scRNA-seq data, new 
-approaches were developed for differential expression testing 
-for scRNA-seq data [@Katayama2013; @Kharchenko2014; @Delmans2016]. 
-In contrast to bulk samples, scRNA-seq measures variations in gene expression 
-across a population of cells, and can therefore be used to test for changes in 
-expression variability between two conditions. 
-To do this, `r Biocpkg("BASiCS")` compares the gene-specific over-dispersion
-parameters between two conditions. These parameters are independent of technical noise 
-and can be used as proxy for biological variability [@Vallejos2016]. 
-Similar to the mean-variability trend observed for normalised scRNA-seq data 
-[@Brennecke2013], the estimates for over-dispersion parameters decrease with 
-mean expression [@Vallejos2016].
-To correct for this, BASiCS has been extended to model the mean-variability 
-relationship and capture residual over-dispersion estimates that show no 
-association to mean expression. 
-Therefore, this extension allows to test changes in mean expression in parallel 
-to changes in variability [@Eling2018].  ---> 
-<!--- TBC Outline - wider use of bioc libraries + case studies ---> 
-<!---
-Two case studies exemplify the use of `r Biocpkg("BASiCS")` for non-UMI and
-UMI scRNA-seq data. In the first case, `r Biocpkg("BASiCS")` can be used to detect highly
-and lowly variable genes and to obtain robust, gene-specific estimates to assess
-biological variability in naive CD4^+^ T cells 
-[@Martinez-jimenez2017]; for a similar workflow see [@Kim2019].
-Furthermore, we compare naive to activated CD4^+^ T cells to highlight the use 
-of `r Biocpkg("BASiCS")` to test for changes in mean expression and expression
-variability.In the second case, we use droplet-based scRNA-seq data to detect more subtle 
-transcriptional changes during embryonic somitogenesis [@Ibarra-Soria2018].
---->
-
 <!--- Brief outline + reproducibility ---> 
-In this manuscript, we briefly discuss the sources of variability that arise in 
-scRNA-seq data and some of the strategies that have been designed to control or 
-attenuate technical noise in these assays. 
-We also summarise the main features of the Bioconductor packages that are used
+Here, we briefly discuss the sources of variability that arise in scRNA-seq data 
+and some of the strategies that have been designed to control or attenuate 
+technical noise in these assays. 
+We also summarise the main features of the Bioconductor packages used
 throughout this workflow, and provide a description for the underlying 
 statistical model implemented in `r Biocpkg("BASiCS")`.
 This includes practical guidance to assess the convergence of the Markov Chain 
 Monte Carlo (MCMC) algorithm that is used to infer model parameters as well as 
-recommendations to interpret and to post-process the model outputs. 
-Finally, we provide a step-by-step case study using naive CD4^+^ T cells 
-[@Martinez-jimenez2017].
-<!-- and samples collected during embryonic somitogenesis [@Ibarra-Soria2018] -->
-These examples were chosen to illustate the usage of 
-`r Biocpkg("BASiCS")` in the context of different scRNA-seq protocols. 
-
+recommendations to interpret and post-process the model outputs. 
+Finally, we provide a step-by-step case study. <!--- using CD4^+^ T cells 
+[@Martinez-jimenez2017].-->
+ 
 All source code used to generate the results presented in this article is 
 available [on Github](https://github.com/VallejosGroup/BASiCSWorkflow).
 To ensure the 
 reproducibility of this workflow, the analysis environment and all software 
 dependencies are provided as a Docker image [@Boettiger2015]. The image 
-can be obtained on
+can be obtained from
 [Docker Hub](https://hub.docker.com/repository/docker/alanocallaghan/bocker).
-
-<!--- 
-
-## Outline
-
-This article is organised as follows:
-
-1. [Transcriptional noise](#noise-in-scRNA-seq-datasets): [TBC - summary about transcriptional noise]
-
-2. [Methods](#methods): We describe the main Bioconductor packages used in 
-  this worflow and introduce the different settings implemented in the 
-  `r Biocpkg("BASiCS")` Bioconductor package. 
-  
-3. [Reproducibility](#reproducibility): [DESCRIBE COMP REQUIREMENTS, DOCKER, 
-ETC --- CREATE SECTION IN MANUSCRIPT!]
-
-4. [C1 Fluidigm data](#Tcells): We present an end-to-end analysis workflow to 
-  obtain, process, quality filter raw expression counts of CD4^+^ T cells and how to 
-  perform analysis using `r Biocpkg("BASiCS")`. 
-  This section is sub-divided into a [single group case](#Tcells-single), 
-  where `r Biocpkg("BASiCS")` is used to normalise data and to detect highly and
-  lowly   variable genes, and a [two group case](#Tcells-two), for which we perform 
-  differential mean expression and differential variability testing.
-
-5. [10X Genomics data](#droplet-data): We highlight the use of `r Biocpkg("BASiCS")`
-for   scRNA-seq data that do not contain technical spike-in transcript. 
-  In this case, technical noise is estimated via experimental replication.
-  Similar to the CD4^+^ T cells case, we perform differential mean expression 
-  and differential variability testing to detect early cell fate decision events 
-  in mammalian somitogenesis. 
-  
----> 
 
 # Sources of variability in scRNA-seq data
 
-<!--- text to be revisited ---> 
-<!--- An overarching goal of scRNA-seq is to characterise gene expression 
-heterogeneity with cellular resolution. ---> 
-The focus of this article is to use scRNA-seq data to quantify the
-magnitude of cell-to-cell expression heterogeneity within seemingly homogeneous 
-cell populations. 
+The focus of this article is to quantify the magnitude of cell-to-cell
+expression heterogeneity within seemingly homogeneous cell populations. 
 Here, we briefly describe the underlying sources of heterogeneity that can be 
 captured by cell-to-cell variability estimates derived from scRNA-seq data. 
 
@@ -308,7 +221,7 @@ package ecosystem [@Amezquita2019].
 A graphical overview is provided in Figure \@ref(fig:overview) 
 and its main components are described below. 
 
-```{r overview, out.width=out_width, out.height=out_height, fig.cap = 'Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a SingleCellExperiment object, we use the scater and scran Bioconductor packages to perform quality control and initial exploratory analyses. The primary focus of this workflow is to robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations. For this purpose, we apply the BASiCS Bioconductor package, illustrating how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.', echo=FALSE}
+```{r overview, out.width=out_width, out.height=out_height, fig.cap = 'Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a matrix of expression counts, we use the scater and scran Bioconductor packages to perform QC and initial exploratory analyses. To robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations, we apply the BASiCS Bioconductor package and  illustrate how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.', echo=FALSE}
 knitr::include_graphics("figure/Overview.png")
 ```
 
@@ -318,15 +231,14 @@ knitr::include_graphics("figure/Overview.png")
 library("SingleCellExperiment")
 ```
 
-We use the `r Biocpkg("SingleCellExperiment")` package to convert an input
+We use `r Biocpkg("SingleCellExperiment")` to convert an input
 matrix of raw read-counts (molecule counts for UMI-based protocols) into a 
-`SingleCellExperiment` object which can store scRNA-seq data and its associated 
+`SingleCellExperiment` object which can also store its associated 
 metadata, such as gene- and cell-specific information. 
-Moreover, when available, the same object can be used to store read-counts for 
-technical spike-in molecules (these can be accessed via the `altExp()` 
-function).
+Moreover, when available, the same object can also store read-counts for 
+spike-in molecules (see `altExp()`).
 A major advantage of using a `SingleCellExperiment` object as the input for 
-scRNA-seq analyses is that it enables interoperability across a large number of 
+scRNA-seq analyses is the interoperability across a large number of 
 Bioconductor packages [@Amezquita2019]. 
 
 ## Quality control and exploratory analysis
@@ -343,40 +255,40 @@ Among others, QC can help to identify samples that contain broken cells, that
 are empty or that contain multiple cells [@Ilicic2016]. 
 Moreover, lowly expressed genes for which less reliable information is 
 available are typically also removed. 
-The `r Biocpkg("SimpleSingleCell")` workflow and 
-[*OSCA*](https://osca.bioconductor.org/) online book provides an extensive
+The [*OSCA*](https://osca.bioconductor.org/) online book provides an extensive
 overview on important aspects of how to perform QC of scRNA-seq data, including
-exploratory analyses [@Lun2016;@Amezquita2019].
+exploratory analyses [@Amezquita2019].
 
 To perform QC, we use the `r Biocpkg("scater")` package [@McCarthy2017].
 The `addPerCellQC` and `addPerFeatureQC` functions are applied to calculate 
-standard QC metrics for each cell (e.g. percentage of mitochondrial reads) and 
-gene (e.g. percentage of zeroes across all cells), respectively. 
+QC metrics for each cell (e.g. total read-count) and gene (e.g. percentage of 
+zeroes across all cells), respectively. 
 The package also provides a suite of visualisation tools that can be used to 
 explore the data under study and its associated QC diagnostic metrics. 
 
 The `r Biocpkg("scran")` package offers additional tools for QC 
 diagnostics and a variety of functions scRNA-seq data analysis [@Lun2016].
-It can perform *global scaling* data normalisation, calculating cell-specific 
+It can perform *global scaling* normalisation, calculating cell-specific 
 scaling factors that capture global differences in read-counts across cells 
 (e.g. due to sequencing depth and PCR amplification) [@Lun2016pooling].
-In `r Biocpkg("scran")`, users can also explore how the observed variability in
-expression counts can be decomposed into technical and biological 
-sources (see `modelGeneVar`). 
-Moreover, the `modelGeneCV2` function can be used to infer an overall trend 
-between gene-specific mean and squared coefficent of variation (CV^2^) 
-estimates. 
+<!--- CV: Removed next sentence as function not used --->
+<!--- Users can also explore how the observed variability in expression counts 
+can be decomposed into technical and biological sources (see `modelGeneVar`). --->
+To explore the strenght of transcriptional variability, we use the `modelGeneCV2` 
+function to infer an overall trend between mean expression and the
+squared coefficent of variation (CV^2^) for each gene. 
 To derive gene-specific variability estimates that are not confounded by this 
-overall trend, the `DM` function calculates the distance between gene-specific 
-squared coefficients of variation (CV$^2$) and a rolling median along the range
-of mean expression values [@Kolodziejczyk2015cell].
+overall trend, the `DM` function calculates the distance between CV$^2$ and a 
+rolling median along the range of mean expression values [@Kolodziejczyk2015cell].
 DM estimates enable exploratory analyses of cell-to-cell heterogeneity, but a
 measure of uncertainty is not readily available. As such, gene-specific 
 downstream inference (e.g. differential variability testing) is precluded.
 
-We also load `r CRANpkg("ggplot2")` to aid in visualising the cell- and gene- 
+Finally, we also load `r CRANpkg("ggplot2")` to visualise the results of these
+analyses. 
+<!---the cell- and gene- 
 specific quality control steps performed, and to visualise the results of 
-the analyses we perform.
+the analyses we perform. --> 
 
 <!-- I simplified this section to avoid too much mathematical formulation.
 Readers can go to the original papers for more details.
@@ -418,11 +330,13 @@ relationship between mean and over-dispersion values.
 
 Parameter inference is implemented in the `BASiCS_MCMC` function using an 
 adaptive Metropolis within Gibbs algorithm [@Roberts2009], whose convergence can
-be assessed using `plot`, `BASiCS_EffectiveSize`, `BASiCS_DiagHist` and 
-`BASiCS_DiagPlot`. The `plot` function provides
+be assessed using the `BASiCS_DiagHist` and `BASiCS_DiagPlot` functions, 
+among others. 
+<!--- Removed as I think it's better to explain ESS later, together with its formula ---> 
+<!--- The `plot` function provides
 parameterwise trace plots, marginal density plots, while the latter three 
 functions allow estimation and visualisation of the number of effective
-independent samples produced during using MCMC.
+independent samples produced during using MCMC. ---> 
 The output from `BASiCS_MCMC` is a `BASiCS_Chain` object, which can be used 
 for further downstream analyses. In particular, `BASiCS_DetectHVG` and 
 `BASiCS_DetectLVG` can be respectively used to identify highly and lowly 
@@ -430,92 +344,7 @@ variable genes within a cell population. Moreover, `BASiCS_TestDE` is used to
 perform differential mean and variability analyses between groups of cells.
 
 
-<!---`BASiCS_MCMC` can be run using four different major settings (Table 1). 
-`WithSpikes` indicates whether spike-in molecules are used to infer technical
-noise (default: `WithSpikes = TRUE`). 
-We recommend to use `Regression = TRUE` (default) as the underlying prior 
-improves posterior estimates for small sample sizes and 
-lowly expressed genes [@Eling2018]. 
-Moreover, it provides additional flexibility for downstream analysis, inferring
-gene-specific *residual over-dispersion* parameters $\epsilon_i$ that are not 
-confounded by mean expression. -->
-
-<!---
-If the regression between over-dispersion and mean expression should be 
-performed, the `Regression` parameters is set to `TRUE` (default).
-If the user decides to set `Regression = FALSE`, `r Biocpkg("BASiCS")` will not
-estimate the regression trend, and will not supply the residual over-dispersion 
-parameters $\epsilon_i$. ---> 
-
-<!---
-: Four settings available for the the `BASiCS_MCMC` function.
-
-                        No regression         Regression           
------------------------ --------------------  -------------------
-Using spike-in reads    `WithSpikes = TRUE`   `WithSpikes = TRUE`  
-                        `Regression = FALSE`  `Regression = TRUE` 
-No spike-ins available  `WithSpikes = FALSE`  `WithSpikes = FALSE` 
-                        `Regression = FALSE`  `Regression = TRUE`
------------------------ --------------------  -------------------
----> 
-
-
-
-<!---These objects contain draws from Markov chain Monte Carlo (MCMC) samplers,
-which are used to infer the posterior distribution over the model parameters
-[@Smith1993].
-Briefly, the posterior distribution quantifies how probable different parameter 
-values are given the observed data. However, before assessing the posterior
-distribution, we must first ensure that the MCMC sampler has converged to
-its stationary distribution, and has sampled efficiently from this distribution
-[@Cowles1996]. If these conditions are not met, then the estimated parameters
-may be inaccurate. The `r CRANpkg("coda")` CRAN package contains a variety of 
-functions to assess the convergence of a sampled MCMC chain. 
-To use `coda` functions, the individual chains returned by `r Biocpkg("BASiCS")` need to
-be transformed into a MCMC object that `coda` recognises using the `coda::mcmc` 
-function. `r Biocpkg("BASiCS")` also offers a number of functions to visualise and assess
-the convergence of MCMC chains. In particular, we will use 
-`BASiCS_EffectiveSize` and `BASiCS_DiagPlot` to calculate and visualise the
-effective sample size generated by the MCMC samplers. --->
-
-<!---
-
-## Other steps [title tbc]
-
-
-```{r libraries, eval=FALSE}
-library("ggplot2")
-library("viridis")
-library("biomaRt")
-library("EnsDb.Mmusculus.v79")
-library("SingleCellExperiment")
-library("scran")
-library("scater")
-library("BASiCS")
-library("coda")
-library("goseq")
-library("org.Mm.eg.db")
-library("data.table")
-library("ComplexHeatmap")
-
-
-## Set theme for ggplot2 plots
-theme_set(theme_bw(base_size = 15))
-## Directories to store downloaded files and intermediate results
-```
-
-The `r Biocpkg("goseq")` Bioconductor package offers functions to detect the 
-enrichment of gene ontologies (GOs) among user-specified gene sets [@Young2010].
-Furthermore, `goseq` corrects for gene length biases, which is useful for full 
-length scRNA-seq data as highlighted in the first section. 
-In this workflow, we will use `goseq` to detect GO enrichment among 
-differentially expressed sets of genes.
-
-
---->
-
-
-# C1 Fluidigm data: Analysis of naive CD4^+^ T cells {#Tcells}
+# Analysis of naive CD4^+^ T cells {#Tcells}
 
 As a case study, we use scRNA-seq data generated for CD4^+^ T cells
 using the C1 Single-Cell Auto Prep System (Fluidigm^®^). 
@@ -619,9 +448,9 @@ sce_CD4_all
 ```
 
 Throughout our analysis, we focus on naive and activated CD4^+^ T cells obtained 
-from young *Mus musculus domesticus* (hereafter also referred to as black 6; B6) 
-animals, purified using MACS-based cell sorting. 
-The following code is used to extract these samples from the full dataset.
+from young *Mus musculus domesticus* animals, purified using MACS-based cell sorting. 
+The following code is used to extract these 
+`r sum(sce_CD4_all$Strain == "Mus musculus domesticus" & sce_CD4_all$Age == "Young" & sce_CD4_all$Celltype == "MACS-purified Naive")` samples from the full dataset.
 
 ```{r naive-activated-CD4-SCE-object}
 ind_select <- sce_CD4_all$Strain == "Mus musculus domesticus" &
