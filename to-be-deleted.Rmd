@@ -583,3 +583,347 @@ sce_naive_active <- sce_naive_active[ind_expressed, ]
 The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`
 cells and `r nrow(sce_naive_active)` genes. 
 
+## BASiCS analysis
+
+### Input SingleCellExperiment object
+
+## Calculating the molecule count for spike-in genes
+
+BASiCS requires the absolute molecule count of the spike-in transcripts that
+were added to each well. To calculate the molecule count, we require the 
+dilution and the concentration of the spike-in mix.
+For this, a table of the spike-in concentrations can be downloaded from 
+[https://www.thermofisher.com](https://www.thermofisher.com/order/catalog/product/4456740).
+The file contains the concentrations of 2 ERCC spike-in mixes.
+
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC 
+spike-in mix 1 [@Martinez-jimenez2017].
+We will first download the concentration information.
+
+```{r spike-in_download}
+# Read in the spike-in concentrations
+download_file <- function(file, website, folder, destfile = file) {
+  if (!file.exists(destfile)) {
+    download.file(paste0(website, folder, file), destfile)
+  }
+}
+website <- "https://assets.thermofisher.com/"
+folder <- "TFS-Assets/LSG/manuals/"
+file <- "cms_095046.txt"
+download_file(file, website, folder, "downloads/spike_info.txt")
+
+ERCC_conc <- read.table(
+  "downloads/spike_info.txt",
+  sep = "\t", header = TRUE
+)
+```
+
+The concentration is given in units of $aM\mu{}l^{-1}$. 
+We will first calculate the concentration in $M\mu{}l^{-1}$.
+
+```{r, ercc-mul}
+# Moles per micro litre
+ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
+```
+
+From this, we can calculate the molecule count per $\mu{}l$ using the fact that
+1 mole comprises $6.02214076 \times 10^{23}$ molecules.
+
+```{r, ercc-count-mul}
+# Molecule count per micro litre
+ERCC_countmul <- ERCC_mmul * (6.02214076 * (10^23))
+```
+
+During the preparation of the reaction mix, the authors diluted this mix by a
+factor of 1:50,000 [@Martinez-jimenez2017].
+The actual molecule number of spike-ins can therefore be calculated per $\mu{}l$:
+
+```{r, ercc-count}
+ERCC_count <- ERCC_countmul / 50000
+```
+
+The volume per well in the IFC chip is $9nl$
+[https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9).
+We therfore need to calculate the number of molecules in $9nl$ reaction mix.
+
+```{r, ercc-final}
+ERCC_count_final <- ERCC_count * 0.009
+```
+
+Depending on the technology used to capture and process single cells, as well 
+as the dilution of the spike-in mix, the absolute number of spike-ins per 
+reaction varies across experiments.
+The absolute amount of spike-ins per reaction is only used 
+to calibrate the scale of the capture efficiency normalisation parameter 
+$\nu_j$. Since the true concentration of each spike-in molecule is known, 
+BASiCS uses the observed counts of each molecule for each cell to estimate the 
+capture efficiency for each cell, $\nu_j$. Differences in the 
+global scale across all wells of the level of spike-ins molecules thus do not 
+affect the cell-to-cell ratios of $\nu_j$.
+BASiCS assumes that the quantity of spike-ins is consistent in each well in
+each experiment. While the quantity used must remain constant between wells and
+experiments, the scale does not affect the results, provided the spike-ins
+are at a reasonable level. In particular, they should not be in such a low 
+concentration that they are rarely detected, and they should not be at such
+a high concentration that the majority of the sequencing reads map to the 
+spike-in molecules.
+
+We can now use the molecule count to prepare the BASiCS data object.
+To incorporate the spike-in molecule counts within the 
+`r Biocpkg("SingleCellExperiment")` object that BASiCS requires, the first 
+column must contain the names associated to the spike-in molecules. 
+The second column must contain the input number of molecules for the spike-in 
+genes (amount per reaction).
+
+
+```{r spike-info}
+# Prepare the data.frame
+ERCC_count <- data.frame(
+  row.names = ERCC_conc$ERCC.ID,
+  Names = ERCC_conc$ERCC.ID,
+  count = ERCC_count_final
+)
+```
+
+## Single condition example: Naive CD4^+^ T cells {#Tcells-single}
+
+To highlight the use of BASiCS to analyse cells in the single-condition case,
+we select naive CD4^+^ T cells of young B6 animals.
+Here, BASiCS can be used to identify highly- and lowly-variable genes and 
+calculate interpretable gene- and cell-specific parameters.
+Among others, these include gene-specific parameters for mean expression, 
+over-dispersion (biological variability) and residual over-dispersion 
+(biological variability after correcting for the confounding of mean and
+over-dispersion).
+
+### Preparing the BASiCS data object {#Tcells-filtering}
+
+Many BASiCS functions use objects of the class 
+`r Biocpkg("SingleCellExperiment")` as input.
+The `newBASiCS_Data` function can be used to create the required 
+`SingleCellExperiment` object based on the following information:
+
+* Counts: a matrix of raw expression counts with dimensions $q$ times $n$, 
+  where $q$ is the number of genes (technical + biological) and $n$ is the number 
+  of cells. Gene names must be stored as row names of the counts matrix.
+
+* Tech: a vector of `TRUE/FALSE` elements with length $q$. If `Tech[i]` contains
+  a value of `FALSE`, gene i is biological;
+  otherwise, the gene is spike-in. This vector must 
+  be specified in the same order of genes as in the counts matrix.
+
+* SpikeInfo: a `data.frame` with $q-q_0$ rows where $q_0$ is the number 
+  of biological genes. The first column must contain the names associated to 
+  the spike-in molecules. The second column must contain the input number of 
+  molecules for the spike-in molecules (amount per cell).
+
+* BatchInfo (optional argument): vector of length $n$ to indicate batch 
+  structure in situations where cells have been processed using multiple 
+  batches.
+
+We will first select the naive cells from the `SingleCellExperiment` object 
+that was generated above.
+
+```{r SCE-naive}
+ind_stimulated <- sce_naive_active$Stimulus == "Unstimulated"
+sce_naive <- sce_naive_active[, ind_stimulated]
+ind_expressed <- rowSums(counts(sce_naive) > 0) > 1 & 
+  rowMeans(counts(sce_naive)) >= 1
+sce_naive <- sce_naive[ind_expressed, ]
+```
+
+Next, we will use the `newBASiCS_Data` function to re-generate the 
+`SingleCellExperiment` object for use with `r Biocpkg("BASiCS")`.
+
+```{r Data-naive}
+# Here is the first time that we use BASiCS
+
+# Select the ERCC spike-ins of the dataset
+counts <- counts(sce_naive)
+spikes <- assay(altExp(sce_naive, "spike-ins"))
+spikes_present <- rowSums(spikes) != 0
+## Remove spike-ins that are not present from matrix and SCE object
+spikes <- spikes[spikes_present, ]
+altexp_present <- altExp(sce_naive, "spike-ins")[spikes_present, ]
+altExp(sce_naive, "spike-ins") <- altexp_present
+ind_spike <- c(rep(FALSE, nrow(counts)), rep(TRUE, nrow(spikes)))
+spike_input <- ERCC_count[rownames(spikes), ]
+
+# Generate the SingleCellExperiment object
+data_naive <- newBASiCS_Data(
+  Counts = rbind(counts, spikes),
+  Tech = ind_spike,
+  SpikeInfo = spike_input,
+  BatchInfo = sce_naive$Individuals
+)
+data_naive
+```
+
+Alternatively, when using datasets that contain spike-in molecules, the 
+original `SingleCellExperiment` object can be extended by simply specifying a 
+`BatchInfo` slot in the `colData` object and by adding the `SpikeInfo` object 
+to the `metadata` slot.
+
+```{r Data-naive-alternative}
+data_naive <- sce_naive
+colData(data_naive)$BatchInfo <- colData(sce_naive)$Individuals
+metadata(data_naive)$SpikeInput <- spike_input
+```
+
+After creating the `SingleCellExperiment` object that contains all information 
+that `r Biocpkg("BASiCS")` requires, the MCMC sampler can be run to generate
+posterior estimates of model parameters.
+
+### Running MCMC
+
+It is recommended to run the `BASiCS_MCMC` sampler for at least 40,000 
+iterations to ensure convergence.
+However, if datasets are large and each condition contains hundreds of cells 
+from a homogeneous population, BASiCS can be run with fewer (e.g. 20,000) 
+iterations. For convenience, `BASiCS_MCMC` can be run with very few 
+(e.g 1,000) iterations for experimental purposes, and to identify systematic
+issues with the sampler for a particular dataset. However, small numbers of
+iterations do not provide sufficient information about the posterior 
+distribution to draw inference from. Therefore, unless the sampler has converged
+and produced an adequate number of samples (typically 1,000 or more), the 
+results of MCMC may be biased or unreliable.
+
+Here, we run the MCMC sampler for 40,000 iterations, discaring the initial 
+20,000 samples as burn-in, and using thinning factor of 20,
+such that only each 20^th^ sample is stored for later use.
+Since the dataset contains spike-in molecules, we run the sampler with 
+`WithSpikes = TRUE`. Given that we also want to correct for the mean-variance
+trend, we specify `Regression = TRUE`.
+For further information see [Methods](#methods).
+
+```{r MCMC-naive, eval = FALSE}
+MCMC_naive <- BASiCS_MCMC(
+  Data = data_naive,
+  PrintProgress = FALSE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  WithSpikes = TRUE
+)
+```
+
+This sampler runs for 167 minutes on a 1.4 GHz Intel Core i5 procesor with 4GB
+RAM and produces a `BASiCS_Chain` data object.
+For comparison, this sampler runs for 97 minutes on a 3.4 GHz Intel Core 
+i7 procesor with 16GB RAM.
+For convenience, the MCMC chain can be obtained online at 
+[https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
+
+```{r download-chain-naive}
+download_file(
+  file = "MCMC_naive.rds",
+  website = "https://git.ecdf.ed.ac.uk/vallejosgroup/",
+  folder = "basicsworkflow2020/raw/master/",
+  destfile = "rds/MCMC_naive.rds"
+)
+MCMC_naive <- readRDS("rds/MCMC_naive.rds")
+```
+
+The `BASiCS_Chain` object contains a list of matrices that store the 
+individual MCMC samples for each parameter. Each matrix contains cell- or 
+gene-specific parameters in the columns and MCMC samples in the rows.
+`r Biocpkg("BASiCS")` provides the `displayChainBASiCS` function to access the
+cell- or gene-specific parameters.
+As an example, we access the first 2 samples for $\mu_i$ of the first 5 genes.
+
+```{r displayChainBASiCS}
+displayChainBASiCS(MCMC_naive, Param = "mu")[1:2, 1:5]
+```
+
+Given that we ran the MCMC samples for 40,000 iterations, discarding
+the first 20,000 samples as burn-in, and using a thining factor of 20,
+we obtained 1,000 draws for each parameter, stored in the `BASiCS_Chain` object:
+
+```{r dim-displayChainBASiCS}
+dim(displayChainBASiCS(MCMC_naive, Param = "mu"))
+```
+
+### Assessing MCMC convergence {#naive-convergence}
+
+In the next step, we need to assess the convergence of the chain to ensure 
+robust downstream analysis. Specifically, we must ensure that the chain
+converged to its stationary distribution before the burn-in period ended,
+and that after burn-in, it sampled efficiently from this stationary 
+distribution. There are multiple ways to visualise and assess the convergence 
+of MCMC chains [@CowlesCarlin1996; @BrooksGelman1998]. The `r CRANpkg("coda")`
+package contains diagnostic and plot functions for this task [@CODA2006].
+
+Here, we highlight two ways of assessing the convergence of the MCMC sampler by 
+(i) plotting trace plots, sample densities and autocorrelation, and 
+(ii) plotting the the effective sample size across multiple parameters.
+Trace plots show the sampled parameter values over time.
+A chain is likely to have converged if, after burn-in, its trace plot
+shows a stable mean, with samples drawn around that mean, and without
+long periods without movement. Sample density plots
+show the marginal distribution of that parameter. A chain is likely to
+have converged when the sample density (in form of a histogram) shows a unimodal
+distribution. The autocorrelation of an MCMC chain is defined as the Pearson 
+correlation between the chain and time-delayed versions of the chain. 
+The difference in time-points is referred to as 'lag'. This helps to assess
+whether a chain has sampled efficiently from its stationary distribution.
+High autocorrelation indicates that the obtained samples are not independent,
+and indicates that we may not have enough information about the posterior
+distribution of the parameters. The chain is likely to be sampling efficiently
+if the autocorrelation (except for lag = 1) is small (e.g. < 0.25), as it 
+indicates that the stored samples are largely independent.
+
+Effective sample size is a measure of the number of independent samples 
+generated for a model parameter [@Gelman2014]. Simply, it is defined as the 
+number of samples taken relative to the total autocorrelation.
+More formally, it is defined as follows:
+$$
+  \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
+$$
+
+where $n$ is the number of samples and $\rho(k)$ is the autocorrelation at lag 
+$k$. We can visualise this parameter by plotting histograms of the effective
+sample size over all genes, and by plotting effective sample size against
+mean expression or over-dispersion for all genes.
+
+```{r convergence-naive, fig.cap="Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
+plot(MCMC_naive, Param = "mu", Gene = 1)
+```
+
+```{r diag-hist-naive, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests."}
+mu_ess <- BASiCS_DiagHist(MCMC_naive, Param = "mu") +
+  xlab("ESS: mu") +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+delta_ess <- BASiCS_DiagHist(MCMC_naive, Param = "delta") +
+  xlab("ESS: delta") +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+multiplot(mu_ess, delta_ess, cols = 2)
+```
+
+```{r diag-plot-naive, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
+mu_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "mu") +
+  theme(legend.position = "none") +
+  ylab("ESS") +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+delta_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "delta") +
+  theme(legend.position = "none") +
+  ylab("ESS") +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+multiplot(mu_ess2, delta_ess2, cols = 2)
+```
+
+We can see several genes show very low sample size for mu. We can identify 
+these using `BASiCS_EffectiveSize`.
+
+```{r low-ess-genes}
+ess <- BASiCS_EffectiveSize(MCMC_naive, Param = "mu")
+low_ess_genes <- names(ess[ess < 100])
+head(low_ess_genes)
+```
+
+Given that the sampler has generated less than 100 effectively independent 
+samples for these genes, there may not be sufficient posterior information to 
+reliably calculate differences in mean expression. Therefore it is appropriate 
+to exclude these genes from downstream analysis. As we will see later,
+`BASiCS_TestDE` automatically excludes these genes from tests of differential
+expression.

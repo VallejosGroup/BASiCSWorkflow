@@ -708,6 +708,230 @@ gene-specific quality metrics need to be closely examined as suggested by the
 The final dataset used in subsequent analyses contains 146
 cells and 8953 genes.
 
+\hypertarget{calculating-the-molecule-count-for-spike-in-genes}{%
+\subsection{Calculating the molecule count for spike-in genes}\label{calculating-the-molecule-count-for-spike-in-genes}}
+
+BASiCS requires the absolute molecule count of the spike-in transcripts that
+were added to each well. To calculate the molecule count, we require the
+dilution and the concentration of the spike-in mix.
+For this, a table of the spike-in concentrations can be downloaded from
+\href{https://www.thermofisher.com/order/catalog/product/4456740}{https://www.thermofisher.com}.
+The file contains the concentrations of 2 ERCC spike-in mixes.
+
+For the CD4\textsuperscript{+} T cell data, the authors added a 1:50,000 dilution of the ERCC
+spike-in mix 1 \citep{Martinez-jimenez2017}.
+We will first download the concentration information.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Read in the spike-in concentrations}
+\NormalTok{download_file <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(file, website, folder, }\DataTypeTok{destfile =}\NormalTok{ file) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(destfile)) \{}
+    \KeywordTok{download.file}\NormalTok{(}\KeywordTok{paste0}\NormalTok{(website, folder, file), destfile)}
+\NormalTok{  \}}
+\NormalTok{\}}
+\NormalTok{website <-}\StringTok{ "https://assets.thermofisher.com/"}
+\NormalTok{folder <-}\StringTok{ "TFS-Assets/LSG/manuals/"}
+\NormalTok{file <-}\StringTok{ "cms_095046.txt"}
+\KeywordTok{download_file}\NormalTok{(file, website, folder, }\StringTok{"downloads/spike_info.txt"}\NormalTok{)}
+
+\NormalTok{ERCC_conc <-}\StringTok{ }\KeywordTok{read.table}\NormalTok{(}
+  \StringTok{"downloads/spike_info.txt"}\NormalTok{,}
+  \DataTypeTok{sep =} \StringTok{"}\CharTok{\textbackslash{}t}\StringTok{"}\NormalTok{, }\DataTypeTok{header =} \OtherTok{TRUE}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+The concentration is given in units of \(aM\mu{}l^{-1}\).
+We will first calculate the concentration in \(M\mu{}l^{-1}\).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Moles per micro litre}
+\NormalTok{ERCC_mmul <-}\StringTok{ }\NormalTok{ERCC_conc}\OperatorTok{$}\NormalTok{concentration.in.Mix.}\DecValTok{1}\NormalTok{..attomoles.ul. }\OperatorTok{*}\StringTok{ }\NormalTok{(}\DecValTok{10}\OperatorTok{^}\NormalTok{(}\OperatorTok{-}\DecValTok{18}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+From this, we can calculate the molecule count per \(\mu{}l\) using the fact that
+1 mole comprises \(6.02214076 \times 10^{23}\) molecules.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Molecule count per micro litre}
+\NormalTok{ERCC_countmul <-}\StringTok{ }\NormalTok{ERCC_mmul }\OperatorTok{*}\StringTok{ }\NormalTok{(}\FloatTok{6.02214076} \OperatorTok{*}\StringTok{ }\NormalTok{(}\DecValTok{10}\OperatorTok{^}\DecValTok{23}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+During the preparation of the reaction mix, the authors diluted this mix by a
+factor of 1:50,000 \citep{Martinez-jimenez2017}.
+The actual molecule number of spike-ins can therefore be calculated per \(\mu{}l\):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ERCC_count <-}\StringTok{ }\NormalTok{ERCC_countmul }\OperatorTok{/}\StringTok{ }\DecValTok{50000}
+\end{Highlighting}
+\end{Shaded}
+
+The volume per well in the IFC chip is \(9nl\)
+\url{https://www.fluidigm.com/faq/ifc-9}.
+We therfore need to calculate the number of molecules in \(9nl\) reaction mix.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ERCC_count_final <-}\StringTok{ }\NormalTok{ERCC_count }\OperatorTok{*}\StringTok{ }\FloatTok{0.009}
+\end{Highlighting}
+\end{Shaded}
+
+Depending on the technology used to capture and process single cells, as well
+as the dilution of the spike-in mix, the absolute number of spike-ins per
+reaction varies across experiments.
+The absolute amount of spike-ins per reaction is only used
+to calibrate the scale of the capture efficiency normalisation parameter
+\(\nu_j\). Since the true concentration of each spike-in molecule is known,
+BASiCS uses the observed counts of each molecule for each cell to estimate the
+capture efficiency for each cell, \(\nu_j\). Differences in the
+global scale across all wells of the level of spike-ins molecules thus do not
+affect the cell-to-cell ratios of \(\nu_j\).
+BASiCS assumes that the quantity of spike-ins is consistent in each well in
+each experiment. While the quantity used must remain constant between wells and
+experiments, the scale does not affect the results, provided the spike-ins
+are at a reasonable level. In particular, they should not be in such a low
+concentration that they are rarely detected, and they should not be at such
+a high concentration that the majority of the sequencing reads map to the
+spike-in molecules.
+
+We can now use the molecule count to prepare the BASiCS data object.
+To incorporate the spike-in molecule counts within the
+\emph{\href{https://bioconductor.org/packages/3.11/SingleCellExperiment}{SingleCellExperiment}} object that BASiCS requires, the first
+column must contain the names associated to the spike-in molecules.
+The second column must contain the input number of molecules for the spike-in
+genes (amount per reaction).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Prepare the data.frame}
+\NormalTok{ERCC_count <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
+  \DataTypeTok{row.names =}\NormalTok{ ERCC_conc}\OperatorTok{$}\NormalTok{ERCC.ID,}
+  \DataTypeTok{Names =}\NormalTok{ ERCC_conc}\OperatorTok{$}\NormalTok{ERCC.ID,}
+  \DataTypeTok{count =}\NormalTok{ ERCC_count_final}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{Tcells-single}{%
+\subsection{\texorpdfstring{Single condition example: Naive CD4\textsuperscript{+} T cells}{Single condition example: Naive CD4+ T cells}}\label{Tcells-single}}
+
+To highlight the use of BASiCS to analyse cells in the single-condition case,
+we select naive CD4\textsuperscript{+} T cells of young B6 animals.
+Here, BASiCS can be used to identify highly- and lowly-variable genes and
+calculate interpretable gene- and cell-specific parameters.
+Among others, these include gene-specific parameters for mean expression,
+over-dispersion (biological variability) and residual over-dispersion
+(biological variability after correcting for the confounding of mean and
+over-dispersion).
+
+\hypertarget{Tcells-filtering}{%
+\subsubsection{Preparing the BASiCS data object}\label{Tcells-filtering}}
+
+Many BASiCS functions use objects of the class
+\emph{\href{https://bioconductor.org/packages/3.11/SingleCellExperiment}{SingleCellExperiment}} as input.
+The \texttt{newBASiCS\_Data} function can be used to create the required
+\texttt{SingleCellExperiment} object based on the following information:
+
+\begin{itemize}
+\item
+  Counts: a matrix of raw expression counts with dimensions \(q\) times \(n\),
+  where \(q\) is the number of genes (technical + biological) and \(n\) is the number
+  of cells. Gene names must be stored as row names of the counts matrix.
+\item
+  Tech: a vector of \texttt{TRUE/FALSE} elements with length \(q\). If \texttt{Tech{[}i{]}} contains
+  a value of \texttt{FALSE}, gene i is biological;
+  otherwise, the gene is spike-in. This vector must
+  be specified in the same order of genes as in the counts matrix.
+\item
+  SpikeInfo: a \texttt{data.frame} with \(q-q_0\) rows where \(q_0\) is the number
+  of biological genes. The first column must contain the names associated to
+  the spike-in molecules. The second column must contain the input number of
+  molecules for the spike-in molecules (amount per cell).
+\item
+  BatchInfo (optional argument): vector of length \(n\) to indicate batch
+  structure in situations where cells have been processed using multiple
+  batches.
+\end{itemize}
+
+We will first select the naive cells from the \texttt{SingleCellExperiment} object
+that was generated above.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ind_stimulated <-}\StringTok{ }\NormalTok{sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Unstimulated"}
+\NormalTok{sce_naive <-}\StringTok{ }\NormalTok{sce_naive_active[, ind_stimulated]}
+\NormalTok{ind_expressed <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>}\StringTok{ }\DecValTok{1} \OperatorTok{&}\StringTok{ }
+\StringTok{  }\KeywordTok{rowMeans}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive)) }\OperatorTok{>=}\StringTok{ }\DecValTok{1}
+\NormalTok{sce_naive <-}\StringTok{ }\NormalTok{sce_naive[ind_expressed, ]}
+\end{Highlighting}
+\end{Shaded}
+
+Next, we will use the \texttt{newBASiCS\_Data} function to re-generate the
+\texttt{SingleCellExperiment} object for use with \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Here is the first time that we use BASiCS}
+
+\CommentTok{# Select the ERCC spike-ins of the dataset}
+\NormalTok{counts <-}\StringTok{ }\KeywordTok{counts}\NormalTok{(sce_naive)}
+\NormalTok{spikes <-}\StringTok{ }\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive, }\StringTok{"spike-ins"}\NormalTok{))}
+\NormalTok{spikes_present <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(spikes) }\OperatorTok{!=}\StringTok{ }\DecValTok{0}
+\CommentTok{## Remove spike-ins that are not present from matrix and SCE object}
+\NormalTok{spikes <-}\StringTok{ }\NormalTok{spikes[spikes_present, ]}
+\NormalTok{altexp_present <-}\StringTok{ }\KeywordTok{altExp}\NormalTok{(sce_naive, }\StringTok{"spike-ins"}\NormalTok{)[spikes_present, ]}
+\KeywordTok{altExp}\NormalTok{(sce_naive, }\StringTok{"spike-ins"}\NormalTok{) <-}\StringTok{ }\NormalTok{altexp_present}
+\NormalTok{ind_spike <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}\KeywordTok{rep}\NormalTok{(}\OtherTok{FALSE}\NormalTok{, }\KeywordTok{nrow}\NormalTok{(counts)), }\KeywordTok{rep}\NormalTok{(}\OtherTok{TRUE}\NormalTok{, }\KeywordTok{nrow}\NormalTok{(spikes)))}
+\NormalTok{spike_input <-}\StringTok{ }\NormalTok{ERCC_count[}\KeywordTok{rownames}\NormalTok{(spikes), ]}
+
+\CommentTok{# Generate the SingleCellExperiment object}
+\NormalTok{data_naive <-}\StringTok{ }\KeywordTok{newBASiCS_Data}\NormalTok{(}
+  \DataTypeTok{Counts =} \KeywordTok{rbind}\NormalTok{(counts, spikes),}
+  \DataTypeTok{Tech =}\NormalTok{ ind_spike,}
+  \DataTypeTok{SpikeInfo =}\NormalTok{ spike_input,}
+  \DataTypeTok{BatchInfo =}\NormalTok{ sce_naive}\OperatorTok{$}\NormalTok{Individuals}
+\NormalTok{)}
+\NormalTok{data_naive}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## class: SingleCellExperiment 
+## dim: 8427 93 
+## metadata(1): SpikeInput
+## assays(1): counts
+## rownames(8427): ENSMUSG00000000001 ENSMUSG00000000056 ...
+##   ENSMUSG00000106607 ENSMUSG00000106620
+## rowData names(0):
+## colnames(93): do6113 do6118 ... do6398 do6399
+## colData names(1): BatchInfo
+## reducedDimNames(0):
+## altExpNames(1): spike-ins
+\end{verbatim}
+
+Alternatively, when using datasets that contain spike-in molecules, the
+original \texttt{SingleCellExperiment} object can be extended by simply specifying a
+\texttt{BatchInfo} slot in the \texttt{colData} object and by adding the \texttt{SpikeInfo} object
+to the \texttt{metadata} slot.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{data_naive <-}\StringTok{ }\NormalTok{sce_naive}
+\KeywordTok{colData}\NormalTok{(data_naive)}\OperatorTok{$}\NormalTok{BatchInfo <-}\StringTok{ }\KeywordTok{colData}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{Individuals}
+\KeywordTok{metadata}\NormalTok{(data_naive)}\OperatorTok{$}\NormalTok{SpikeInput <-}\StringTok{ }\NormalTok{spike_input}
+\end{Highlighting}
+\end{Shaded}
+
+After creating the \texttt{SingleCellExperiment} object that contains all information
+that \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} requires, the MCMC sampler can be run to generate
+posterior estimates of model parameters.
+
 {\small\bibliography{Workflow.bib}}
 
 \end{document}
