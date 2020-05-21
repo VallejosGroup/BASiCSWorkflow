@@ -58,10 +58,10 @@ urlcolor: Orange
 output:
   BiocWorkflowTools::f1000_article:
     fig_width: 6
-    fig_height: 4
+    fig_height: 3
   BiocStyle::html_document:
     fig_width: 8
-    fig_height: 5
+    fig_height: 4
 ---
 
 
@@ -346,7 +346,7 @@ variable genes within a cell population. Moreover, `BASiCS_TestDE` is used to
 perform differential mean and variability analyses between groups of cells.
 
 
-# Analysis of naive CD4^+^ T cells {#Tcells}
+# Case study: analysis of naive CD4^+^ T cells {#Tcells}
 
 As a case study, we use scRNA-seq data generated for CD4^+^ T cells
 using the C1 Single-Cell Auto Prep System (Fluidigm^®^). 
@@ -461,4 +461,125 @@ ind_select <- sce_CD4_all$Strain == "Mus musculus domesticus" &
 sce_naive_active <- sce_CD4_all[, ind_select]
 sce_naive_active
 ```
+
+## QC and exploratory analysis
+
+The data available at 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/) have
+been already filtered to remove poor quality samples.
+The QC applied in [@Martinez-jimenez2017] removed cells with: (i) fewer 
+than 1,000,000 total reads, (ii) less than 20% of reads mapped to 
+endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and 
+(iv) more than 10% or fewer than 0.5% of reads mapped to mitochondrial genes.
+As an illustration, we visualise some of these metrics. 
+We also include another widely used QC diagnostic plot which compares the total 
+number (or fraction) of spike-in counts versus the total number (or fraction) of 
+endogeneous counts.
+In such a plot, low quality samples are characterised by a high fraction of 
+spike-in counts and a low fraction of endogeneous counts 
+(see Figure \@ref(fig:PerCellQC)).
+
+```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
+# Calculate per cell QC metrics
+sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
+p_cellQC1 <- plotColData(sce_naive_active, x = "sum", y = "detected") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell")
+p_cellQC2 <- plotColData(sce_naive_active, x = "sum", y = "altexps_spike-ins_sum") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Total spike-in reads per cell")
+multiplot(p_cellQC1, p_cellQC2, cols = 2)
+```
+
+These metrics can also be visualised with respect to cell-level metadata, such
+as the experimental conditions (active vs unstimulated) and the different mice 
+from which cells were collected (see Figure \@ref(fig:experimental-condition-batch)). 
+
+```{r experimental-condition-batch, fig.cap="Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
+p_stimulus <- plotColData(
+    sce_naive_active,
+    x = "sum",
+    y = "detected", 
+    colour_by = "Stimulus") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1))
+
+p_batch <- plotColData(
+    sce_naive_active,
+    x = "sum",
+    y = "detected", 
+    colour_by = "Individuals") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1))
+
+multiplot(p_stimulus, p_batch, cols = 2)
+```
+
+To further explore the underlying structure of the data, we compute global
+scaling normalisation factors using `r Biocpkg("scran")` and perform a 
+principal component analysis (PCA) of log-transformed normalised expression 
+counts using `r Biocpkg("scater")`. 
+The results of this analysis are visualised with respect to cell-level metadata
+and QC metrics.
+As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
+suggests the absence of strong batch effects. Moreover, we observe that 
+activated cells tend to exhibit a higher number of expressed genes and total 
+read count (see Figure \@ref(fig:no-genes-total-counts)). 
+
+<!---We detect a higher number of expressed genes and a higher total read count in
+activated cells. Furthermore, cells within each group show a wide distribution
+of these quality measures, without clear outlying cells. ---> 
+
+```{r pca-visualisation-stimulus-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
+# Global scaling normalisation
+sce_naive_active <- computeSumFactors(sce_naive_active)
+sce_naive_active <- logNormCounts(sce_naive_active)
+# Calculate PCA
+sce_naive_active <- runPCA(sce_naive_active)
+# Visualise the conditions and batch structure
+p_stimulus <- plotPCA(sce_naive_active, colour_by = "Stimulus") +
+  theme(legend.position = "bottom")
+p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
+  theme(legend.position = "bottom")
+multiplot(p_stimulus, p_batch, cols = 2)
+```
+
+```{r no-genes-total-counts, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the number of genes detected per cell (left) and the total number of endogenous reads per cell (right)."}
+# Visualise number of endogeneous genes detected
+p_total_features <- plotPCA(sce_naive_active, colour_by = "detected") +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)) +
+  scale_fill_viridis_c(name = "Number of genes", trans = "log10")
+
+# Visualise log10-transformed total number of counts
+p_total_counts <- plotPCA(sce_naive_active, colour_by = "sum") +
+  theme(legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)) +
+  scale_fill_viridis_c(name = "Number of counts", trans = "log10")
+multiplot(p_total_features, p_total_counts, cols = 2)
+```
+
+Following cell-specific QC, we will remove all genes that are not detected in at 
+least 5 cells across both conditions or for which their average read count 
+(across all cells) is below 1. 
+These thresholds need to be set specifically for each dataset, and careful
+gene-specific quality metrics need to be closely examined as suggested by the 
+[*OSCA*](https://osca.bioconductor.org/) Bioconductor workflow [@Amezquita2019].
+
+```{r gene-selection}
+# Remove genes
+ind_expressed <- rowSums(counts(sce_naive_active) > 0) >= 5 &
+  rowMeans(counts(sce_naive_active)) >= 1
+sce_naive_active <- sce_naive_active[ind_expressed, ]
+```
+
+The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`
+cells and `r nrow(sce_naive_active)` genes. 
 

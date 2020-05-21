@@ -386,7 +386,7 @@ variable genes within a cell population. Moreover, \texttt{BASiCS\_TestDE} is us
 perform differential mean and variability analyses between groups of cells.
 
 \hypertarget{Tcells}{%
-\section{\texorpdfstring{Analysis of naive CD4\textsuperscript{+} T cells}{Analysis of naive CD4+ T cells}}\label{Tcells}}
+\section{\texorpdfstring{Case study: analysis of naive CD4\textsuperscript{+} T cells}{Case study: analysis of naive CD4+ T cells}}\label{Tcells}}
 
 As a case study, we use scRNA-seq data generated for CD4\textsuperscript{+} T cells
 using the C1 Single-Cell Auto Prep System (Fluidigm\textsuperscript{®}).
@@ -543,6 +543,170 @@ The following code is used to extract these
 ## reducedDimNames(0):
 ## altExpNames(1): spike-ins
 \end{verbatim}
+
+\hypertarget{qc-and-exploratory-analysis}{%
+\subsection{QC and exploratory analysis}\label{qc-and-exploratory-analysis}}
+
+The data available at
+\href{https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/}{E-MTAB-4888} have
+been already filtered to remove poor quality samples.
+The QC applied in \citep{Martinez-jimenez2017} removed cells with: (i) fewer
+than 1,000,000 total reads, (ii) less than 20\% of reads mapped to
+endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and
+(iv) more than 10\% or fewer than 0.5\% of reads mapped to mitochondrial genes.
+As an illustration, we visualise some of these metrics.
+We also include another widely used QC diagnostic plot which compares the total
+number (or fraction) of spike-in counts versus the total number (or fraction) of
+endogeneous counts.
+In such a plot, low quality samples are characterised by a high fraction of
+spike-in counts and a low fraction of endogeneous counts
+(see Figure \ref{fig:PerCellQC}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Calculate per cell QC metrics}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{addPerCellQC}\NormalTok{(sce_naive_active, }\DataTypeTok{use_altexps =} \OtherTok{TRUE}\NormalTok{)}
+\NormalTok{p_cellQC1 <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(sce_naive_active, }\DataTypeTok{x =} \StringTok{"sum"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"detected"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{)}
+\NormalTok{p_cellQC2 <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(sce_naive_active, }\DataTypeTok{x =} \StringTok{"sum"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"altexps_spike-ins_sum"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Total spike-in reads per cell"}\NormalTok{)}
+\KeywordTok{multiplot}\NormalTok{(p_cellQC1, p_cellQC2, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/PerCellQC-1} 
+
+}
+
+\caption{Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right).}\label{fig:PerCellQC}
+\end{figure}
+
+These metrics can also be visualised with respect to cell-level metadata, such
+as the experimental conditions (active vs unstimulated) and the different mice
+from which cells were collected (see Figure \ref{fig:experimental-condition-batch}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{p_stimulus <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
+\NormalTok{    sce_naive_active,}
+    \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"detected"}\NormalTok{, }
+    \DataTypeTok{colour_by =} \StringTok{"Stimulus"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{))}
+
+\NormalTok{p_batch <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
+\NormalTok{    sce_naive_active,}
+    \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"detected"}\NormalTok{, }
+    \DataTypeTok{colour_by =} \StringTok{"Individuals"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{))}
+
+\KeywordTok{multiplot}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/experimental-condition-batch-1} 
+
+}
+
+\caption{Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell.}\label{fig:experimental-condition-batch}
+\end{figure}
+
+To further explore the underlying structure of the data, we compute global
+scaling normalisation factors using \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} and perform a
+principal component analysis (PCA) of log-transformed normalised expression
+counts using \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}}.
+The results of this analysis are visualised with respect to cell-level metadata
+and QC metrics.
+As seen in Figure \ref{fig:pca-visualisation-stimulus-batch}, this analysis
+suggests the absence of strong batch effects. Moreover, we observe that
+activated cells tend to exhibit a higher number of expressed genes and total
+read count (see Figure \ref{fig:no-genes-total-counts}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Global scaling normalisation}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{computeSumFactors}\NormalTok{(sce_naive_active)}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{logNormCounts}\NormalTok{(sce_naive_active)}
+\CommentTok{# Calculate PCA}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{runPCA}\NormalTok{(sce_naive_active)}
+\CommentTok{# Visualise the conditions and batch structure}
+\NormalTok{p_stimulus <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"Stimulus"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
+\NormalTok{p_batch <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"Individuals"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
+\KeywordTok{multiplot}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/pca-visualisation-stimulus-batch-1} 
+
+}
+
+\caption{First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell.}\label{fig:pca-visualisation-stimulus-batch}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Visualise number of endogeneous genes detected}
+\NormalTok{p_total_features <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"detected"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{, }\DataTypeTok{angle =} \DecValTok{45}\NormalTok{)) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_fill_viridis_c}\NormalTok{(}\DataTypeTok{name =} \StringTok{"Number of genes"}\NormalTok{, }\DataTypeTok{trans =} \StringTok{"log10"}\NormalTok{)}
+
+\CommentTok{# Visualise log10-transformed total number of counts}
+\NormalTok{p_total_counts <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"sum"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{, }\DataTypeTok{angle =} \DecValTok{45}\NormalTok{)) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_fill_viridis_c}\NormalTok{(}\DataTypeTok{name =} \StringTok{"Number of counts"}\NormalTok{, }\DataTypeTok{trans =} \StringTok{"log10"}\NormalTok{)}
+\KeywordTok{multiplot}\NormalTok{(p_total_features, p_total_counts, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/no-genes-total-counts-1} 
+
+}
+
+\caption{First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the number of genes detected per cell (left) and the total number of endogenous reads per cell (right).}\label{fig:no-genes-total-counts}
+\end{figure}
+
+Following cell-specific QC, we will remove all genes that are not detected in at
+least 5 cells across both conditions or for which their average read count
+(across all cells) is below 1.
+These thresholds need to be set specifically for each dataset, and careful
+gene-specific quality metrics need to be closely examined as suggested by the
+\href{https://osca.bioconductor.org/}{\emph{OSCA}} Bioconductor workflow \citep{Amezquita2019}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Remove genes}
+\NormalTok{ind_expressed <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>=}\StringTok{ }\DecValTok{5} \OperatorTok{&}
+\StringTok{  }\KeywordTok{rowMeans}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active)) }\OperatorTok{>=}\StringTok{ }\DecValTok{1}
+\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[ind_expressed, ]}
+\end{Highlighting}
+\end{Shaded}
+
+The final dataset used in subsequent analyses contains 146
+cells and 8953 genes.
 
 {\small\bibliography{Workflow.bib}}
 
