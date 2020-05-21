@@ -581,18 +581,45 @@ sce_naive_active <- sce_naive_active[ind_expressed, ]
 The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`
 cells and `r nrow(sce_naive_active)` genes. 
 
-## Calculating the molecule count for spike-in genes
+## BASiCS analysis - input data
 
-BASiCS requires the absolute molecule count of the spike-in transcripts that
-were added to each well. To calculate the molecule count, we require the 
-dilution and the concentration of the spike-in mix.
-For this, a table of the spike-in concentrations can be downloaded from 
-[https://www.thermofisher.com](https://www.thermofisher.com/order/catalog/product/4456740).
-The file contains the concentrations of 2 ERCC spike-in mixes.
+Here, we apply the `r Biocpkg("BASiCS")` model separately to cells from each
+experimental condition (`r sum(sce_naive_active$Stimulus == "Unstimulated")` 
+naive and `r sum(sce_naive_active$Stimulus == "Active")` activated cells). 
+Separate `SingleCellExperiment` objects are created for each group of cells. 
 
-For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC 
-spike-in mix 1 [@Martinez-jimenez2017].
-We will first download the concentration information.
+```{r SCE-separation}
+sce_naive <- sce_naive_active[, sce_naive_active$Stimulus == "Unstimulated"]
+sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
+```
+
+Here, we update these objects in order to match the format required by 
+`r Biocpkg("BASiCS")`. Firstly, if multiple batches of sequenced cells are 
+available (e.g. multiple donors from which cells were extracted or multiple 
+sequencing batches from the same experimental condition), this information 
+must be included under the `BatchInfo` label as part of the cell-level metadata.
+
+```{r BatchInfo}
+colData(sce_naive)$BatchInfo <- colData(sce_naive)$Individuals
+colData(sce_active)$BatchInfo <- colData(sce_active)$Individuals
+```
+
+When spike-in information is used to aid data normalisation and technical noise 
+quantification, the user also needs to provide the number of spike-in molecules 
+that were added to each well (this is not required when `WithSpikes = FALSE` in
+`BASiCS_MCMC`). 
+For each spike-in gene $i$, this corresponds to:
+
+$$ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
+\times V \times D \hspace{0.5cm} \mbox{where,} $$
+
+- $C_i$ is the concentration for the spike-in $i$ (measured in $aM\mu{}l^{-1}$),
+- $V$ is the volume added into each well (measure in $nl$) and
+- $D$ is a dilution factor. 
+
+The remaining factors in the equation above are conversion constants. 
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC spike-in mix 1. Moreover, a volume of $9nl$ was added into each well (see [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9)) 
+and input concentrations $C_i$ can be downloaded from [https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt)). 
 
 ```{r spike-in_download}
 # Read in the spike-in concentrations
@@ -612,71 +639,37 @@ ERCC_conc <- read.table(
 )
 ```
 
-The concentration is given in units of $aM\mu{}l^{-1}$. 
-We will first calculate the concentration in $M\mu{}l^{-1}$.
+Based on this information, the calculation above proceeds as follows
 
 ```{r, ercc-mul}
 # Moles per micro litre
 ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
-```
-
-From this, we can calculate the molecule count per $\mu{}l$ using the fact that
-1 mole comprises $6.02214076 \times 10^{23}$ molecules.
-
-```{r, ercc-count-mul}
-# Molecule count per micro litre
+# Molecule count per micro litre (1 mole comprises 6.02214076 x 10^{23} molecules)
 ERCC_countmul <- ERCC_mmul * (6.02214076 * (10^23))
-```
-
-During the preparation of the reaction mix, the authors diluted this mix by a
-factor of 1:50,000 [@Martinez-jimenez2017].
-The actual molecule number of spike-ins can therefore be calculated per $\mu{}l$:
-
-```{r, ercc-count}
+# Application of the dilution factor (1:50,000)
 ERCC_count <- ERCC_countmul / 50000
-```
-
-The volume per well in the IFC chip is $9nl$
-[https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9).
-We therfore need to calculate the number of molecules in $9nl$ reaction mix.
-
-```{r, ercc-final}
+# Multiplying by the volume added into each well
 ERCC_count_final <- ERCC_count * 0.009
 ```
 
-Depending on the technology used to capture and process single cells, as well 
-as the dilution of the spike-in mix, the absolute number of spike-ins per 
-reaction varies across experiments.
-The absolute amount of spike-ins per reaction is only used 
-to calibrate the scale of the capture efficiency normalisation parameter 
-$\nu_j$. Since the true concentration of each spike-in molecule is known, 
-BASiCS uses the observed counts of each molecule for each cell to estimate the 
-capture efficiency for each cell, $\nu_j$. Differences in the 
-global scale across all wells of the level of spike-ins molecules thus do not 
-affect the cell-to-cell ratios of $\nu_j$.
-BASiCS assumes that the quantity of spike-ins is consistent in each well in
-each experiment. While the quantity used must remain constant between wells and
-experiments, the scale does not affect the results, provided the spike-ins
-are at a reasonable level. In particular, they should not be in such a low 
-concentration that they are rarely detected, and they should not be at such
-a high concentration that the majority of the sequencing reads map to the 
-spike-in molecules.
-
-We can now use the molecule count to prepare the BASiCS data object.
-To incorporate the spike-in molecule counts within the 
-`r Biocpkg("SingleCellExperiment")` object that BASiCS requires, the first 
-column must contain the names associated to the spike-in molecules. 
-The second column must contain the input number of molecules for the spike-in 
-genes (amount per reaction).
-
+To update the `sce_naive` and `sce_active` objects with this information, the 
+user to create `data.frame` whose first column contains the labels associated to 
+the spike-in molecule (e.g. ERCC-00130) and whose second column contains the 
+input number of molecules calculated above (note: the code below assumes that 
+expression counts for spike-in genes are already available via 
+`altExp(sce_naive)` and `altExp(sce_active)`, respectively). 
 
 ```{r spike-info}
 # Prepare the data.frame
-ERCC_count <- data.frame(
-  row.names = ERCC_conc$ERCC.ID,
+SpikeInput <- data.frame(
   Names = ERCC_conc$ERCC.ID,
   count = ERCC_count_final
 )
+# Exclude spike-ins not included in the input SingleCellExperiment objects
+SpikeInput <- subset(SpikeInput, Names %in% rownames(altExp(sce_naive)))
+# Added as metadata information to each SingleCellExperiment object
+metadata(sce_naive)$SpikeInput <- SpikeInput
+metadata(sce_active)$SpikeInput <- SpikeInput
 ```
 
 ## Single condition example: Naive CD4^+^ T cells {#Tcells-single}
