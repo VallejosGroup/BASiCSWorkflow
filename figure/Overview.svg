@@ -305,9 +305,9 @@
      inkscape:window-height="1385"
      id="namedview3804"
      showgrid="false"
-     inkscape:zoom="1"
-     inkscape:cx="-0.0041139475"
-     inkscape:cy="569.5716"
+     inkscape:zoom="2"
+     inkscape:cx="277.69636"
+     inkscape:cy="274.3119"
      inkscape:window-x="1753"
      inkscape:window-y="27"
      inkscape:window-maximized="0"
@@ -619,7 +619,7 @@
      d="m 300.64414,542.26054 46.9256,54.50224"
      style="fill:none;stroke:#000000;stroke-width:1.70000005;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker12575)" />
   <g
-     transform="matrix(0.55394946,0,0,-0.55394946,350.00006,320.99989)"
+     transform="matrix(0.69405562,0,0,-0.69405562,320.00007,333.00049)"
      inkscape:label="scran"
      id="g13186">
     <g
@@ -1351,7 +1351,7 @@
     </g>
   </g>
   <g
-     transform="matrix(0.5539499,0,0,-0.5539499,427.60116,321.69526)"
+     transform="matrix(0.69405617,0,0,-0.69405617,410.62947,333.87173)"
      inkscape:label="scater"
      id="g13726">
     <g
@@ -1500,7 +1500,7 @@
     </g>
   </g>
   <g
-     transform="matrix(0.56098017,0,0,-0.56098017,350,429.42191)"
+     transform="matrix(0.70286455,0,0,-0.70286455,352.01912,449.42187)"
      inkscape:label="BASiCS"
      id="g13879">
     <g
