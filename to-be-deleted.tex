@@ -379,6 +379,7 @@ Parameter inference is implemented in the \texttt{BASiCS\_MCMC} function using a
 adaptive Metropolis within Gibbs algorithm \citep{Roberts2009}, whose convergence can
 be assessed using the \texttt{BASiCS\_DiagHist} and \texttt{BASiCS\_DiagPlot} functions,
 among others.
+
 The output from \texttt{BASiCS\_MCMC} is a \texttt{BASiCS\_Chain} object, which can be used
 for further downstream analyses. In particular, \texttt{BASiCS\_DetectHVG} and
 \texttt{BASiCS\_DetectLVG} can be respectively used to identify highly and lowly
@@ -705,8 +706,115 @@ gene-specific quality metrics need to be closely examined as suggested by the
 \end{Highlighting}
 \end{Shaded}
 
-The final dataset used in subsequent analyses contains 146
-cells and 8953 genes.
+The final dataset used in subsequent analyses contains
+146 cells and 8953 genes.
+
+\hypertarget{basics-analysis---input-data}{%
+\subsection{BASiCS analysis - input data}\label{basics-analysis---input-data}}
+
+Here, we apply the \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} model separately to cells from each
+experimental condition (93
+naive and 53 activated cells).
+Separate \texttt{SingleCellExperiment} objects are created for each group of cells.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sce_naive <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Unstimulated"}\NormalTok{]}
+\NormalTok{sce_active <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Active"}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+Here, we update these objects in order to match the format required by
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}. Firstly, if multiple batches of sequenced cells are
+available (e.g.~multiple donors from which cells were extracted or multiple
+sequencing batches from the same experimental condition), this information
+must be included under the \texttt{BatchInfo} label as part of the cell-level metadata.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{colData}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{BatchInfo <-}\StringTok{ }\KeywordTok{colData}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{Individuals}
+\KeywordTok{colData}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{BatchInfo <-}\StringTok{ }\KeywordTok{colData}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{Individuals}
+\end{Highlighting}
+\end{Shaded}
+
+When spike-in information is used to aid data normalisation and technical noise
+quantification, the user also needs to provide the number of spike-in molecules
+that were added to each well (this is not required when \texttt{WithSpikes\ =\ FALSE} in
+\texttt{BASiCS\_MCMC}).
+For each spike-in gene \(i\), this corresponds to:
+
+\[ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
+\times V \times D \hspace{0.5cm} \mbox{where,} \]
+
+\begin{itemize}
+\item
+  \(C_i\) is the concentration for the spike-in \(i\) (measured in \(aM\mu{}l^{-1}\)),
+\item
+  \(V\) is the volume added into each well (measure in \(nl\)) and
+\item
+  \(D\) is a dilution factor.
+\end{itemize}
+
+The remaining factors in the equation above are conversion constants.
+For the CD4\textsuperscript{+} T cell data, the authors added a 1:50,000 dilution of the ERCC spike-in mix 1. Moreover, a volume of \(9nl\) was added into each well (see \url{https://www.fluidigm.com/faq/ifc-9})
+and input concentrations \(C_i\) can be downloaded from \url{https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Read in the spike-in concentrations}
+\NormalTok{download_file <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(file, website, folder, }\DataTypeTok{destfile =}\NormalTok{ file) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(destfile)) \{}
+    \KeywordTok{download.file}\NormalTok{(}\KeywordTok{paste0}\NormalTok{(website, folder, file), destfile)}
+\NormalTok{  \}}
+\NormalTok{\}}
+\NormalTok{website <-}\StringTok{ "https://assets.thermofisher.com/"}
+\NormalTok{folder <-}\StringTok{ "TFS-Assets/LSG/manuals/"}
+\NormalTok{file <-}\StringTok{ "cms_095046.txt"}
+\KeywordTok{download_file}\NormalTok{(file, website, folder, }\StringTok{"downloads/spike_info.txt"}\NormalTok{)}
+
+\NormalTok{ERCC_conc <-}\StringTok{ }\KeywordTok{read.table}\NormalTok{(}
+  \StringTok{"downloads/spike_info.txt"}\NormalTok{,}
+  \DataTypeTok{sep =} \StringTok{"}\CharTok{\textbackslash{}t}\StringTok{"}\NormalTok{, }\DataTypeTok{header =} \OtherTok{TRUE}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Based on this information, the calculation above proceeds as follows
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Moles per micro litre}
+\NormalTok{ERCC_mmul <-}\StringTok{ }\NormalTok{ERCC_conc}\OperatorTok{$}\NormalTok{concentration.in.Mix.}\DecValTok{1}\NormalTok{..attomoles.ul. }\OperatorTok{*}\StringTok{ }\NormalTok{(}\DecValTok{10}\OperatorTok{^}\NormalTok{(}\OperatorTok{-}\DecValTok{18}\NormalTok{))}
+\CommentTok{# Molecule count per micro litre (1 mole comprises 6.02214076 x 10^\{23\} molecules)}
+\NormalTok{ERCC_countmul <-}\StringTok{ }\NormalTok{ERCC_mmul }\OperatorTok{*}\StringTok{ }\NormalTok{(}\FloatTok{6.02214076} \OperatorTok{*}\StringTok{ }\NormalTok{(}\DecValTok{10}\OperatorTok{^}\DecValTok{23}\NormalTok{))}
+\CommentTok{# Application of the dilution factor (1:50,000)}
+\NormalTok{ERCC_count <-}\StringTok{ }\NormalTok{ERCC_countmul }\OperatorTok{/}\StringTok{ }\DecValTok{50000}
+\CommentTok{# Multiplying by the volume added into each well}
+\NormalTok{ERCC_count_final <-}\StringTok{ }\NormalTok{ERCC_count }\OperatorTok{*}\StringTok{ }\FloatTok{0.009}
+\end{Highlighting}
+\end{Shaded}
+
+To update the \texttt{sce\_naive} and \texttt{sce\_active} objects with this information, the
+user to create \texttt{data.frame} whose first column contains the labels associated to
+the spike-in molecule (e.g.~ERCC-00130) and whose second column contains the
+input number of molecules calculated above (note: the code below assumes that
+expression counts for spike-in genes are already available via
+\texttt{altExp(sce\_naive)} and \texttt{altExp(sce\_active)}, respectively).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Prepare the data.frame}
+\NormalTok{SpikeInput <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
+  \DataTypeTok{Names =}\NormalTok{ ERCC_conc}\OperatorTok{$}\NormalTok{ERCC.ID,}
+  \DataTypeTok{count =}\NormalTok{ ERCC_count_final}
+\NormalTok{)}
+\CommentTok{# Exclude spike-ins not included in the input SingleCellExperiment objects}
+\NormalTok{SpikeInput <-}\StringTok{ }\KeywordTok{subset}\NormalTok{(SpikeInput, Names }\OperatorTok{%in%}\StringTok{ }\KeywordTok{rownames}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive)))}
+\CommentTok{# Added as metadata information to each SingleCellExperiment object}
+\KeywordTok{metadata}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{SpikeInput <-}\StringTok{ }\NormalTok{SpikeInput}
+\KeywordTok{metadata}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{SpikeInput <-}\StringTok{ }\NormalTok{SpikeInput}
+\end{Highlighting}
+\end{Shaded}
 
 {\small\bibliography{Workflow.bib}}
 

@@ -334,6 +334,9 @@ Parameter inference is implemented in the `BASiCS_MCMC` function using an
 adaptive Metropolis within Gibbs algorithm [@Roberts2009], whose convergence can
 be assessed using the `BASiCS_DiagHist` and `BASiCS_DiagPlot` functions, 
 among others. 
+
+
+
 <!--- Removed as I think it's better to explain ESS later, together with its formula ---> 
 <!--- The `plot` function provides
 parameterwise trace plots, marginal density plots, while the latter three 
@@ -580,6 +583,99 @@ ind_expressed <- rowSums(counts(sce_naive_active) > 0) >= 5 &
 sce_naive_active <- sce_naive_active[ind_expressed, ]
 ```
 
-The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`
-cells and `r nrow(sce_naive_active)` genes. 
+The final dataset used in subsequent analyses contains 
+`r ncol(sce_naive_active)` cells and `r nrow(sce_naive_active)` genes. 
+
+## BASiCS analysis - input data
+
+Here, we apply the `r Biocpkg("BASiCS")` model separately to cells from each
+experimental condition (`r sum(sce_naive_active$Stimulus == "Unstimulated")` 
+naive and `r sum(sce_naive_active$Stimulus == "Active")` activated cells). 
+Separate `SingleCellExperiment` objects are created for each group of cells. 
+
+```{r SCE-separation}
+sce_naive <- sce_naive_active[, sce_naive_active$Stimulus == "Unstimulated"]
+sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
+```
+
+Here, we update these objects in order to match the format required by 
+`r Biocpkg("BASiCS")`. Firstly, if multiple batches of sequenced cells are 
+available (e.g. multiple donors from which cells were extracted or multiple 
+sequencing batches from the same experimental condition), this information 
+must be included under the `BatchInfo` label as part of the cell-level metadata.
+
+```{r BatchInfo}
+colData(sce_naive)$BatchInfo <- colData(sce_naive)$Individuals
+colData(sce_active)$BatchInfo <- colData(sce_active)$Individuals
+```
+
+When spike-in information is used to aid data normalisation and technical noise 
+quantification, the user also needs to provide the number of spike-in molecules 
+that were added to each well (this is not required when `WithSpikes = FALSE` in
+`BASiCS_MCMC`). 
+For each spike-in gene $i$, this corresponds to:
+
+$$ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
+\times V \times D \hspace{0.5cm} \mbox{where,} $$
+
+- $C_i$ is the concentration for the spike-in $i$ (measured in $aM\mu{}l^{-1}$),
+- $V$ is the volume added into each well (measure in $nl$) and
+- $D$ is a dilution factor. 
+
+The remaining factors in the equation above are conversion constants. 
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC spike-in mix 1. Moreover, a volume of $9nl$ was added into each well (see [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9)) 
+and input concentrations $C_i$ can be downloaded from [https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt)). 
+
+```{r spike-in_download}
+# Read in the spike-in concentrations
+download_file <- function(file, website, folder, destfile = file) {
+  if (!file.exists(destfile)) {
+    download.file(paste0(website, folder, file), destfile)
+  }
+}
+website <- "https://assets.thermofisher.com/"
+folder <- "TFS-Assets/LSG/manuals/"
+file <- "cms_095046.txt"
+download_file(file, website, folder, "downloads/spike_info.txt")
+
+ERCC_conc <- read.table(
+  "downloads/spike_info.txt",
+  sep = "\t", header = TRUE
+)
+```
+
+Based on this information, the calculation above proceeds as follows
+
+```{r, ercc-mul}
+# Moles per micro litre
+ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
+# Molecule count per micro litre (1 mole comprises 6.02214076 x 10^{23} molecules)
+ERCC_countmul <- ERCC_mmul * (6.02214076 * (10^23))
+# Application of the dilution factor (1:50,000)
+ERCC_count <- ERCC_countmul / 50000
+# Multiplying by the volume added into each well
+ERCC_count_final <- ERCC_count * 0.009
+```
+
+To update the `sce_naive` and `sce_active` objects with this information, the 
+user to create `data.frame` whose first column contains the labels associated to 
+the spike-in molecule (e.g. ERCC-00130) and whose second column contains the 
+input number of molecules calculated above (note: the code below assumes that 
+expression counts for spike-in genes are already available via 
+`altExp(sce_naive)` and `altExp(sce_active)`, respectively). 
+
+```{r spike-info}
+# Prepare the data.frame
+SpikeInput <- data.frame(
+  Names = ERCC_conc$ERCC.ID,
+  count = ERCC_count_final
+)
+# Exclude spike-ins not included in the input SingleCellExperiment objects
+SpikeInput <- subset(SpikeInput, Names %in% rownames(altExp(sce_naive)))
+# Added as metadata information to each SingleCellExperiment object
+metadata(sce_naive)$SpikeInput <- SpikeInput
+metadata(sce_active)$SpikeInput <- SpikeInput
+```
+
+
 
