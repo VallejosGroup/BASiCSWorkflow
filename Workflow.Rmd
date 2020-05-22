@@ -222,7 +222,7 @@ A graphical overview is provided in Figure \@ref(fig:overview)
 and its main components are described below. 
 
 ```{r overview, out.width=out_width, out.height=out_height, fig.cap = 'Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a matrix of expression counts, we use the scater and scran Bioconductor packages to perform QC and initial exploratory analyses. To robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations, we apply the BASiCS Bioconductor package and  illustrate how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.', echo=FALSE}
-knitr::include_graphics("figure/Overview.png")
+knitr::include_graphics("figure/Overview.svg")
 ```
 
 ## Input data
@@ -567,14 +567,30 @@ multiplot(p_total_features, p_total_counts, cols = 2)
 Following cell-specific QC, we will remove all genes that are not detected in at 
 least 5 cells across both conditions or for which their average read count 
 (across all cells) is below 1. 
-These thresholds need to be set specifically for each dataset, and careful
-gene-specific quality metrics need to be closely examined as suggested by the 
+These thresholds need to be set specifically for each dataset, and 
+gene-specific quality metrics should always be examined, as suggested by the 
 [*OSCA*](https://osca.bioconductor.org/) Bioconductor workflow [@Amezquita2019].
 
 ```{r gene-selection}
+## Remove genes with zero count
+sce_naive_active <- sce_naive_active[rowSums(counts(sce_naive_active)) > 0, ]
 # Remove genes
 ind_expressed <- rowSums(counts(sce_naive_active) > 0) >= 5 &
   rowMeans(counts(sce_naive_active)) >= 1
+
+ggplot() +
+  geom_point(
+    aes(
+      rowSums(counts(sce_naive_active) > 0),
+      rowMeans(counts(sce_naive_active)),
+      colour = ifelse(ind_expressed, "Retained", "Removed")
+    )
+  ) +
+  geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
+  geom_hline(yintercept = 1, linetype = "dashed", col = "grey60") +
+  scale_colour_brewer(palette = "Set1", name = NULL) +
+  scale_y_log10()
+
 sce_naive_active <- sce_naive_active[ind_expressed, ]
 ```
 
@@ -596,15 +612,12 @@ We will first download the concentration information.
 
 ```{r spike-in_download}
 # Read in the spike-in concentrations
-download_file <- function(file, website, folder, destfile = file) {
-  if (!file.exists(destfile)) {
-    download.file(paste0(website, folder, file), destfile)
-  }
+if (!file.exists("downloads/spike_info.txt")) {
+  download.file(
+    "https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt",
+    destfile = "downloads/spike_info.txt"
+  )  
 }
-website <- "https://assets.thermofisher.com/"
-folder <- "TFS-Assets/LSG/manuals/"
-file <- "cms_095046.txt"
-download_file(file, website, folder, "downloads/spike_info.txt")
 
 ERCC_conc <- read.table(
   "downloads/spike_info.txt",
@@ -810,12 +823,12 @@ For convenience, the MCMC chain can be obtained online at
 [https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
 
 ```{r download-chain-naive}
-download_file(
-  file = "MCMC_naive.rds",
-  website = "https://git.ecdf.ed.ac.uk/vallejosgroup/",
-  folder = "basicsworkflow2020/raw/master/",
-  destfile = "rds/MCMC_naive.rds"
-)
+if (!file.exists("rds/MCMC_naive.rds")) {
+  download.file(
+    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_naive.rds",
+    destfile = "rds/MCMC_naive.rds"
+  )  
+}
 MCMC_naive <- readRDS("rds/MCMC_naive.rds")
 ```
 
@@ -1116,7 +1129,7 @@ ggplot(
     )
   ) +
   geom_pointdensity(aes(log(mean), log(variance))) +
-  scale_color_viridis()
+  scale_colour_viridis()
 ```
 
 ```{r fano-fig, fig.cap="Fano factor is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
@@ -1128,7 +1141,7 @@ ggplot(
     )
   ) +
   geom_pointdensity(aes(log(mean), log(fano))) +
-  scale_color_viridis()
+  scale_colour_viridis()
 ```
 
 ```{r cv-fig, fig.cap="Squared coefficient of variation is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
@@ -1140,7 +1153,7 @@ ggplot(
     )
   ) +
   geom_pointdensity(aes(log(mean), log(CV2))) +
-  scale_color_viridis()
+  scale_colour_viridis()
 ```
 
 We see that all measures correlate with mean expression.
@@ -1163,7 +1176,7 @@ ggplot(
     )
   ) +
   geom_pointdensity(aes(log(mu), log(delta))) +
-  scale_color_viridis()
+  scale_colour_viridis()
 ```
 
 ```{r cv-basics, fig.cap="Over-dispersion estimates from BASiCS are plotted against squared coefficient of variation for all genes. Colour represents local density, with lighter colours representing higher density."}
@@ -1175,7 +1188,7 @@ ggplot(
     )
   ) +
   geom_pointdensity(aes(log(CV2), log(delta))) +
-  scale_color_viridis()
+  scale_colour_viridis()
 ```
 
 The over-dispersion parameters estimated using BASiCS show strong correlation 
@@ -1200,7 +1213,7 @@ ggplot(
     )
   ) +
   geom_pointdensity(aes(log(mu), epsilon)) +
-  scale_color_viridis()
+  scale_colour_viridis()
 ```
 
 ```{r mean-dispersion-dm, fig.cap="DM dispersion estimates are plotted against mean expression."}
@@ -1215,7 +1228,7 @@ ggplot(
     )
   ) +
   geom_pointdensity(aes(log(mean), DM)) +
-  scale_color_viridis()
+  scale_colour_viridis()
 ```
 
 ```{r epsilon-dm, fig.cap="DM dispersion estimates are plotted against epsilon values."}
@@ -1227,7 +1240,7 @@ ggplot(
     )
   ) +
   geom_pointdensity(aes(epsilon, DM)) +
-  scale_color_viridis()
+  scale_colour_viridis()
 ```
 
 Neither the DM nor the residual over-dispersion estimates show association 
@@ -1341,12 +1354,12 @@ For convenience, this MCMC chain can be again obtained online at
 
 
 ```{r download-chain-active}
-download_file(
-  file = "MCMC_active.rds",
-  website = "https://git.ecdf.ed.ac.uk/vallejosgroup/",
-  folder = "basicsworkflow2020/raw/master/",
-  destfile = "rds/MCMC_active.rds"
-)
+if (!file.exists("rds/MCMC_active.rds")) {
+  download.file(
+    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_active.rds"
+    destfile = "rds/MCMC_active.rds"
+  )
+}
 MCMC_active <- readRDS("rds/MCMC_active.rds")
 ```
 
@@ -1794,7 +1807,7 @@ ggplot(res_df) +
     alpha = 0.8,
     shape = 16
   ) +
-  scale_color_brewer(name = "Categories", palette = "Paired") +
+  scale_colour_brewer(name = "Categories", palette = "Paired") +
   labs(x = bquote(log[2](FC)), y = "Difference in residual over-dispersion")
 ```
 
@@ -1937,12 +1950,12 @@ MCMC_naive_nospikes <- BASiCS_MCMC(
 ```
 
 ```{r download-chain-naive-nospikes}
-download_file(
-  file = "MCMC_naive_nospikes.rds",
-  website = "https://git.ecdf.ed.ac.uk/vallejosgroup/",
-  folder = "basicsworkflow2020/raw/master/",
-  destfile = "rds/MCMC_naive_nospikes.rds"
-)
+if (!file.exists("rds/MCMC_naive_nospikes.rds")) {
+  download.file(
+    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_naive_nospikes.rds",
+    destfile = "rds/MCMC_naive_nospikes.rds"
+  )
+}
 MCMC_naive_nospikes <- readRDS("rds/MCMC_naive_nospikes.rds")
 ```
 
