@@ -15,7 +15,10 @@
    height="700"
    viewBox="0 0 500 700"
    sodipodi:docname="Overview.svg"
-   inkscape:version="0.92.3 (2405546, 2018-03-11)">
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"
+   inkscape:export-filename="/home/alan/Documents/github/BASiCSWorkflow/figure/Overview.png"
+   inkscape:export-xdpi="399.94284"
+   inkscape:export-ydpi="399.94284">
   <metadata
      id="metadata3808">
     <rdf:RDF>
@@ -305,9 +308,9 @@
      inkscape:window-height="1385"
      id="namedview3804"
      showgrid="false"
-     inkscape:zoom="2"
-     inkscape:cx="277.69636"
-     inkscape:cy="274.3119"
+     inkscape:zoom="1.4142136"
+     inkscape:cx="225.65288"
+     inkscape:cy="283.12808"
      inkscape:window-x="1753"
      inkscape:window-y="27"
      inkscape:window-maximized="0"
@@ -1500,7 +1503,7 @@
     </g>
   </g>
   <g
-     transform="matrix(0.70286455,0,0,-0.70286455,352.01912,449.42187)"
+     transform="matrix(0.70286455,0,0,-0.70286455,352.01912,455.42187)"
      inkscape:label="BASiCS"
      id="g13879">
     <g
