@@ -91,8 +91,6 @@ knitr::opts_chunk$set(
 ```
 
 
-
-
 # Introduction
 
 <!--- scRNA-seq and the different types of heterogeneity ---> 
@@ -214,7 +212,7 @@ attenuating technical variability associated to cell-to-cell differences
 in amplification and sequencing depth (these technical biases are not fully 
 removed unless sequencing to saturation [@Vallejos2017]). 
 However, despite the benefits associated to the use of spike-ins and UMIs, 
-these are not available for all scRNA-seq protocols [@Haque2017]. 
+these are not available for all scRNA-seq protocols [@Haque2017].  
 
 # Methods {#methods}
 
@@ -224,7 +222,7 @@ A graphical overview is provided in Figure \@ref(fig:overview)
 and its main components are described below. 
 
 ```{r overview, out.width=out_width, out.height=out_height, fig.cap = 'Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a matrix of expression counts, we use the scater and scran Bioconductor packages to perform QC and initial exploratory analyses. To robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations, we apply the BASiCS Bioconductor package and  illustrate how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.', echo=FALSE}
-knitr::include_graphics("figure/Overview.png")
+knitr::include_graphics("figure/Overview.svg")
 ```
 
 ## Input data
@@ -334,9 +332,6 @@ Parameter inference is implemented in the `BASiCS_MCMC` function using an
 adaptive Metropolis within Gibbs algorithm [@Roberts2009], whose convergence can
 be assessed using the `BASiCS_DiagHist` and `BASiCS_DiagPlot` functions, 
 among others. 
-
-
-
 <!--- Removed as I think it's better to explain ESS later, together with its formula ---> 
 <!--- The `plot` function provides
 parameterwise trace plots, marginal density plots, while the latter three 
@@ -528,12 +523,11 @@ To further explore the underlying structure of the data, we compute global
 scaling normalisation factors using `r Biocpkg("scran")` and perform a 
 principal component analysis (PCA) of log-transformed normalised expression 
 counts using `r Biocpkg("scater")`. 
-The results of this analysis are visualised with respect to cell-level metadata
-and QC metrics.
 As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
-suggests the absence of strong batch effects. Moreover, we observe that 
+suggests the absence of strong batch effects. 
+<!--- Moreover, we observe that 
 activated cells tend to exhibit a higher number of expressed genes and total 
-read count (see Figure \@ref(fig:no-genes-total-counts)). 
+read count (see Figure \@ref(fig:no-genes-total-counts)). ---> 
 
 <!---We detect a higher number of expressed genes and a higher total read count in
 activated cells. Furthermore, cells within each group show a wide distribution
@@ -553,6 +547,7 @@ p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
 multiplot(p_stimulus, p_batch, cols = 2)
 ```
 
+<!---
 ```{r no-genes-total-counts, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the number of genes detected per cell (left) and the total number of endogenous reads per cell (right)."}
 # Visualise number of endogeneous genes detected
 p_total_features <- plotPCA(sce_naive_active, colour_by = "detected") +
@@ -568,23 +563,47 @@ p_total_counts <- plotPCA(sce_naive_active, colour_by = "sum") +
   scale_fill_viridis_c(name = "Number of counts", trans = "log10")
 multiplot(p_total_features, p_total_counts, cols = 2)
 ```
+--->
 
-Following cell-specific QC, we will remove all genes that are not detected in at 
-least 5 cells across both conditions or for which their average read count 
+Following cell-specific QC, we also recommend to remove lowly expressed genes 
+for which the data contains limited information. 
+Here, we remove all genes that are not detected in at least 5 cells across both 
+experimental conditions or for which their average scran normalised read count 
 (across all cells) is below 1. 
-These thresholds need to be set specifically for each dataset, and careful
-gene-specific quality metrics need to be closely examined as suggested by the 
+These thresholds need to be set specifically for each dataset, and 
+gene-specific quality metrics should always be examined, as suggested by the 
 [*OSCA*](https://osca.bioconductor.org/) Bioconductor workflow [@Amezquita2019].
 
-```{r gene-selection}
-# Remove genes
-ind_expressed <- rowSums(counts(sce_naive_active) > 0) >= 5 &
-  rowMeans(counts(sce_naive_active)) >= 1
-sce_naive_active <- sce_naive_active[ind_expressed, ]
+```{r gene-selection, fig.cap="Average expression for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
+# Calculate per gene QC metrics
+sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
+## Remove genes with zero total counts across all cells
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
+# Transform 'detected' metadata into number of cells
+rowData(sce_naive_active)$detected_cells <- rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
+rowData(sce_naive_active)$include_gene <- rowData(sce_naive_active)$mean >= 1 &
+  rowData(sce_naive_active)$detected_cells >= 5
+  
+plotRowData(
+    sce_naive_active,
+    x = "detected_cells",
+    y = "mean",
+    colour_by = "include_gene") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)) +
+geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
+geom_hline(yintercept = 1, linetype = "dashed", col = "grey60")
+# Apply gene filter 
+sce_naive_active <- sce_naive_active[include_gene, ]
 ```
 
-The final dataset used in subsequent analyses contains 
-`r ncol(sce_naive_active)` cells and `r nrow(sce_naive_active)` genes. 
+The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`
+cells and `r nrow(sce_naive_active)` genes. 
 
 ## BASiCS analysis - input data
 
@@ -597,6 +616,20 @@ Separate `SingleCellExperiment` objects are created for each group of cells.
 sce_naive <- sce_naive_active[, sce_naive_active$Stimulus == "Unstimulated"]
 sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
 ```
+
+Given that some of the spike-in molecules were not observed in the sequencing
+data, we will remove these from the data before continuing.
+
+```{r spike-ins-present}
+## Select the ERCC spike-ins of the dataset
+spikes_naive <- assay(altExp(sce_naive, "spike-ins"))
+spikes_active <- assay(altExp(sce_active, "spike-ins"))
+spikes_present <- rowSums(spikes_naive) != 0 & rowSums(spikes_active) != 0
+## Remove spike-ins that are not present from matrix and SCE object
+altExp(sce_naive, "spike-ins") <- altExp(sce_naive)[spikes_present, ]
+altExp(sce_active, "spike-ins") <- altExp(sce_active)[spikes_present, ]
+```
+
 
 Here, we update these objects in order to match the format required by 
 `r Biocpkg("BASiCS")`. Firstly, if multiple batches of sequenced cells are 
@@ -628,15 +661,12 @@ and input concentrations $C_i$ can be downloaded from [https://assets.thermofish
 
 ```{r spike-in_download}
 # Read in the spike-in concentrations
-download_file <- function(file, website, folder, destfile = file) {
-  if (!file.exists(destfile)) {
-    download.file(paste0(website, folder, file), destfile)
-  }
+if (!file.exists("downloads/spike_info.txt")) {
+  download.file(
+    "https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt",
+    destfile = "downloads/spike_info.txt"
+  )  
 }
-website <- "https://assets.thermofisher.com/"
-folder <- "TFS-Assets/LSG/manuals/"
-file <- "cms_095046.txt"
-download_file(file, website, folder, "downloads/spike_info.txt")
 
 ERCC_conc <- read.table(
   "downloads/spike_info.txt",

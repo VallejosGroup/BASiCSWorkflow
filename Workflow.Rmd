@@ -523,12 +523,8 @@ To further explore the underlying structure of the data, we compute global
 scaling normalisation factors using `r Biocpkg("scran")` and perform a 
 principal component analysis (PCA) of log-transformed normalised expression 
 counts using `r Biocpkg("scater")`. 
-The results of this analysis are visualised with respect to cell-level metadata
-and QC metrics.
 As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
-suggests the absence of strong batch effects. Moreover, we observe that 
-activated cells tend to exhibit a higher number of expressed genes and total 
-read count (see Figure \@ref(fig:no-genes-total-counts)). 
+suggests the absence of strong batch effects. 
 
 <!---We detect a higher number of expressed genes and a higher total read count in
 activated cells. Furthermore, cells within each group show a wide distribution
@@ -548,53 +544,41 @@ p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
 multiplot(p_stimulus, p_batch, cols = 2)
 ```
 
-```{r no-genes-total-counts, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the number of genes detected per cell (left) and the total number of endogenous reads per cell (right)."}
-# Visualise number of endogeneous genes detected
-p_total_features <- plotPCA(sce_naive_active, colour_by = "detected") +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)) +
-  scale_fill_viridis_c(name = "Number of genes", trans = "log10")
-
-# Visualise log10-transformed total number of counts
-p_total_counts <- plotPCA(sce_naive_active, colour_by = "sum") +
-  theme(legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)) +
-  scale_fill_viridis_c(name = "Number of counts", trans = "log10")
-multiplot(p_total_features, p_total_counts, cols = 2)
-```
-
-Following cell-specific QC, we will remove all genes that are not detected in at 
-least 5 cells across both conditions or for which their average read count 
+Following cell-specific QC, we also recommend to remove lowly expressed genes 
+for which the data contains limited information. 
+Here, we remove all genes that are not detected in at least 5 cells across both 
+experimental conditions or for which their average scran normalised read count 
 (across all cells) is below 1. 
 These thresholds need to be set specifically for each dataset, and 
 gene-specific quality metrics should always be examined, as suggested by the 
 [*OSCA*](https://osca.bioconductor.org/) Bioconductor workflow [@Amezquita2019].
 
 ```{r gene-selection, fig.cap="Average expression for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
-## Remove genes with zero count
-sce_naive_active <- sce_naive_active[rowSums(counts(sce_naive_active)) > 0, ]
-# Remove genes
-ind_expressed <- rowSums(counts(sce_naive_active) > 0) >= 5 &
-  rowMeans(counts(sce_naive_active)) >= 1
-
-ggplot() +
-  geom_point(
-    aes(
-      rowSums(counts(sce_naive_active) > 0),
-      rowMeans(counts(sce_naive_active)),
-      colour = ifelse(ind_expressed, "Retained", "Removed")
-    )
-  ) +
-  geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
-  geom_hline(yintercept = 1, linetype = "dashed", col = "grey60") +
-  scale_colour_brewer(palette = "Set1", name = NULL) +
-  labs(x = "Fraction of cells observed", y = "Average count") +
-  theme(legend.position = "below") +
+# Calculate per gene QC metrics
+sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
+## Remove genes with zero total counts across all cells
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
+# Transform 'detected' metadata into number of cells
+rowData(sce_naive_active)$detected_cells <- rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
+rowData(sce_naive_active)$include_gene <- rowData(sce_naive_active)$mean >= 1 &
+  rowData(sce_naive_active)$detected_cells >= 5
+  
+plotRowData(
+    sce_naive_active,
+    x = "detected_cells",
+    y = "mean",
+    colour_by = "include_gene") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
   scale_x_log10() +
-  scale_y_log10()
-
-sce_naive_active <- sce_naive_active[ind_expressed, ]
+  scale_y_log10() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)) +
+geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
+geom_hline(yintercept = 1, linetype = "dashed", col = "grey60")
+# Apply gene filter 
+sce_naive_active <- sce_naive_active[include_gene, ]
 ```
 
 The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`

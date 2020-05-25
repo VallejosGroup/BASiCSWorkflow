@@ -379,7 +379,6 @@ Parameter inference is implemented in the \texttt{BASiCS\_MCMC} function using a
 adaptive Metropolis within Gibbs algorithm \citep{Roberts2009}, whose convergence can
 be assessed using the \texttt{BASiCS\_DiagHist} and \texttt{BASiCS\_DiagPlot} functions,
 among others.
-
 The output from \texttt{BASiCS\_MCMC} is a \texttt{BASiCS\_Chain} object, which can be used
 for further downstream analyses. In particular, \texttt{BASiCS\_DetectHVG} and
 \texttt{BASiCS\_DetectLVG} can be respectively used to identify highly and lowly
@@ -631,12 +630,8 @@ To further explore the underlying structure of the data, we compute global
 scaling normalisation factors using \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} and perform a
 principal component analysis (PCA) of log-transformed normalised expression
 counts using \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}}.
-The results of this analysis are visualised with respect to cell-level metadata
-and QC metrics.
 As seen in Figure \ref{fig:pca-visualisation-stimulus-batch}, this analysis
-suggests the absence of strong batch effects. Moreover, we observe that
-activated cells tend to exhibit a higher number of expressed genes and total
-read count (see Figure \ref{fig:no-genes-total-counts}).
+suggests the absence of strong batch effects.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -663,51 +658,56 @@ read count (see Figure \ref{fig:no-genes-total-counts}).
 \caption{First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell.}\label{fig:pca-visualisation-stimulus-batch}
 \end{figure}
 
+Following cell-specific QC, we will remove all genes that are not detected in at
+least 5 cells across both conditions or for which their average read count
+(across all cells) is below 1.
+These thresholds need to be set specifically for each dataset, and
+gene-specific quality metrics should always be examined, as suggested by the
+\href{https://osca.bioconductor.org/}{\emph{OSCA}} Bioconductor workflow \citep{Amezquita2019}.
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{# Visualise number of endogeneous genes detected}
-\NormalTok{p_total_features <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"detected"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}
-    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{, }\DataTypeTok{angle =} \DecValTok{45}\NormalTok{)) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_fill_viridis_c}\NormalTok{(}\DataTypeTok{name =} \StringTok{"Number of genes"}\NormalTok{, }\DataTypeTok{trans =} \StringTok{"log10"}\NormalTok{)}
+\CommentTok{## Remove genes with zero count}
+\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[}\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active)) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{, ]}
+\CommentTok{# Remove genes}
+\NormalTok{ind_expressed <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>=}\StringTok{ }\DecValTok{5} \OperatorTok{&}
+\StringTok{  }\KeywordTok{rowMeans}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active)) }\OperatorTok{>=}\StringTok{ }\DecValTok{1}
 
-\CommentTok{# Visualise log10-transformed total number of counts}
-\NormalTok{p_total_counts <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"sum"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{, }\DataTypeTok{angle =} \DecValTok{45}\NormalTok{)) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_fill_viridis_c}\NormalTok{(}\DataTypeTok{name =} \StringTok{"Number of counts"}\NormalTok{, }\DataTypeTok{trans =} \StringTok{"log10"}\NormalTok{)}
-\KeywordTok{multiplot}\NormalTok{(p_total_features, p_total_counts, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_point}\NormalTok{(}
+    \KeywordTok{aes}\NormalTok{(}
+      \KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{),}
+      \KeywordTok{rowMeans}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active)),}
+      \DataTypeTok{colour =} \KeywordTok{ifelse}\NormalTok{(ind_expressed, }\StringTok{"Retained"}\NormalTok{, }\StringTok{"Removed"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_vline}\NormalTok{(}\DataTypeTok{xintercept =} \DecValTok{5}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{1}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_brewer}\NormalTok{(}\DataTypeTok{palette =} \StringTok{"Set1"}\NormalTok{, }\DataTypeTok{name =} \OtherTok{NULL}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"Fraction of cells observed"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Average count"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"below"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_x_log10}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_y_log10}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}
 
-{\centering \includegraphics{figure/no-genes-total-counts-1} 
+{\centering \includegraphics{figure/gene-selection-1} 
 
 }
 
-\caption{First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the number of genes detected per cell (left) and the total number of endogenous reads per cell (right).}\label{fig:no-genes-total-counts}
+\caption{Average expression for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed.}\label{fig:gene-selection}
 \end{figure}
-
-Following cell-specific QC, we will remove all genes that are not detected in at
-least 5 cells across both conditions or for which their average read count
-(across all cells) is below 1.
-These thresholds need to be set specifically for each dataset, and careful
-gene-specific quality metrics need to be closely examined as suggested by the
-\href{https://osca.bioconductor.org/}{\emph{OSCA}} Bioconductor workflow \citep{Amezquita2019}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{# Remove genes}
-\NormalTok{ind_expressed <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>=}\StringTok{ }\DecValTok{5} \OperatorTok{&}
-\StringTok{  }\KeywordTok{rowMeans}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active)) }\OperatorTok{>=}\StringTok{ }\DecValTok{1}
 \NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[ind_expressed, ]}
 \end{Highlighting}
 \end{Shaded}
 
-The final dataset used in subsequent analyses contains
-146 cells and 8953 genes.
+The final dataset used in subsequent analyses contains 146
+cells and 8953 genes.
 
 \hypertarget{basics-analysis---input-data}{%
 \subsection{BASiCS analysis - input data}\label{basics-analysis---input-data}}
@@ -721,6 +721,21 @@ Separate \texttt{SingleCellExperiment} objects are created for each group of cel
 \begin{Highlighting}[]
 \NormalTok{sce_naive <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Unstimulated"}\NormalTok{]}
 \NormalTok{sce_active <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Active"}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+Given that some of the spike-in molecules were not observed in the sequencing
+data, we will remove these from the data before continuing.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## Select the ERCC spike-ins of the dataset}
+\NormalTok{spikes_naive <-}\StringTok{ }\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive, }\StringTok{"spike-ins"}\NormalTok{))}
+\NormalTok{spikes_active <-}\StringTok{ }\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_active, }\StringTok{"spike-ins"}\NormalTok{))}
+\NormalTok{spikes_present <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(spikes_naive) }\OperatorTok{!=}\StringTok{ }\DecValTok{0} \OperatorTok{&}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(spikes_active) }\OperatorTok{!=}\StringTok{ }\DecValTok{0}
+\CommentTok{## Remove spike-ins that are not present from matrix and SCE object}
+\KeywordTok{altExp}\NormalTok{(sce_naive, }\StringTok{"spike-ins"}\NormalTok{) <-}\StringTok{ }\KeywordTok{altExp}\NormalTok{(sce_naive)[spikes_present, ]}
+\KeywordTok{altExp}\NormalTok{(sce_active, }\StringTok{"spike-ins"}\NormalTok{) <-}\StringTok{ }\KeywordTok{altExp}\NormalTok{(sce_active)[spikes_present, ]}
 \end{Highlighting}
 \end{Shaded}
 
@@ -762,15 +777,12 @@ and input concentrations \(C_i\) can be downloaded from \url{https://assets.ther
 \begin{Shaded}
 \begin{Highlighting}[]
 \CommentTok{# Read in the spike-in concentrations}
-\NormalTok{download_file <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(file, website, folder, }\DataTypeTok{destfile =}\NormalTok{ file) \{}
-  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(destfile)) \{}
-    \KeywordTok{download.file}\NormalTok{(}\KeywordTok{paste0}\NormalTok{(website, folder, file), destfile)}
-\NormalTok{  \}}
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"downloads/spike_info.txt"}\NormalTok{)) \{}
+  \KeywordTok{download.file}\NormalTok{(}
+    \StringTok{"https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt"}\NormalTok{,}
+    \DataTypeTok{destfile =} \StringTok{"downloads/spike_info.txt"}
+\NormalTok{  )  }
 \NormalTok{\}}
-\NormalTok{website <-}\StringTok{ "https://assets.thermofisher.com/"}
-\NormalTok{folder <-}\StringTok{ "TFS-Assets/LSG/manuals/"}
-\NormalTok{file <-}\StringTok{ "cms_095046.txt"}
-\KeywordTok{download_file}\NormalTok{(file, website, folder, }\StringTok{"downloads/spike_info.txt"}\NormalTok{)}
 
 \NormalTok{ERCC_conc <-}\StringTok{ }\KeywordTok{read.table}\NormalTok{(}
   \StringTok{"downloads/spike_info.txt"}\NormalTok{,}
