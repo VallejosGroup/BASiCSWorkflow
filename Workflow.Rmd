@@ -571,7 +571,7 @@ These thresholds need to be set specifically for each dataset, and
 gene-specific quality metrics should always be examined, as suggested by the 
 [*OSCA*](https://osca.bioconductor.org/) Bioconductor workflow [@Amezquita2019].
 
-```{r gene-selection}
+```{r gene-selection, fig.cap="Average expression for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
 ## Remove genes with zero count
 sce_naive_active <- sce_naive_active[rowSums(counts(sce_naive_active)) > 0, ]
 # Remove genes
@@ -589,6 +589,9 @@ ggplot() +
   geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
   geom_hline(yintercept = 1, linetype = "dashed", col = "grey60") +
   scale_colour_brewer(palette = "Set1", name = NULL) +
+  labs(x = "Fraction of cells observed", y = "Average count") +
+  theme(legend.position = "below") +
+  scale_x_log10() +
   scale_y_log10()
 
 sce_naive_active <- sce_naive_active[ind_expressed, ]
@@ -608,6 +611,20 @@ Separate `SingleCellExperiment` objects are created for each group of cells.
 sce_naive <- sce_naive_active[, sce_naive_active$Stimulus == "Unstimulated"]
 sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
 ```
+
+Given that some of the spike-in molecules were not observed in the sequencing
+data, we will remove these from the data before continuing.
+
+```{r spike-ins-present}
+## Select the ERCC spike-ins of the dataset
+spikes_naive <- assay(altExp(sce_naive, "spike-ins"))
+spikes_active <- assay(altExp(sce_active, "spike-ins"))
+spikes_present <- rowSums(spikes_naive) != 0 & rowSums(spikes_active) != 0
+## Remove spike-ins that are not present from matrix and SCE object
+altExp(sce_naive, "spike-ins") <- altExp(sce_naive)[spikes_present, ]
+altExp(sce_active, "spike-ins") <- altExp(sce_active)[spikes_present, ]
+```
+
 
 Here, we update these objects in order to match the format required by 
 `r Biocpkg("BASiCS")`. Firstly, if multiple batches of sequenced cells are 
@@ -728,7 +745,7 @@ For further information see [Methods](#methods).
 
 ```{r MCMC-naive, eval = FALSE}
 MCMC_naive <- BASiCS_MCMC(
-  Data = data_naive,
+  Data = sce_naive,
   PrintProgress = FALSE,
   N = 40000,
   Thin = 20,
@@ -887,7 +904,7 @@ Both of these functions take the `SingleCellExperiment` and `BASiCS_Chain`
 objects as inputs.
 
 ```{r normalisation-naive}
-counts_denoised <- BASiCS_DenoisedCounts(Data = data_naive, Chain = MCMC_naive)
+counts_denoised <- BASiCS_DenoisedCounts(Data = sce_naive, Chain = MCMC_naive)
 ```
 
 These normalised counts or rates can be further used for dimensionality 
@@ -993,7 +1010,8 @@ plot_data <- data.frame(
   BASiCS = ifelse(HVG_table$HVG, "HVG", "Not HVG"),
   scran = ifelse(is_hvg, "HVG", "Not HVG")
 )
-plot_data <- plot_data[order(plot_data$scran, plot_data$BASiCS, decreasing=TRUE), ]
+ord <- order(plot_data$scran, plot_data$BASiCS, decreasing = TRUE)
+plot_data <- plot_data[ord, ]
 plot_data$Status <- paste0(
   "BASiCS: ", plot_data$BASiCS, "\n",
   "scran: ", plot_data$scran, "\n")
@@ -1220,37 +1238,6 @@ ind_active <- sce_naive_active$Stimulus == "Active"
 sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
 ```
 
-Similar to the procedure described above in the 
-[single condition example](#Tcells-single), we will use 
-the `newBASiCS_Data` function to re-generate the `SingleCellExperiment` object 
-for the use with BASiCS.
-
-```{r Data-active}
-## select the biological genes of the dataset
-counts <- counts(sce_active)
-## Select the ERCC spike-ins of the dataset
-spikes <- assay(altExp(sce_active, "spike-ins"))
-spikes_present <- rowSums(spikes) != 0
-## Remove spike-ins that are not present from matrix and SCE object
-spikes <- spikes[spikes_present, ]
-altexp_present <- altExp(sce_active, "spike-ins")[spikes_present, ]
-altExp(sce_active, "spike-ins") <- altexp_present
-ind_spike <- c(rep(FALSE, nrow(counts)), rep(TRUE, nrow(spikes)))
-spike_input <- ERCC_count[rownames(spikes), ]
-
-
-# Generate the SingleCellExperiment object
-data_active <- newBASiCS_Data(
-  Counts = rbind(counts, spikes),
-  Tech = ind_spike,
-  SpikeInfo = spike_input,
-  BatchInfo = sce_active$Individuals
-)
-
-## Subset to common genes with naive
-data_active <- data_active[rownames(data_naive)]
-```
-
 ### Running the MCMC
 
 We can use this `SingleCellExperiment` object as an input to `BASiCS_MCMC`
@@ -1258,7 +1245,7 @@ and run the MCMC sampler over 40,000 iterations.
 
 ```{r MCMC-active, eval = FALSE}
 MCMC_active <- BASiCS_MCMC(
-  Data = data_active,
+  Data = sce_active,
   PrintProgress = FALSE,
   N = 40000,
   Thin = 20,
@@ -1279,7 +1266,7 @@ For convenience, this MCMC chain can be again obtained online at
 ```{r download-chain-active}
 if (!file.exists("rds/MCMC_active.rds")) {
   download.file(
-    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_active.rds"
+    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_active.rds",
     destfile = "rds/MCMC_active.rds"
   )
 }
@@ -1519,15 +1506,15 @@ heatmap_seq <- seq_len(heatmap_ngenes)
 active_ind <- order(active_mean$ProbDiffMean, decreasing = TRUE)[heatmap_seq]
 active_mean <- active_mean[active_ind, ]
 ## subset counts from each cell type to these genes
-act_counts_act <- counts(data_active)[active_mean$GeneName, ]
-nai_counts_act <- counts(data_naive)[active_mean$GeneName, ]
+act_counts_act <- counts(sce_active)[active_mean$GeneName, ]
+nai_counts_act <- counts(sce_naive)[active_mean$GeneName, ]
 
 ## Select genes with largest probability of differential expression
 s_ind <- order(naive_mean$ProbDiffMean, decreasing = TRUE)[heatmap_seq]
 naive_mean <- naive_mean[s_ind, ]
 ## subset counts from each cell type to these genes
-act_counts_nai <- counts(data_active)[naive_mean$GeneName, ]
-nai_counts_nai <- counts(data_naive)[naive_mean$GeneName, ]
+act_counts_nai <- counts(sce_active)[naive_mean$GeneName, ]
+nai_counts_nai <- counts(sce_naive)[naive_mean$GeneName, ]
 
 ## Calculate max absolute value for min/max of colour scale
 all_mean <- c(
@@ -1767,15 +1754,15 @@ heatmap_seq <- seq_len(heatmap_ngenes)
 active_ind <- order(active_resdisp$ProbDiffResDisp, decreasing = TRUE)[heatmap_seq]
 active_resdisp <- active_resdisp[active_ind, ]
 ## Subset count matrices to genes with highest probability
-act_counts_act <- counts(data_active)[active_resdisp$GeneName, ]
-nai_counts_act <- counts(data_naive)[active_resdisp$GeneName, ]
+act_counts_act <- counts(sce_active)[active_resdisp$GeneName, ]
+nai_counts_act <- counts(sce_naive)[active_resdisp$GeneName, ]
 
 ## Select genes with largest probability of differential variability
 s_ind <- order(naive_resdisp$ProbDiffResDisp, decreasing = TRUE)[heatmap_seq]
 naive_resdisp <- naive_resdisp[s_ind, ]
 ## Subset count matrices to genes with highest probability
-act_counts_nai <- counts(data_active)[naive_resdisp$GeneName, ]
-nai_counts_nai <- counts(data_naive)[naive_resdisp$GeneName, ]
+act_counts_nai <- counts(sce_active)[naive_resdisp$GeneName, ]
+nai_counts_nai <- counts(sce_naive)[naive_resdisp$GeneName, ]
 
 ## Calculate max values for colour scale
 all_resdisp <- c(
@@ -1860,9 +1847,9 @@ First, we must ensure that a `BatchInfo` field is present in the
 as the batch vector.
 
 ```{r MCMC-naive-nospikes, eval = FALSE}
-data_naive$BatchInfo <- data_naive$Individuals
+sce_naive$BatchInfo <- sce_naive$Individuals
 MCMC_naive_nospikes <- BASiCS_MCMC(
-  Data = data_naive,
+  Data = sce_naive,
   PrintProgress = FALSE,
   N = 40000,
   Thin = 20,
