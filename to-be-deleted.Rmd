@@ -444,7 +444,6 @@ sce_CD4_all <- SingleCellExperiment(
 altExp(sce_CD4_all, "spike-ins") <- SummarizedExperiment(
   assays = list(counts = spike_counts)
 )
-sce_CD4_all
 ```
 
 Throughout our analysis, we focus on naive and activated CD4^+^ T cells obtained 
@@ -478,7 +477,7 @@ spike-in counts and a low fraction of endogeneous counts
 (see Figure \@ref(fig:PerCellQC)).
 
 ```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
-# Calculate per cell QC metrics
+# Calculate and plot per cell QC metrics
 sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
 p_cellQC1 <- plotColData(sce_naive_active, x = "sum", y = "detected") +
   xlab("Total engogenous reads per cell") +
@@ -504,7 +503,6 @@ p_stimulus <- plotColData(
   theme(
     legend.position = "bottom",
     axis.text.x = element_text(angle = 45, hjust = 1))
-
 p_batch <- plotColData(
     sce_naive_active,
     x = "sum",
@@ -515,7 +513,6 @@ p_batch <- plotColData(
   theme(
     legend.position = "bottom",
     axis.text.x = element_text(angle = 45, hjust = 1))
-
 multiplot(p_stimulus, p_batch, cols = 2)
 ```
 
@@ -566,21 +563,23 @@ multiplot(p_total_features, p_total_counts, cols = 2)
 --->
 
 Following cell-specific QC, we also recommend to remove lowly expressed genes 
-for which the data contains limited information. 
+for which variability estimates are less reliable. 
 Here, we remove all genes that are not detected in at least 5 cells across both 
-experimental conditions or for which their average scran normalised read count 
-(across all cells) is below 1. 
+experimental conditions or for which their average read count (across all cells) 
+is below 1. 
 These thresholds need to be set specifically for each dataset, and 
 gene-specific quality metrics should always be examined, as suggested by the 
 [*OSCA*](https://osca.bioconductor.org/) Bioconductor workflow [@Amezquita2019].
 
-```{r gene-selection, fig.cap="Average expression for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
+```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
 # Calculate per gene QC metrics
 sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
-## Remove genes with zero total counts across all cells
+# Remove genes with zero total counts across all cells
 sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
-# Transform 'detected' metadata into number of cells
-rowData(sce_naive_active)$detected_cells <- rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
+# Transform 'detected' metadata into number of cells 
+rowData(sce_naive_active)$detected_cells <- 
+  rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
+# Define inclusion criteria
 rowData(sce_naive_active)$include_gene <- rowData(sce_naive_active)$mean >= 1 &
   rowData(sce_naive_active)$detected_cells >= 5
   
@@ -598,8 +597,18 @@ plotRowData(
     axis.text.x = element_text(angle = 45, hjust = 1)) +
 geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
 geom_hline(yintercept = 1, linetype = "dashed", col = "grey60")
-# Apply gene filter 
-sce_naive_active <- sce_naive_active[include_gene, ]
+# Apply inclusion criteria
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
+```
+
+Subsequently we also remove spike-in molecules that were not captured
+through sequencing. 
+
+```{r spike-ins-present}
+# Find which spike-ins were captured through sequencing
+detected_spikes <- rowSums(assay(altExp(sce_naive_active, "spike-ins")) > 0) > 0
+## Remove spike-ins that are not present from matrix and SCE object
+altExp(sce_naive_active, "spike-ins") <- altExp(sce_naive_active)[detected_spikes, ]
 ```
 
 The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`
@@ -610,26 +619,14 @@ cells and `r nrow(sce_naive_active)` genes.
 Here, we apply the `r Biocpkg("BASiCS")` model separately to cells from each
 experimental condition (`r sum(sce_naive_active$Stimulus == "Unstimulated")` 
 naive and `r sum(sce_naive_active$Stimulus == "Active")` activated cells). 
-Separate `SingleCellExperiment` objects are created for each group of cells. 
+Separate `SingleCellExperiment` objects are created for each group of cells.
+
+The global scaling normalisation approach implemented in `r Biocpkg("BASiCS")` 
 
 ```{r SCE-separation}
 sce_naive <- sce_naive_active[, sce_naive_active$Stimulus == "Unstimulated"]
 sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
 ```
-
-Given that some of the spike-in molecules were not observed in the sequencing
-data, we will remove these from the data before continuing.
-
-```{r spike-ins-present}
-## Select the ERCC spike-ins of the dataset
-spikes_naive <- assay(altExp(sce_naive, "spike-ins"))
-spikes_active <- assay(altExp(sce_active, "spike-ins"))
-spikes_present <- rowSums(spikes_naive) != 0 & rowSums(spikes_active) != 0
-## Remove spike-ins that are not present from matrix and SCE object
-altExp(sce_naive, "spike-ins") <- altExp(sce_naive)[spikes_present, ]
-altExp(sce_active, "spike-ins") <- altExp(sce_active)[spikes_present, ]
-```
-
 
 Here, we update these objects in order to match the format required by 
 `r Biocpkg("BASiCS")`. Firstly, if multiple batches of sequenced cells are 
@@ -707,5 +704,91 @@ metadata(sce_naive)$SpikeInput <- SpikeInput
 metadata(sce_active)$SpikeInput <- SpikeInput
 ```
 
+## BASiCS analysis - running the MCMC
 
+<!--- This text in this section has not been edited; 
+mostly focusing on structural changes for now --->
+It is recommended to run the `BASiCS_MCMC` sampler for at least 40,000 
+iterations to ensure convergence.
+However, if datasets are large and each condition contains hundreds of cells 
+from a homogeneous population, BASiCS can be run with fewer (e.g. 20,000) 
+iterations. For convenience, `BASiCS_MCMC` can be run with very few 
+(e.g 1,000) iterations for experimental purposes, and to identify systematic
+issues with the sampler for a particular dataset. However, small numbers of
+iterations do not provide sufficient information about the posterior 
+distribution to draw inference from. Therefore, unless the sampler has converged
+and produced an adequate number of samples (typically 1,000 or more), the 
+results of MCMC may be biased or unreliable.
+
+```{r MCMC-run, eval = FALSE}
+MCMC_naive <- BASiCS_MCMC(
+  Data = sce_naive,
+  PrintProgress = FALSE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  WithSpikes = TRUE,
+  StoreChains = TRUE, 
+  StoreDir = "rds/", 
+  RunName = "naive"
+)
+
+MCMC_active <- BASiCS_MCMC(
+  Data = sce_active,
+  PrintProgress = FALSE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  WithSpikes = TRUE,
+  StoreChains = TRUE, 
+  StoreDir = "rds/", 
+  RunName = "active"
+)
+```
+
+This sampler runs for 167 minutes on a 1.4 GHz Intel Core i5 procesor with 4GB
+RAM and produces a `BASiCS_Chain` data object.
+For comparison, this sampler runs for 97 minutes on a 3.4 GHz Intel Core 
+i7 procesor with 16GB RAM.
+For convenience, the MCMC chain can be obtained online at 
+[https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
+
+```{r download-chain-naive}
+if (!file.exists("rds/MCMC_naive.rds")) {
+  download.file(
+    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_naive.rds",
+    destfile = "rds/MCMC_naive.rds"
+  )  
+}
+if (!file.exists("rds/MCMC_active.rds")) {
+  download.file(
+    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_active.rds",
+    destfile = "rds/MCMC_active.rds"
+  )  
+}
+MCMC_naive <- readRDS("rds/MCMC_naive.rds")
+MCMC_active <- readRDS("rds/MCMC_active.rds")
+```
+
+The `BASiCS_Chain` object contains a list of matrices that store the 
+individual MCMC samples for each parameter. Each matrix contains cell- or 
+gene-specific parameters in the columns and MCMC samples in the rows.
+`r Biocpkg("BASiCS")` provides the `displayChainBASiCS` function to access the
+cell- or gene-specific parameters.
+As an example, we access the first 2 samples for $\mu_i$ of the first 5 genes.
+
+```{r displayChainBASiCS}
+displayChainBASiCS(MCMC_naive, Param = "mu")[1:2, 1:5]
+```
+
+Given that we ran the MCMC samples for 40,000 iterations, discarding
+the first 20,000 samples as burn-in, and using a thining factor of 20,
+we obtained 1,000 draws for each parameter, stored in the `BASiCS_Chain` object:
+
+```{r dim-displayChainBASiCS}
+dim(displayChainBASiCS(MCMC_naive, Param = "mu"))
+dim(displayChainBASiCS(MCMC_active, Param = "mu"))
+```
 

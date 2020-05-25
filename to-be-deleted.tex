@@ -497,23 +497,8 @@ The data and metadata described above are then converted into a
 \KeywordTok{altExp}\NormalTok{(sce_CD4_all, }\StringTok{"spike-ins"}\NormalTok{) <-}\StringTok{ }\KeywordTok{SummarizedExperiment}\NormalTok{(}
   \DataTypeTok{assays =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{counts =}\NormalTok{ spike_counts)}
 \NormalTok{)}
-\NormalTok{sce_CD4_all}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## class: SingleCellExperiment 
-## dim: 31089 1513 
-## metadata(0):
-## assays(1): counts
-## rownames(31089): ENSMUSG00000000001 ENSMUSG00000000003 ...
-##   ENSMUSG00000106668 ENSMUSG00000106670
-## rowData names(0):
-## colnames(1513): do4737 do4739 ... do12254 do12257
-## colData names(6): X Strain ... Individuals Celltype
-## reducedDimNames(0):
-## altExpNames(1): spike-ins
-\end{verbatim}
 
 Throughout our analysis, we focus on naive and activated CD4\textsuperscript{+} T cells obtained
 from young \emph{Mus musculus domesticus} animals, purified using MACS-based cell sorting.
@@ -564,7 +549,7 @@ spike-in counts and a low fraction of endogeneous counts
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{# Calculate per cell QC metrics}
+\CommentTok{# Calculate and plot per cell QC metrics}
 \NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{addPerCellQC}\NormalTok{(sce_naive_active, }\DataTypeTok{use_altexps =} \OtherTok{TRUE}\NormalTok{)}
 \NormalTok{p_cellQC1 <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(sce_naive_active, }\DataTypeTok{x =} \StringTok{"sum"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"detected"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
@@ -601,7 +586,6 @@ from which cells were collected (see Figure \ref{fig:experimental-condition-batc
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}
     \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
     \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{))}
-
 \NormalTok{p_batch <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
 \NormalTok{    sce_naive_active,}
     \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{,}
@@ -612,7 +596,6 @@ from which cells were collected (see Figure \ref{fig:experimental-condition-batc
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}
     \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
     \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{))}
-
 \KeywordTok{multiplot}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
@@ -658,36 +641,42 @@ suggests the absence of strong batch effects.
 \caption{First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell.}\label{fig:pca-visualisation-stimulus-batch}
 \end{figure}
 
-Following cell-specific QC, we will remove all genes that are not detected in at
-least 5 cells across both conditions or for which their average read count
-(across all cells) is below 1.
+Following cell-specific QC, we also recommend to remove lowly expressed genes
+for which variability estimates are less reliable.
+Here, we remove all genes that are not detected in at least 5 cells across both
+experimental conditions or for which their average read count (across all cells)
+is below 1.
 These thresholds need to be set specifically for each dataset, and
 gene-specific quality metrics should always be examined, as suggested by the
 \href{https://osca.bioconductor.org/}{\emph{OSCA}} Bioconductor workflow \citep{Amezquita2019}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{## Remove genes with zero count}
-\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[}\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active)) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{, ]}
-\CommentTok{# Remove genes}
-\NormalTok{ind_expressed <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>=}\StringTok{ }\DecValTok{5} \OperatorTok{&}
-\StringTok{  }\KeywordTok{rowMeans}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active)) }\OperatorTok{>=}\StringTok{ }\DecValTok{1}
-
-\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_point}\NormalTok{(}
-    \KeywordTok{aes}\NormalTok{(}
-      \KeywordTok{rowSums}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{),}
-      \KeywordTok{rowMeans}\NormalTok{(}\KeywordTok{counts}\NormalTok{(sce_naive_active)),}
-      \DataTypeTok{colour =} \KeywordTok{ifelse}\NormalTok{(ind_expressed, }\StringTok{"Retained"}\NormalTok{, }\StringTok{"Removed"}\NormalTok{)}
-\NormalTok{    )}
-\NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_vline}\NormalTok{(}\DataTypeTok{xintercept =} \DecValTok{5}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{1}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_colour_brewer}\NormalTok{(}\DataTypeTok{palette =} \StringTok{"Set1"}\NormalTok{, }\DataTypeTok{name =} \OtherTok{NULL}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"Fraction of cells observed"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Average count"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"below"}\NormalTok{) }\OperatorTok{+}
+\CommentTok{# Calculate per gene QC metrics}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{addPerFeatureQC}\NormalTok{(sce_naive_active, }\DataTypeTok{exprs_values =} \StringTok{"counts"}\NormalTok{)}
+\CommentTok{# Remove genes with zero total counts across all cells}
+\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[}\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected }\OperatorTok{!=}\StringTok{ }\DecValTok{0}\NormalTok{, ]}
+\CommentTok{# Transform 'detected' metadata into number of cells }
+\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected_cells <-}\StringTok{ }
+\StringTok{  }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected }\OperatorTok{*}\StringTok{ }\KeywordTok{ncol}\NormalTok{(sce_naive_active) }\OperatorTok{/}\StringTok{ }\DecValTok{100}
+\CommentTok{# Define inclusion criteria}
+\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{include_gene <-}\StringTok{ }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{mean }\OperatorTok{>=}\StringTok{ }\DecValTok{1} \OperatorTok{&}
+\StringTok{  }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected_cells }\OperatorTok{>=}\StringTok{ }\DecValTok{5}
+  
+\KeywordTok{plotRowData}\NormalTok{(}
+\NormalTok{    sce_naive_active,}
+    \DataTypeTok{x =} \StringTok{"detected_cells"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"mean"}\NormalTok{,}
+    \DataTypeTok{colour_by =} \StringTok{"include_gene"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{scale_x_log10}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_y_log10}\NormalTok{()}
+\StringTok{  }\KeywordTok{scale_y_log10}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)) }\OperatorTok{+}
+\KeywordTok{geom_vline}\NormalTok{(}\DataTypeTok{xintercept =} \DecValTok{5}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{) }\OperatorTok{+}
+\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{1}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -697,12 +686,25 @@ gene-specific quality metrics should always be examined, as suggested by the
 
 }
 
-\caption{Average expression for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed.}\label{fig:gene-selection}
+\caption{Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed.}\label{fig:gene-selection}
 \end{figure}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[ind_expressed, ]}
+\CommentTok{# Apply inclusion criteria}
+\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[}\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{include_gene, ]}
+\end{Highlighting}
+\end{Shaded}
+
+Subsequently we also remove spike-in molecules that were not captured
+through sequencing.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Find which spike-ins were captured through sequencing}
+\NormalTok{detected_spikes <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive_active, }\StringTok{"spike-ins"}\NormalTok{)) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>}\StringTok{ }\DecValTok{0}
+\CommentTok{## Remove spike-ins that are not present from matrix and SCE object}
+\KeywordTok{altExp}\NormalTok{(sce_naive_active, }\StringTok{"spike-ins"}\NormalTok{) <-}\StringTok{ }\KeywordTok{altExp}\NormalTok{(sce_naive_active)[detected_spikes, ]}
 \end{Highlighting}
 \end{Shaded}
 
@@ -721,21 +723,6 @@ Separate \texttt{SingleCellExperiment} objects are created for each group of cel
 \begin{Highlighting}[]
 \NormalTok{sce_naive <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Unstimulated"}\NormalTok{]}
 \NormalTok{sce_active <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Active"}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
-
-Given that some of the spike-in molecules were not observed in the sequencing
-data, we will remove these from the data before continuing.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{## Select the ERCC spike-ins of the dataset}
-\NormalTok{spikes_naive <-}\StringTok{ }\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive, }\StringTok{"spike-ins"}\NormalTok{))}
-\NormalTok{spikes_active <-}\StringTok{ }\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_active, }\StringTok{"spike-ins"}\NormalTok{))}
-\NormalTok{spikes_present <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(spikes_naive) }\OperatorTok{!=}\StringTok{ }\DecValTok{0} \OperatorTok{&}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(spikes_active) }\OperatorTok{!=}\StringTok{ }\DecValTok{0}
-\CommentTok{## Remove spike-ins that are not present from matrix and SCE object}
-\KeywordTok{altExp}\NormalTok{(sce_naive, }\StringTok{"spike-ins"}\NormalTok{) <-}\StringTok{ }\KeywordTok{altExp}\NormalTok{(sce_naive)[spikes_present, ]}
-\KeywordTok{altExp}\NormalTok{(sce_active, }\StringTok{"spike-ins"}\NormalTok{) <-}\StringTok{ }\KeywordTok{altExp}\NormalTok{(sce_active)[spikes_present, ]}
 \end{Highlighting}
 \end{Shaded}
 
