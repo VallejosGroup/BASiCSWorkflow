@@ -772,23 +772,9 @@ dim(displayChainBASiCS(MCMC_active, Param = "mu"))
 
 ## BASiCS analysis - convergence diagnostics
 
-TBC
-
-## Single condition example: Naive CD4^+^ T cells {#Tcells-single}
-
-To highlight the use of BASiCS to analyse cells in the single-condition case,
-we select naive CD4^+^ T cells of young B6 animals.
-Here, BASiCS can be used to identify highly- and lowly-variable genes and 
-calculate interpretable gene- and cell-specific parameters.
-Among others, these include gene-specific parameters for mean expression, 
-over-dispersion (biological variability) and residual over-dispersion 
-(biological variability after correcting for the confounding of mean and
-over-dispersion).
-
-
-
-
-### Assessing MCMC convergence {#naive-convergence}
+<!--- This text in this section has not been edited; 
+mostly focusing on structural changes for now;
+needs to include active cells too --->
 
 In the next step, we need to assess the convergence of the chain to ensure 
 robust downstream analysis. Specifically, we must ensure that the chain
@@ -833,7 +819,7 @@ mean expression or over-dispersion for all genes.
 plot(MCMC_naive, Param = "mu", Gene = 1)
 ```
 
-```{r diag-hist-naive, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests."}
+```{r diag-hist-naive, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests.", eval = FALSE}
 mu_ess <- BASiCS_DiagHist(MCMC_naive, Param = "mu") +
   xlab("ESS: mu") +
   geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
@@ -843,7 +829,7 @@ delta_ess <- BASiCS_DiagHist(MCMC_naive, Param = "delta") +
 multiplot(mu_ess, delta_ess, cols = 2)
 ```
 
-```{r diag-plot-naive, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
+```{r diag-plot-naive, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density.", eval = FALSE}
 mu_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "mu") +
   theme(legend.position = "none") +
   ylab("ESS") +
@@ -871,7 +857,54 @@ to exclude these genes from downstream analysis. As we will see later,
 `BASiCS_TestDE` automatically excludes these genes from tests of differential
 expression.
 
-## Downstream analysis
+Given that the sampler has generated less than 100 effectively independent 
+samples for these genes, there may not be sufficient posterior information to 
+reliably calculate differences in mean expression. Therefore it is appropriate 
+to exclude these genes from downstream analysis. As we will see later,
+`BASiCS_TestDE` automatically excludes these genes from tests of differential
+expression.
+
+```{r convergence-active, fig.cap="Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
+plot(MCMC_active, Param = "mu", Gene = 1)
+```
+
+
+```{r ess-diag-hist, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests.", eval = FALSE}
+mu_ess <- BASiCS_DiagHist(MCMC_active, Param = "mu") +
+  xlab("ESS: mu") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+delta_ess <- BASiCS_DiagHist(MCMC_active, Param = "delta") +
+  xlab("ESS: mu") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+multiplot(mu_ess, delta_ess, cols = 2)
+```
+
+```{r ess-diag-plot, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density.", eval = FALSE}
+mu_ess2 <- BASiCS_DiagPlot(MCMC_active, Param = "mu") +
+  theme(
+    legend.position = "none",
+  axis.text.x = element_text(hjust = 1, angle = 45)) +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+delta_ess2 <- BASiCS_DiagPlot(MCMC_active, Param = "delta") +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(hjust = 1, angle = 45)) +
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+multiplot(mu_ess2, delta_ess2, cols = 2)
+```
+
+## BASiCS analysis - data normalisation
+
+To highlight the use of BASiCS to analyse cells in the single-condition case,
+we select naive CD4^+^ T cells of young B6 animals.
+Here, BASiCS can be used to identify highly- and lowly-variable genes and 
+calculate interpretable gene- and cell-specific parameters.
+Among others, these include gene-specific parameters for mean expression, 
+over-dispersion (biological variability) and residual over-dispersion 
+(biological variability after correcting for the confounding of mean and
+over-dispersion).
 
 In this section, we will highlight the use of BASiCS when analysing 
 cells of a single condition. This includes normalisation, variance decomposition, 
@@ -879,8 +912,6 @@ detection of highly and lowly variable genes, and the use of gene-specific
 parameters as interpretable variability measures.
 Furthermore, we will compare the results in the individual steps with results 
 obtained using `r Biocpkg("scran")`.
-
-### Normalisation
 
 Posterior estimates of cell-specific parameters can be used to normalise the 
 data and correct for biases in mRNA content [@Vallejos2017].
@@ -896,11 +927,12 @@ The latter returns a rate, such that
 $$
   \Lambda_{ij} = \hat{\mu_i} \hat{\rho}_{ij}
 $$
+
 is the denoised expression rate for a cell and gene.
 Both of these functions take the `SingleCellExperiment` and `BASiCS_Chain`
 objects as inputs.
 
-```{r normalisation-naive}
+```{r normalisation-naive, eval = FALSE}
 counts_denoised <- BASiCS_DenoisedCounts(Data = sce_naive, Chain = MCMC_naive)
 ```
 
@@ -909,8 +941,7 @@ reduction and clustering as explained elsewhere [@Lun2016;@Amezquita2019].
 Alternatively, a dimensionality reduction method that operates directly on the
 count matrix could be used [@Townes2019;@Lopez2018].
 
-
-### Mean-variance trend
+## BASiCS analysis - HVG/LVG detection
 
 Numerous studies have highlighted the relationship between gene-specific 
 variability measures (e.g., squared coefficient of variation) and mean 
@@ -934,9 +965,6 @@ are not expressed in at least 2 cells.
 BASiCS automatically excludes these genes when assessing gene variability,
 given that it is not possible to quantify variability or changes in variability
 for genes that are only expressed in one cell.
-
-
-### Lowly and highly variable gene detection
 
 BASiCS offers a function to select genes with large or small biological 
 variance. If the MCMC sampler was run with `Regression = TRUE`,
@@ -1028,7 +1056,7 @@ We can now compare these gene-specific variability measures (over-dispersion and
 residual over-dispersion) to previously used measures to quantify cell-to-cell 
 expression variability [@Brennecke2013,@Kolodziejczyk2015cell].
 
-### Comparison to variance, Fano factor, CV^2^, and DM
+## Comparison between BASiCS and other measures of cell-to-cell variability
 
 Widely used measures of expression variability include the variance 
 [@Shalek2014], the Fano factor (variance divided by mean expression) 
@@ -1044,7 +1072,7 @@ obtained by running `displayChainBASiCS(MCMC_naive, Param = "epsilon")`.
 We will use `r CRANpkg("ggpointdensity")` to visualise the density of
 the genes along the axes of mean and variability.
 
-```{r variability-measures, fig.cap="Variance is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r variability-measures, fig.cap="Variance is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density.", eval = FALSE}
 library("ggpointdensity")
 library("viridis")
 # Exclude ERCCs
@@ -1070,7 +1098,7 @@ ggplot(
   scale_colour_viridis()
 ```
 
-```{r fano-fig, fig.cap="Fano factor is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r fano-fig, fig.cap="Fano factor is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density.", eval = FALSE}
 # Fano factor
 ggplot(
     data.frame(
@@ -1082,7 +1110,7 @@ ggplot(
   scale_colour_viridis()
 ```
 
-```{r cv-fig, fig.cap="Squared coefficient of variation is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r cv-fig, fig.cap="Squared coefficient of variation is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density.", eval = FALSE}
 # Squared coefficient of variation
 ggplot(
     data.frame(
@@ -1099,7 +1127,7 @@ The same is true for the over-dispersion parameters estimated by BASiCS, as
 shown below. Again, for this comparison, we exclude genes that are not observed
 to be expressed in at least 2 cells
 
-```{r CV-comparison-BASiCS, fig.cap="Over-dispersion estimates from BASiCS are plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r CV-comparison-BASiCS, fig.cap="Over-dispersion estimates from BASiCS are plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density.", eval = FALSE}
 summary_naive <- Summary(MCMC_naive)
 # Remove genes
 eps_not_na <- !is.na(displaySummaryBASiCS(summary_naive, Param = "epsilon")[, "median"])
@@ -1117,7 +1145,7 @@ ggplot(
   scale_colour_viridis()
 ```
 
-```{r cv-basics, fig.cap="Over-dispersion estimates from BASiCS are plotted against squared coefficient of variation for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r cv-basics, fig.cap="Over-dispersion estimates from BASiCS are plotted against squared coefficient of variation for all genes. Colour represents local density, with lighter colours representing higher density.", eval = FALSE}
 # Compare delta to CV2
 ggplot(
     data.frame(
@@ -1139,7 +1167,7 @@ along the mean-variability trend to correct for this confounding factor
 Here, we highlight how to obtain the residual variability estimates using 
 `r Biocpkg("BASiCS")` and `r Biocpkg("scran")`.
 
-```{r mean-dispersion-basics, fig.cap="Residual over-dispersion estimates are plotted against mean expression."}
+```{r mean-dispersion-basics, fig.cap="Residual over-dispersion estimates are plotted against mean expression.", eval = FALSE}
 # Residual over-dispersion estimates
 epsilon_naive <- displaySummaryBASiCS(summary_naive, Param = "epsilon")[eps_not_na, ]
 
@@ -1154,7 +1182,7 @@ ggplot(
   scale_colour_viridis()
 ```
 
-```{r mean-dispersion-dm, fig.cap="DM dispersion estimates are plotted against mean expression."}
+```{r mean-dispersion-dm, fig.cap="DM dispersion estimates are plotted against mean expression.", eval = FALSE}
 # DM values
 DM.naive <- DM(mean = mean_genes, cv2 = var_genes / mean_genes^2)
 
@@ -1169,7 +1197,7 @@ ggplot(
   scale_colour_viridis()
 ```
 
-```{r epsilon-dm, fig.cap="DM dispersion estimates are plotted against epsilon values."}
+```{r epsilon-dm, fig.cap="DM dispersion estimates are plotted against epsilon values.", eval = FALSE}
 # Compare residual over-dispersion and DM
 ggplot(
     data.frame(
@@ -1205,7 +1233,7 @@ posterior distribution of the test statistic.
 The workflow so far highlights the use of BASiCS for analysing cells of a 
 single condition.
 
-## Differential testing between naive and activated CD4^+^ T cells (two group example) {#Tcells-two}
+## Differential mean testing between naive and activated CD4^+^ T cells 
 
 This section highlights the use of BASiCS to perform differential expression
 tests for mean and variability between cells of two conditions. 
@@ -1223,108 +1251,6 @@ differentiation states. Prior to differential testing, and as explained above,
 we need to generate a `SingleCellExperiment` object that is compatible for
 processing using `r Biocpkg("BASiCS")`.
 
-### Creating the BASiCS Data objects
-
-We have performed quality control on the naive and activated CD4^+^ T cells 
-above when [preparing the `BASiCS_Data` object](#Tcells-filtering).
-Therefore, we can directly select the 
-activated CD4^+^ T cells from the `sce_naive_active` object.
-
-```{r SCE-active}
-ind_active <- sce_naive_active$Stimulus == "Active"
-sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
-```
-
-### Running the MCMC
-
-We can use this `SingleCellExperiment` object as an input to `BASiCS_MCMC`
-and run the MCMC sampler over 40,000 iterations.
-
-```{r MCMC-active, eval = FALSE}
-MCMC_active <- BASiCS_MCMC(
-  Data = sce_active,
-  PrintProgress = FALSE,
-  N = 40000,
-  Thin = 20,
-  Burn = 20000,
-  Regression = TRUE,
-  WithSpikes = TRUE
-)
-```
-
-This sampler runs for *98 minutes* on a 1.4 GHz Intel Core i5 processor with 
-4GB RAM and produces a `BASiCS_Chain` data object.
-The same sampling run completed in *59 minutes* on a 3.4 GHz Intel Core i7 
-processor with 16GB RAM.
-For convenience, this MCMC chain can be again obtained online at 
-[https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/).
-
-
-```{r download-chain-active}
-if (!file.exists("rds/MCMC_active.rds")) {
-  download.file(
-    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_active.rds",
-    destfile = "rds/MCMC_active.rds"
-  )
-}
-MCMC_active <- readRDS("rds/MCMC_active.rds")
-```
-
-### Quality checks
-
-Similar to the `BASiCS_Chain` quality checks described above, we will again 
-profile the convergence of the chain using a visual inspection of the trace 
-plots, sample histograms and autocorrelation of individual chains.
-Furthermore, we will use the `BASiCS_DiagPlot` function to assess the 
-effective sample size of all chains per parameter class.
-
-```{r convergence-active, fig.cap="Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
-plot(MCMC_active, Param = "mu", Gene = 1)
-```
-
-
-```{r ess-diag-hist, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests."}
-mu_ess <- BASiCS_DiagHist(MCMC_active, Param = "mu") +
-  xlab("ESS: mu") +
-  theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
-  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
-delta_ess <- BASiCS_DiagHist(MCMC_active, Param = "delta") +
-  xlab("ESS: mu") +
-  theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
-  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
-multiplot(mu_ess, delta_ess, cols = 2)
-```
-
-```{r ess-diag-plot, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
-mu_ess2 <- BASiCS_DiagPlot(MCMC_active, Param = "mu") +
-  theme(
-    legend.position = "none",
-  axis.text.x = element_text(hjust = 1, angle = 45)) +
-  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
-delta_ess2 <- BASiCS_DiagPlot(MCMC_active, Param = "delta") +
-  theme(
-    legend.position = "none",
-    axis.text.x = element_text(hjust = 1, angle = 45)) +
-  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
-multiplot(mu_ess2, delta_ess2, cols = 2)
-```
-
-
-To highlight the regression trend, we can use the `BASiCS_ShowFit` function.
-
-```{r active-fit, fig.cap="Over-dispersion is plotted against mean expression for active cells on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density; a curve represents the inferred trend of over-dispersion against mean, while the shaded area represents the corresponding 95\\% high density interval."}
-BASiCS_ShowFit(MCMC_active)
-```
-
-The MCMC sampler converged and the regression captured the relationship
-between mean and over-dispersion, similar to the regression done on naive
-CD4^+^ T cells. We can therefore move on to perform differential expression
-testing between naive and activated CD4^+^ T cells.
-
-## Differential expression testing
-
-### Differential mean expression
-
 To perform robust differential mean expression testing, BASiCS removes
 genes with small effective sample size when calculating EFDR and 
 performing differential expression testing.
@@ -1341,7 +1267,7 @@ The default settings for differential mean expression testing are as follows:
 - `Plot`, `PlotOffset`: Boolean to control if results are plotted.
   Default value is TRUE for both.
 
-```{r mean-expression-testing}
+```{r mean-expression-testing, eval = FALSE}
 # Perform differential testing
 Test_DE <- BASiCS_TestDE(
   Chain1 = MCMC_naive,
@@ -1359,12 +1285,12 @@ After running the test, we can now visualise the results in form of a MA-plot
 (log ratio _versus_ mean average) and volcano plot (posterior probability
 _versus_ log ratio).
 
-```{r visualise-MA-plot, fig.cap="Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
+```{r visualise-MA-plot, fig.cap="Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group.", eval = FALSE}
 BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "MA")
 ```
 
 
-```{r visualise-volcano-plot, fig.cap="Posterior probability of differential expression is plotted again log fold change. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
+```{r visualise-volcano-plot, fig.cap="Posterior probability of differential expression is plotted again log fold change. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group.", eval = FALSE}
 BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "Volcano")
 
 TableMean <- format(Test_DE, Which = "Mean", Filter = FALSE)
@@ -1380,7 +1306,7 @@ causes genes with effective sample size less than 100 in either input chain
 to be excluded from EFDR calibration and differential expression testing.
 
 
-```{r mean-expression-testing-2}
+```{r mean-expression-testing-2, eval = FALSE}
 # Perform differential testing
 Test_DE <- BASiCS_TestDE(
   Chain1 = MCMC_naive,
@@ -1396,13 +1322,14 @@ TableMean <- format(Test_DE, Which = "Mean", Filter = FALSE)
 TableDisp <- format(Test_DE, Which = "Disp", Filter = FALSE)
 table(TableMean$ResultDiffMean)
 ```
-
+<!---
 In this case, this results in 
-`r sum(TableMean$ResultDiffMean=="ExcludedLowESS")` genes with low 
+r  `sum(TableMean$ResultDiffMean=="ExcludedLowESS")` genes with low 
 effective sample size being excluded from differential mean expression tests.
-Similarly, `r sum(TableDisp$ResultDiffDisp=="ExcludedLowESS")`
+Similarly, r `sum(TableDisp$ResultDiffDisp=="ExcludedLowESS")`
 genes are excluded from tests of differential over-dispersion due to
 low effective sample size.
+--->
 
 When interpreting the results of differential expression tests, it is useful
 to visualise the differentially expressed genes in order to appraise the 
@@ -1410,9 +1337,6 @@ significance of the results. It is also useful to
 perform functional enrichment analysis to identify biologically 
 meaningful patterns, for example using `r Biocpkg("goseq")` [@Young2010].
 We do not perform, as it is outside of the scope of `r Biocpkg("BASiCS")`.
-
-
-#### Visualising differentially expressed genes {#vis-diff-exp}  
 
 The molecule counts used in this workflow are annotated using Ensembl gene
 identifiers. In order to facilitate the visualisation and interpretation
@@ -1425,7 +1349,7 @@ These packages can also be used to obtain gene-pathways mappings and
 information such as gene length, useful for performing functional analysis
 of the gene sets identified.
 
-```{r obtain-gene-symbols}
+```{r obtain-gene-symbols, eval = FALSE}
 dir.create("rds", showWarnings = FALSE)
 dir.create("downloads", showWarnings = FALSE)
 
@@ -1454,7 +1378,7 @@ the identified genes are the result of biologically meaningful shifts in
 expression and not technical issues. As an example, we visualise the
 expression of Cd69, a known marker of T cell activation [@Ziegler1994].
 
-```{r violin-plots, fig.cap="Violin plot of Cd69 expression in naive and active cells."}
+```{r violin-plots, fig.cap="Violin plot of Cd69 expression in naive and active cells.", eval = FALSE}
 # Expression of Cd69 in both conditions
 ind_cd <- genenames$external_gene_name == "Cd69"
 plotExpression(sce_naive_active,
@@ -1463,7 +1387,7 @@ plotExpression(sce_naive_active,
 )
 ```
 
-```{r pca-cd69, fig.cap="Principal component plot of naive and stimulated T cells. Colour indicates Cd69 expression level"}
+```{r pca-cd69, fig.cap="Principal component plot of naive and stimulated T cells. Colour indicates Cd69 expression level", eval = FALSE}
 plotReducedDim(sce_naive_active,
   dimred = "PCA",
   colour_by = genenames[ind_cd, 1]
@@ -1477,7 +1401,7 @@ aid in identifying systematic patterns among differentially expressed genes
 and guiding downstream analysis. Here we use `r Biocpkg("ComplexHeatmap")`
 to visualise genes that are up-regulated in each condition [@Gu2016].
 
-```{r gene-lists-mean}
+```{r gene-lists-mean, eval = FALSE}
 # Up-regulated in naive
 ind_n <- TableMean$ResultDiffMean == "Naive+"
 naive_mean <- TableMean[ind_n, ]
@@ -1492,7 +1416,7 @@ active_mean$Symbol <- genenames[active_mean$GeneName, 2]
 ```
 
 
-```{r heatmap-diffexp, fig.cap="Heatmap of 30 differentially expressed genes in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the logged average expression for each gene in each population."}
+```{r heatmap-diffexp, fig.cap="Heatmap of 30 differentially expressed genes in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the logged average expression for each gene in each population.", eval = FALSE}
 library("ComplexHeatmap")
 library("circlize")
 library("RColorBrewer")
@@ -1575,7 +1499,7 @@ While other computational tools exist to perform differential mean expression
 analysis, we next want to highlight the use of BASiCS for differential 
 variability testing.
 
-### Differential over-dispersion
+## Differential variability testing between naive and activated CD4^+^ T cells 
 
 Due to the negative association between over-dispersion and mean expression 
 parameters, only genes that do not show a change in mean expression.
@@ -1587,7 +1511,7 @@ Furthermore, it is crucial to exclude lowly expressed genes from this
 analysis to avoid biases arising from non-informative genes showing only
 low levels of stochastic expression.
 
-```{r over-dispersion-testing}
+```{r over-dispersion-testing, eval = FALSE}
 # Select genes that show expression in both conditions
 high_expr <- TableMean$Mean1 > 1 & TableMean$Mean2 > 1
 
@@ -1608,7 +1532,7 @@ We first select the genes that remain similarly expressed between both
 conditions and highlight the differential over-dispersion results in 
 the form of MA plots and boxplots.
 
-```{r over-dispersion-result, fig.cap="Over-dispersion log fold change (naive relative to active) is plotted against mean expression."}
+```{r over-dispersion-result, fig.cap="Over-dispersion log fold change (naive relative to active) is plotted against mean expression.", eval = FALSE}
 # Select genes with no changes in mean expression
 TableMean0 <- format(Test_DE_LFC0, Which = "Mean", Filter = FALSE)
 ind_nochange <- TableMean0$ResultDiffMean == "NoDiff"
@@ -1618,7 +1542,7 @@ BASiCS_PlotDE(Test_DE_LFC0, Parameters = "Disp", Plot = "MA")
 ```
 
 
-```{r over-dispersion-boxplot, fig.cap="Boxplot of over-dispersion log fold changes across all genes. The red line indicates a value of zero, corresponding to no difference."}
+```{r over-dispersion-boxplot, fig.cap="Boxplot of over-dispersion log fold changes across all genes. The red line indicates a value of zero, corresponding to no difference.", eval = FALSE}
 # Boxplot
 wilcox.test(TableDisp0$DispLog2FC[ind_nochange])
 boxplot(TableDisp0$DispLog2FC[ind_nochange],
@@ -1633,8 +1557,6 @@ With this analysis, we detect increased over-dispersion in naive CD4^+^ T cells
 for genes that show similar expression levels between naive and activated 
 CD4^+^ T cells.
 
-### Differential residual over-dispersion
-
 While the analysis in the previous section is well suited to detect global 
 changes in variability (e.g. detecting if one cell population overall displays
 higher expression variabilty), it does not allow the testing of changes in 
@@ -1645,7 +1567,7 @@ Here, we filter on genes that are lowly expressed in both conditions and, as
 explained above, remove genes for which the MCMC sampler obtained a low 
 effective sample size:
 
-```{r res-over-disp-filtering}
+```{r res-over-disp-filtering, eval = FALSE}
 # exclude lowly expressed genes
 high_expr <- TableMean$Mean1 > 1 & TableMean$Mean2 > 1
 ```
@@ -1654,7 +1576,7 @@ We can now perform differential expression testing as shown above.
 Again, we use a LFC threshold higher than the default to capture only large
 changes in mean expression.
 
-```{r DE-DV-testing}
+```{r DE-DV-testing, eval = FALSE}
 # Perform differential testing
 Test_DE <- BASiCS_TestDE(
   Chain1 = MCMC_naive,
@@ -1677,7 +1599,7 @@ residual over-dispersion parameters $\epsilon$ are shown on the y-axis.
 Epsilon values for genes that are not expressed in at least 2 cells per 
 conditions are marked as `NA` and are therefore not being displayed.
 
-```{r diff-res-plot, fig.cap="Distance of residual over-dispersion in naive cells relative to active cells. Colour indicates whether genes were excluded from testing, and whether a significant difference was identified between the two groups for that gene."}
+```{r diff-res-plot, fig.cap="Distance of residual over-dispersion in naive cells relative to active cells. Colour indicates whether genes were excluded from testing, and whether a significant difference was identified between the two groups for that gene.", eval = FALSE}
 TableResDisp <- format(Test_DE, Which = "ResDisp", Filter = FALSE)
 BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plot = "MA")
 ```
@@ -1690,7 +1612,7 @@ and the differential residual over-dispersion test.
 We will further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.
 
-```{r combine-results}
+```{r combine-results, eval = FALSE}
 cols <- setdiff(colnames(TableResDisp), c("GeneName", "MeanOverall"))
 res_df <- cbind(TableMean, TableResDisp[, cols])
 ind_exclude <- res_df$ResultDiffResDisp == "ExcludedByUser" |
@@ -1701,7 +1623,7 @@ res_df <- res_df[!ind_exclude, ]
 Next, we can visualise the regulation of each individual gene based on its 
 changes in mean expression and expression variability.
 
-```{r DV-DE-vis, fig.cap="Difference in residual over-dispersion is plotted against log fold change for all genes. Colour indicates whether significant differences were detected between the groups for each parameter."}
+```{r DV-DE-vis, fig.cap="Difference in residual over-dispersion is plotted against log fold change for all genes. Colour indicates whether significant differences were detected between the groups for each parameter.", eval = FALSE}
 res_df$ResultDiffMean[grep("Excluded", res_df$ResultDiffMean)] <- "NoDiff"
 res_df$ResultDiffResDisp[grep("Excluded", res_df$ResultDiffResDisp)] <- "NoDiff"
 ggplot(res_df) +
@@ -1718,15 +1640,12 @@ ggplot(res_df) +
   labs(x = bquote(log[2](FC)), y = "Difference in residual over-dispersion")
 ```
 
-
-#### Visualising differentially variable genes  
-
 As discussed [previously](#vis-diff-exp), it is useful to visualise the results
 of differential expression tests in order to appraise the quality of the 
 results, and to identify systematic patterns among the genes identified.
 For this purpose, we again use `r Biocpkg("ComplexHeatmap")`.
 
-```{r gene-lists-disp}
+```{r gene-lists-disp, eval = FALSE}
 # More variable in naive
 ind_n <- TableResDisp$ResultDiffResDisp == "Naive+"
 naive_resdisp <- TableResDisp[ind_n, ]
@@ -1743,7 +1662,7 @@ active_resdisp$Symbol <- genenames[active_resdisp$GeneName, 2]
 ```
 
 
-```{r heatmap-diffresdisp, fig.cap="Heatmap of 30 genes with higher residual over-dispersion in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the residual over-dispersion for each gene in that population."}
+```{r heatmap-diffresdisp, fig.cap="Heatmap of 30 genes with higher residual over-dispersion in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the residual over-dispersion for each gene in that population.", eval = FALSE}
 heatmap_ngenes <- 15
 heatmap_seq <- seq_len(heatmap_ngenes)
 
@@ -1819,7 +1738,7 @@ Heatmap(
   col = viridis(100))
 ```
 
-## Using BASiCS without spike-in molecules
+## BASiCS analysis - when spike-ins are not available
 
 `r Biocpkg("BASiCS")`, when using spike-in molecules, utilises a vertical 
 integration framework.
@@ -1874,7 +1793,7 @@ the vertical integration approach, as described above.
 As discussed previously, it is important to ensure that an adequate effective
 sample size has been generated using MCMC.
 
-```{r diag-hist-naive-nospikes, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters using the horizontal integration approach."}
+```{r diag-hist-naive-nospikes, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters using the horizontal integration approach.", eval = FALSE}
 mu_ess <- BASiCS_DiagHist(MCMC_naive, Param = "mu") +
   xlab("ESS: mu")
 delta_ess <- BASiCS_DiagHist(MCMC_naive, Param = "delta") +
@@ -1882,7 +1801,7 @@ delta_ess <- BASiCS_DiagHist(MCMC_naive, Param = "delta") +
 multiplot(mu_ess, delta_ess, cols = 2)
 ```
 
-```{r diag-plot-naive-nospikes, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters using the horizontal integration approach. Colour indicates local density, with lighter colours representing higher density."}
+```{r diag-plot-naive-nospikes, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters using the horizontal integration approach. Colour indicates local density, with lighter colours representing higher density.", eval = FALSE}
 mu_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "mu") +
   theme(legend.position = "none")
 delta_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "delta") +
@@ -1890,8 +1809,7 @@ delta_ess2 <- BASiCS_DiagPlot(MCMC_naive, Param = "delta") +
 multiplot(mu_ess2, delta_ess2, cols = 2)
 ```
 
-
-### Comparison of parameter estimates when using spike-ins and when not-using spike-ins
+## Comparison of parameter estimates when using spike-ins and when not-using spike-ins
 
 Under the horizontal integration approach described above,
 the scale of mean expression parameters and global scaling factors is not 
@@ -1904,7 +1822,7 @@ however there may
 be a global difference in mean expression estimates. We can remove this global
 offset using `BASiCS_CorrectOffset`.
 
-```{r offset, fig.cap="Distribution of mean expression values before and after correcting the global difference in scale."}
+```{r offset, fig.cap="Distribution of mean expression values before and after correcting the global difference in scale.", eval = FALSE}
 BASiCS_PlotOffset(MCMC_naive_nospikes, MCMC_naive,
   GroupLabel1 = "No spike-ins", GroupLabel2 = "Spike-ins",
   Type = "before-after")
@@ -1919,7 +1837,7 @@ As seen in Figure \@ref(fig:mu-spike-comp) and
 Figure \@ref(fig:delta-spike-comp), parameter point estimates from the two 
 methods are highly correlated.
 
-```{r mu-spike-comp, fig.cap="Comparison of mean expression point estimates using spike-in genes, and the same parameters estimated without using spike-in genes."}
+```{r mu-spike-comp, fig.cap="Comparison of mean expression point estimates using spike-in genes, and the same parameters estimated without using spike-in genes.", eval = FALSE}
 mu_spikes <- displayChainBASiCS(MCMC_naive)
 mu_nospikes <- displayChainBASiCS(MCMC_naive_nospikes_offset)
 ggplot(mapping = aes(colMedians(mu_spikes), colMedians(mu_nospikes))) +
@@ -1933,7 +1851,7 @@ ggplot(mapping = aes(colMedians(mu_spikes), colMedians(mu_nospikes))) +
   )
 ```
 
-```{r delta-spike-comp, fig.cap="Comparison of over-dispersion point estimates using spike-in genes, and the same parameters estimated without using spike-in genes."}
+```{r delta-spike-comp, fig.cap="Comparison of over-dispersion point estimates using spike-in genes, and the same parameters estimated without using spike-in genes.", eval = FALSE}
 delta_spikes <- displayChainBASiCS(MCMC_naive, Param = "delta")
 delta_nospikes <- displayChainBASiCS(MCMC_naive_nospikes_offset, Param = "delta")
 ggplot(mapping = aes(colMedians(delta_spikes), colMedians(delta_nospikes))) +
