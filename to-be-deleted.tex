@@ -302,6 +302,529 @@ DM estimates enable exploratory analyses of cell-to-cell heterogeneity, but a
 measure of uncertainty is not readily available. As such, gene-specific
 downstream inference (e.g.~differential variability testing) is precluded.
 
+\hypertarget{basics---bayesian-analysis-of-single-cell-sequencing-data}{%
+\subsection{BASiCS - Bayesian Analysis of Single Cell Sequencing data}\label{basics---bayesian-analysis-of-single-cell-sequencing-data}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(}\StringTok{"BASiCS"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+The \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} package uses a Bayesian hierarchical framework
+that borrows information across all genes and cells to robustly quantify
+transcriptional variability \citep{Vallejos2015BASiCS}.
+Similar to the approach adopted in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
+infers cell-specific global scaling normalisation parameters.
+However, instead of inferring these as a pre-processing step,
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses an integrated approach in which data normalisation
+and downstream analyses are performed simultaneously, thereby propagating
+statistical uncertainty.
+To quantify technical noise, the original implementation of
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses information from extrinsic spike-in molecules as
+control features, but the model has been extended to address situations in which
+spike-ins are not available \citep{Eling2018}.
+
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} summarises expression patterns through
+gene-specific \emph{mean} (\(\mu_i\)) and \emph{over-dispersion} (\(\delta_i\)) parameters.
+Mean parameters \(\mu_i\) quantify the overall expression for each gene \(i\)
+across the population of cells under study.
+In contrast, \(\delta_i\) captures the excess of variability that is observed with
+respect to what would be expected in a homogeneous cell population, after
+taking into account technical noise.
+This is used as a proxy to quantify transcriptional variability.
+To account for the strong relationship that is typically observed
+between gene-specific mean expression and over-dispersion parameters,
+Eling \emph{et al.} \citep{Eling2018} recently introduced a joint prior specification for
+these parameters.
+This joint prior formulation has been observed to improve posterior inference
+when the data is less informative (e.g.~small sample size, lowly expressed
+genes) and can be used to derive gene-specific \emph{residual over-dispersion}
+parameters \(\epsilon_i\) that are not confounded by mean expression.
+Similar to DM values implemented in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, these are defined as
+deviations with respect to an overall regression trend that captures the
+relationship between mean and over-dispersion values.
+
+Within a population of cells, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} decomposes the total
+observed variability in expression measurements into technical and biological
+components \citep{Vallejos2015}.
+This enables the identification of \emph{highly variable genes} (HVGs) that capture
+the major sources of heterogeneity within the analysed cells \citep{Brennecke2013}.
+HVG detection is often used as feature selection, to identify the input
+set of genes for subsequent analyses.
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} can also highlight \emph{lowly variable genes} (LVGs) that
+exhibit stable expression across the population of cells.
+These may relate to essential cellular functions and can assist the development
+of new data normalisation or integration strategies \citep{Lin2019}.
+
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} also provides a probabilistic decision rule to
+perform differential expression analyses between two (or more) pre-specified
+groups of cells \citep{Vallejos2016, Eling2018}.
+Whilst several differential expression tools have been proposed for scRNA-seq
+data (e.g. \citep{Kharchenko2014, Finak2015}), some evidence suggests that
+these do not generally outperform popular bulk RNA-seq tools \citep{Soneson2018}.
+Moreover, most of these methods are only designed to uncover changes in overall
+expression, ignoring the more complex patterns that can arise at the single cell
+level \citep{Lahnemann2020}.
+Instead, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} embraces the high granularity of scRNA-seq data,
+uncovering changes in cell-to-cell expression variability that are not
+confounded by differences in technical noise or in overall expression.
+
+\hypertarget{Tcells}{%
+\section{\texorpdfstring{Case study: analysis of naive CD4\textsuperscript{+} T cells}{Case study: analysis of naive CD4+ T cells}}\label{Tcells}}
+
+As a case study, we use scRNA-seq data generated for CD4\textsuperscript{+} T cells
+using the C1 Single-Cell Auto Prep System (Fluidigm\textsuperscript{®}).
+Martinez-Jimenez \emph{et al.} profiled naive (hereafter also referred to as
+unstimulated) and activated (3 hours using \emph{in vitro} antibody stimulation)
+CD4\textsuperscript{+} T cells from young and old animals across two mouse strains to study
+changes in expression variability during ageing and upon immune activation
+\citep{Martinez-jimenez2017}.
+They extracted naive or effector memory CD4\textsuperscript{+} T cells from spleens of young or
+old animals, obtaining purified populations using either magnetic-activated cell
+sorting (MACS) or fluorescence activated cell sorting (FACS).
+External ERCC spike-in RNA \citep{Rna2005} was added to aid the quantification of
+technical variability across all cells and all experiments were performed in
+replicates (also referred to as batches) to control for batch effects.
+
+\hypertarget{obtaining-the-data}{%
+\subsection{Obtaining the data}\label{obtaining-the-data}}
+
+The matrix with raw read counts can be obtained from ArrayExpress under the
+accession number
+\href{https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/}{E-MTAB-4888}.
+In the matrix, column names contain library identifiers and row names
+display gene Ensembl identifiers.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"downloads/raw_data.txt"}\NormalTok{)) \{}
+\NormalTok{  website <-}\StringTok{ "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"}
+\NormalTok{  file <-}\StringTok{ "E-MTAB-4888.processed.1.zip"}
+\NormalTok{  destfile <-}\StringTok{ "downloads/raw_data.txt.zip"}
+  \KeywordTok{download.file}\NormalTok{(}
+    \KeywordTok{paste0}\NormalTok{(website, file),}
+    \DataTypeTok{destfile =}\NormalTok{ destfile}
+\NormalTok{  )}
+  \KeywordTok{unzip}\NormalTok{(}\StringTok{"downloads/raw_data.txt.zip"}\NormalTok{, }\DataTypeTok{exdir =} \StringTok{"downloads"}\NormalTok{)}
+  \KeywordTok{file.remove}\NormalTok{(}\StringTok{"downloads/raw_data.txt.zip"}\NormalTok{)}
+\NormalTok{\}}
+
+\CommentTok{# Read in raw data}
+\NormalTok{CD4_raw <-}\StringTok{ }\KeywordTok{read.table}\NormalTok{(}\StringTok{"downloads/raw_data.txt"}\NormalTok{, }\DataTypeTok{header =} \OtherTok{TRUE}\NormalTok{, }\DataTypeTok{sep =} \StringTok{"}\CharTok{\textbackslash{}t}\StringTok{"}\NormalTok{)}
+\NormalTok{CD4_raw <-}\StringTok{ }\KeywordTok{as.matrix}\NormalTok{(CD4_raw)}
+\end{Highlighting}
+\end{Shaded}
+
+The input matrix contains data for 1,513
+cells and 31,181
+genes (including 92 ERCC spike-ins).
+Information about experimental conditions and other metadata is available
+under the same accession number.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"downloads/metadata_file.txt"}\NormalTok{)) \{}
+\NormalTok{  website <-}\StringTok{ "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888"}
+\NormalTok{  file <-}\StringTok{ "E-MTAB-4888.additional.1.zip"}
+  \KeywordTok{download.file}\NormalTok{(}
+    \KeywordTok{paste0}\NormalTok{(website, file),}
+    \DataTypeTok{destfile =} \StringTok{"downloads/metadata.txt.zip"}
+\NormalTok{  )}
+  \KeywordTok{unzip}\NormalTok{(}\StringTok{"downloads/metadata.txt.zip"}\NormalTok{, }\DataTypeTok{exdir =} \StringTok{"downloads"}\NormalTok{)}
+  \KeywordTok{file.remove}\NormalTok{(}\StringTok{"downloads/metadata.txt.zip"}\NormalTok{)}
+\NormalTok{\}}
+
+\NormalTok{CD4_metadata <-}\StringTok{ }\KeywordTok{read.table}\NormalTok{(}
+  \StringTok{"downloads/metadata_file.txt"}\NormalTok{,}
+  \DataTypeTok{header =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{sep =} \StringTok{"}\CharTok{\textbackslash{}t}\StringTok{"}
+\NormalTok{)}
+
+\CommentTok{# Save sample identifiers as rownames}
+\KeywordTok{rownames}\NormalTok{(CD4_metadata) <-}\StringTok{ }\NormalTok{CD4_metadata}\OperatorTok{$}\NormalTok{X}
+\end{Highlighting}
+\end{Shaded}
+
+The columns in the metadata file contain library identifiers (\texttt{X}), strain
+information (\texttt{Strain}; \emph{Mus musculus castaneus} or \emph{Mus musculus domesticus}),
+the age of the animals (\texttt{Age}; young or old), stimulation state of the cells
+(\texttt{Stimulus}; naive or activated), batch information (\texttt{Individuals}; associated
+to different mice), and cell type information (\texttt{Celltype}; via FACS or MACS
+purification).
+
+The data and metadata described above are then converted into a
+\texttt{SingleCellExperiment} object.
+For this purpose, we first separate the input matrix of expression counts into
+separate matrices associated to intrinsic genes and external spike-ins.
+Within the \texttt{SingleCellExperiment} object, the latter is stored separately
+through as an alternative experiment (see \texttt{?altExp}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Separate intrinsic from ERCC counts}
+\NormalTok{bio_counts <-}\StringTok{ }\NormalTok{CD4_raw[}\OperatorTok{!}\KeywordTok{grepl}\NormalTok{(}\StringTok{"ERCC"}\NormalTok{, }\KeywordTok{rownames}\NormalTok{(CD4_raw)), ]}
+\NormalTok{spike_counts <-}\StringTok{ }\NormalTok{CD4_raw[}\KeywordTok{grepl}\NormalTok{(}\StringTok{"ERCC"}\NormalTok{, }\KeywordTok{rownames}\NormalTok{(CD4_raw)), ]}
+\CommentTok{# Generate the SingleCellExperiment object}
+\NormalTok{sce_CD4_all <-}\StringTok{ }\KeywordTok{SingleCellExperiment}\NormalTok{(}
+  \DataTypeTok{assays =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{counts =} \KeywordTok{as.matrix}\NormalTok{(bio_counts)),}
+  \DataTypeTok{colData =}\NormalTok{ CD4_metadata[}\KeywordTok{colnames}\NormalTok{(CD4_raw), ]}
+\NormalTok{)}
+\CommentTok{# Add read-counts for spike-ins as an alternative experiment}
+\KeywordTok{altExp}\NormalTok{(sce_CD4_all, }\StringTok{"spike-ins"}\NormalTok{) <-}\StringTok{ }\KeywordTok{SummarizedExperiment}\NormalTok{(}
+  \DataTypeTok{assays =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{counts =}\NormalTok{ spike_counts)}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Hereafter our analysis focuses on naive and activated CD4\textsuperscript{+} T cells obtained
+from young \emph{Mus musculus domesticus} animals, purified using MACS-based cell sorting.
+Here, we extract these
+146 samples.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ind_select <-}\StringTok{ }\NormalTok{sce_CD4_all}\OperatorTok{$}\NormalTok{Strain }\OperatorTok{==}\StringTok{ "Mus musculus domesticus"} \OperatorTok{&}
+\StringTok{  }\NormalTok{sce_CD4_all}\OperatorTok{$}\NormalTok{Age }\OperatorTok{==}\StringTok{ "Young"} \OperatorTok{&}
+\StringTok{  }\NormalTok{sce_CD4_all}\OperatorTok{$}\NormalTok{Celltype }\OperatorTok{==}\StringTok{ "MACS-purified Naive"}
+\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_CD4_all[, ind_select]}
+\NormalTok{sce_naive_active}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## class: SingleCellExperiment 
+## dim: 31089 146 
+## metadata(0):
+## assays(1): counts
+## rownames(31089): ENSMUSG00000000001 ENSMUSG00000000003 ...
+##   ENSMUSG00000106668 ENSMUSG00000106670
+## rowData names(0):
+## colnames(146): do6113 do6118 ... do6493 do6495
+## colData names(6): X Strain ... Individuals Celltype
+## reducedDimNames(0):
+## altExpNames(1): spike-ins
+\end{verbatim}
+
+\hypertarget{qc-and-exploratory-analysis}{%
+\subsection{QC and exploratory analysis}\label{qc-and-exploratory-analysis}}
+
+The data available at
+\href{https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/}{E-MTAB-4888} have
+been already filtered to remove poor quality samples.
+The QC applied in \citep{Martinez-jimenez2017} removed cells with: (i) fewer
+than 1,000,000 total reads, (ii) less than 20\% of reads mapped to
+endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and
+(iv) more than 10\% or fewer than 0.5\% of reads mapped to mitochondrial genes.
+As an illustration, we visualise some of these metrics.
+We also include another widely used QC diagnostic plot which compares the total
+number (or fraction) of spike-in counts versus the total number (or fraction) of
+endogeneous counts.
+In such a plot, low quality samples are characterised by a high fraction of
+spike-in counts and a low fraction of endogeneous counts
+(see Figure \ref{fig:PerCellQC}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Calculate and plot per cell QC metrics}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{addPerCellQC}\NormalTok{(sce_naive_active, }\DataTypeTok{use_altexps =} \OtherTok{TRUE}\NormalTok{)}
+\NormalTok{p_cellQC1 <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
+\NormalTok{  sce_naive_active, }
+  \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{, }
+  \DataTypeTok{y =} \StringTok{"detected"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{)}
+\NormalTok{p_cellQC2 <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
+\NormalTok{  sce_naive_active, }
+  \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{, }
+  \DataTypeTok{y =} \StringTok{"altexps_spike-ins_sum"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Total spike-in reads per cell"}\NormalTok{)}
+\KeywordTok{multiplot}\NormalTok{(p_cellQC1, p_cellQC2, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/PerCellQC-1} 
+
+}
+
+\caption{Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right).}\label{fig:PerCellQC}
+\end{figure}
+
+These metrics can also be visualised with respect to cell-level metadata, such
+as the experimental conditions (active vs unstimulated) and the different mice
+from which cells were collected (see Figure \ref{fig:experimental-condition-batch}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{p_stimulus <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
+\NormalTok{    sce_naive_active,}
+    \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"detected"}\NormalTok{, }
+    \DataTypeTok{colour_by =} \StringTok{"Stimulus"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{))}
+\NormalTok{p_batch <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
+\NormalTok{    sce_naive_active,}
+    \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"detected"}\NormalTok{, }
+    \DataTypeTok{colour_by =} \StringTok{"Individuals"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{))}
+\KeywordTok{multiplot}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/experimental-condition-batch-1} 
+
+}
+
+\caption{Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell.}\label{fig:experimental-condition-batch}
+\end{figure}
+
+To further explore the underlying structure of the data, we compute global
+scaling normalisation factors using \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} and perform a
+principal component analysis (PCA) of log-transformed normalised expression
+counts using \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}}.
+As seen in Figure \ref{fig:pca-visualisation-stimulus-batch}, this analysis
+suggests the absence of strong batch effects.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Global scaling normalisation}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{computeSumFactors}\NormalTok{(sce_naive_active)}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{logNormCounts}\NormalTok{(sce_naive_active)}
+\CommentTok{# PCA }
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{runPCA}\NormalTok{(sce_naive_active)}
+\NormalTok{p_stimulus <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"Stimulus"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
+\NormalTok{p_batch <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"Individuals"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
+\KeywordTok{multiplot}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/pca-visualisation-stimulus-batch-1} 
+
+}
+
+\caption{First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell.}\label{fig:pca-visualisation-stimulus-batch}
+\end{figure}
+
+In addition to cell-specific QC, we also recommend to apply a gene filtering
+step prior to the use of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
+The purpose of this filter is to remove lowly expressed genes that were largely
+undetected through sequencing and for which variability estimates are less
+reliable.
+Here, we remove all genes that are not detected in at least 5 cells across both
+experimental conditions or for which their average read count is below 1.
+These thresholds can vary across datasets and might be informed by gene-specific
+QC metrics such as those shown in \ref{fig:gene-selection}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Calculate per gene QC metrics}
+\NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{addPerFeatureQC}\NormalTok{(sce_naive_active, }\DataTypeTok{exprs_values =} \StringTok{"counts"}\NormalTok{)}
+\CommentTok{# Remove genes with zero total counts across all cells}
+\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[}\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected }\OperatorTok{!=}\StringTok{ }\DecValTok{0}\NormalTok{, ]}
+\CommentTok{# Transform 'detected' metadata into number of cells }
+\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected_cells <-}\StringTok{ }
+\StringTok{  }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected }\OperatorTok{*}\StringTok{ }\KeywordTok{ncol}\NormalTok{(sce_naive_active) }\OperatorTok{/}\StringTok{ }\DecValTok{100}
+\CommentTok{# Define inclusion criteria}
+\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{include_gene <-}\StringTok{ }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{mean }\OperatorTok{>=}\StringTok{ }\DecValTok{1} \OperatorTok{&}
+\StringTok{  }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected_cells }\OperatorTok{>=}\StringTok{ }\DecValTok{5}
+  
+\KeywordTok{plotRowData}\NormalTok{(}
+\NormalTok{    sce_naive_active,}
+    \DataTypeTok{x =} \StringTok{"detected_cells"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"mean"}\NormalTok{,}
+    \DataTypeTok{colour_by =} \StringTok{"include_gene"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_x_log10}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_y_log10}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)) }\OperatorTok{+}
+\KeywordTok{geom_vline}\NormalTok{(}\DataTypeTok{xintercept =} \DecValTok{5}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{) }\OperatorTok{+}
+\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{1}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/gene-selection-1} 
+
+}
+
+\caption{Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed.}\label{fig:gene-selection}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Apply inclusion criteria}
+\NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[}\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{include_gene, ]}
+\end{Highlighting}
+\end{Shaded}
+
+Subsequently we also recommend to remove spike-in molecules that were not
+captured through sequencing.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{detected_spikes <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive_active)) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>}\StringTok{ }\DecValTok{0}
+\KeywordTok{altExp}\NormalTok{(sce_naive_active) <-}\StringTok{ }\KeywordTok{altExp}\NormalTok{(sce_naive_active)[detected_spikes, ]}
+\end{Highlighting}
+\end{Shaded}
+
+The final dataset used in subsequent analyses contains 146
+cells, 8953 genes and 58 spike-ins.
+
+\hypertarget{basics-analysis---input-data}{%
+\subsection{BASiCS analysis - input data}\label{basics-analysis---input-data}}
+
+Here, we apply the \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} model separately to cells from each
+experimental condition (93
+naive and 53 activated cells).
+Separate \texttt{SingleCellExperiment} objects are created for each group of cells.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sce_naive <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Unstimulated"}\NormalTok{]}
+\NormalTok{sce_active <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Active"}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} requires the user to update these objects with additional
+information, using a specific format.
+Firstly, if multiple batches of sequenced cells are available (e.g.~multiple
+donors from which cells were extracted or multiple sequencing batches from the
+same experimental condition), this information must be included under the
+\texttt{BatchInfo} label as part of the cell-level metadata.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{colData}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{BatchInfo <-}\StringTok{ }\KeywordTok{colData}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{Individuals}
+\KeywordTok{colData}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{BatchInfo <-}\StringTok{ }\KeywordTok{colData}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{Individuals}
+\end{Highlighting}
+\end{Shaded}
+
+If spike-ins will be used to aid data normalisation and technical noise
+quantification, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} also requires the number of spike-in
+molecules that were added to each well.
+For each spike-in gene \(i\), this corresponds to:
+
+\[ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
+\times V \times D \hspace{0.5cm} \mbox{where,} \]
+
+\begin{itemize}
+\item
+  \(C_i\) is the concentration for the spike-in \(i\) (measured in \(aM\mu{}l^{-1}\)),
+\item
+  \(V\) is the volume added into each well (measure in \(nl\)) and
+\item
+  \(D\) is a dilution factor.
+\end{itemize}
+
+The remaining factors in the equation above are unit conversion constants (
+e.g.~from moles to molecules).
+For the CD4\textsuperscript{+} T cell data, the authors added a 1:50,000 dilution of the ERCC
+spike-in mix 1 and a volume of \(9nl\) was added into each well (see \url{https://www.fluidigm.com/faq/ifc-9}).
+Finally, input concentrations \(C_i\) can be downloaded from \href{https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt}{https://assets.thermofisher.com/TFS-Assets/LSG/manuals}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"downloads/spike_info.txt"}\NormalTok{)) \{}
+\NormalTok{  website <-}\StringTok{ "https://assets.thermofisher.com/TFS-Assets/LSG/manuals"}
+\NormalTok{  file <-}\StringTok{ "cms_095046.txt"}
+  \KeywordTok{download.file}\NormalTok{(}
+    \KeywordTok{paste0}\NormalTok{(website, file),}
+    \DataTypeTok{destfile =} \StringTok{"downloads/spike_info.txt"}
+\NormalTok{  )  }
+\NormalTok{\}}
+
+\NormalTok{ERCC_conc <-}\StringTok{ }\KeywordTok{read.table}\NormalTok{(}\StringTok{"downloads/spike_info.txt"}\NormalTok{, }\DataTypeTok{sep =} \StringTok{"}\CharTok{\textbackslash{}t}\StringTok{"}\NormalTok{, }\DataTypeTok{header =} \OtherTok{TRUE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Based on this information, the calculation above proceeds as follows
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Moles per micro litre}
+\NormalTok{ERCC_mmul <-}\StringTok{ }\NormalTok{ERCC_conc}\OperatorTok{$}\NormalTok{concentration.in.Mix.}\DecValTok{1}\NormalTok{..attomoles.ul. }\OperatorTok{*}\StringTok{ }\NormalTok{(}\DecValTok{10}\OperatorTok{^}\NormalTok{(}\OperatorTok{-}\DecValTok{18}\NormalTok{))}
+\CommentTok{# Molecule count per micro litre (1 mole comprises 6.02214076 x 10^\{23\} molecules)}
+\NormalTok{ERCC_countmul <-}\StringTok{ }\NormalTok{ERCC_mmul }\OperatorTok{*}\StringTok{ }\NormalTok{(}\FloatTok{6.02214076} \OperatorTok{*}\StringTok{ }\NormalTok{(}\DecValTok{10}\OperatorTok{^}\DecValTok{23}\NormalTok{))}
+\CommentTok{# Application of the dilution factor (1:50,000)}
+\NormalTok{ERCC_count <-}\StringTok{ }\NormalTok{ERCC_countmul }\OperatorTok{/}\StringTok{ }\DecValTok{50000}
+\CommentTok{# Multiplying by the volume added into each well}
+\NormalTok{ERCC_count_final <-}\StringTok{ }\NormalTok{ERCC_count }\OperatorTok{*}\StringTok{ }\FloatTok{0.009}
+\end{Highlighting}
+\end{Shaded}
+
+To update the \texttt{sce\_naive} and \texttt{sce\_active} objects, the user must create a
+\texttt{data.frame} whose first column contains the labels associated to
+the spike-in molecule (e.g.~ERCC-00130) and whose second column contains the
+input number of molecules calculated above.
+This information is added as metadata for \texttt{altExp(sce\_naive)} and
+\texttt{altExp(sce\_active)}, respectively.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{SpikeInput <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
+  \DataTypeTok{Names =}\NormalTok{ ERCC_conc}\OperatorTok{$}\NormalTok{ERCC.ID,}
+  \DataTypeTok{count =}\NormalTok{ ERCC_count_final}
+\NormalTok{)}
+\CommentTok{# Exclude spike-ins not included in the input SingleCellExperiment objects}
+\NormalTok{SpikeInput <-}\StringTok{ }\KeywordTok{subset}\NormalTok{(SpikeInput, Names }\OperatorTok{%in%}\StringTok{ }\KeywordTok{rownames}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive)))}
+
+\KeywordTok{metadata}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{SpikeInput <-}\StringTok{ }\NormalTok{SpikeInput}
+\KeywordTok{metadata}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{SpikeInput <-}\StringTok{ }\NormalTok{SpikeInput}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{basics-analysis---parameter-estimation}{%
+\subsection{BASiCS analysis - parameter estimation}\label{basics-analysis---parameter-estimation}}
+
+Parameter estimation is implemented in the \texttt{BASiCS\_MCMC} function using an
+adaptive Metropolis within Gibbs algorithm \citep{Roberts2009}.
+The primary inputs for \texttt{BASiCS\_MCMC} correspond to:
+
+\begin{itemize}
+\item
+  \texttt{Data}: a \texttt{SingleCellExperiment} object created as described in the previous
+  sections.
+\item
+  \texttt{N}: the total number of MCMC iterations
+\item
+  \texttt{Thin}: thining period for output storage (only the \texttt{Thin}-th MCMC draw will be stored)
+\item
+  \texttt{Burn}: the initial number of MCMC iterations to be discarded
+\item
+  \texttt{Regression}: whether or not the join ()
+\item
+  \texttt{WithSpikes}:
+\end{itemize}
+
+As a default, we recommend to use \texttt{Regression\ =\ TRUE} as we have observed that
+the joint prior introduced by Eling \emph{et al.} leads to m
+
+Additional optional parameters can be used to store the generated output
+(\texttt{StoreChains}, \texttt{StoreDir}, \texttt{RunName}) and to monitor the progress of the
+algorithm (\texttt{PrintProgress}).
+
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{library}\NormalTok{(}\StringTok{"ggplot2"}\NormalTok{)}

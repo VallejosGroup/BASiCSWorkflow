@@ -701,7 +701,6 @@ results of MCMC may be biased or unreliable.
 ```{r MCMC-run, eval = FALSE}
 MCMC_naive <- BASiCS_MCMC(
   Data = sce_naive,
-  PrintProgress = FALSE,
   N = 40000,
   Thin = 20,
   Burn = 20000,
@@ -714,7 +713,6 @@ MCMC_naive <- BASiCS_MCMC(
 
 MCMC_active <- BASiCS_MCMC(
   Data = sce_active,
-  PrintProgress = FALSE,
   N = 40000,
   Thin = 20,
   Burn = 20000,

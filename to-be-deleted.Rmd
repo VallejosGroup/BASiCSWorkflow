@@ -246,13 +246,46 @@ DM estimates enable exploratory analyses of cell-to-cell heterogeneity, but a
 measure of uncertainty is not readily available. As such, gene-specific 
 downstream inference (e.g. differential variability testing) is precluded.
 
+## BASiCS - Bayesian Analysis of Single Cell Sequencing data
 
 ```{r}
-library("ggplot2")
+library("BASiCS")
 ```
 
+The `r Biocpkg("BASiCS")` package uses a Bayesian hierarchical framework 
+that borrows information across all genes and cells to robustly quantify 
+transcriptional variability [@Vallejos2015BASiCS].
+Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
+infers cell-specific global scaling normalisation parameters. 
+However, instead of inferring these as a pre-processing step, 
+`r Biocpkg("BASiCS")` uses an integrated approach in which data normalisation 
+and downstream analyses are performed simultaneously, thereby propagating
+statistical uncertainty. 
+To quantify technical noise, the original implementation of 
+`r Biocpkg("BASiCS")` uses information from extrinsic spike-in molecules as 
+control features, but the model has been extended to address situations in which
+spike-ins are not available [@Eling2018].
 
-<!--- BASiCS downstream analyses within a single population 
+`r Biocpkg("BASiCS")` summarises expression patterns through 
+gene-specific *mean* ($\mu_i$) and *over-dispersion* ($\delta_i$) parameters. 
+Mean parameters $\mu_i$ quantify the overall expression for each gene $i$
+across the population of cells under study.
+In contrast, $\delta_i$ captures the excess of variability that is observed with 
+respect to what would be expected in a homogeneous cell population, after 
+taking into account technical noise. 
+This is used as a proxy to quantify transcriptional variability.
+To account for the strong relationship that is typically observed 
+between gene-specific mean expression and over-dispersion estimates, 
+Eling *et al.*  [@Eling2018] recently introduced a joint prior specification for 
+these parameters. 
+This joint prior formulation has been observed to improve posterior inference
+when the data is less informative (e.g. small sample size, lowly expressed 
+genes) and can be used to derive gene-specific *residual over-dispersion* 
+parameters $\epsilon_i$ that are not confounded by mean expression. 
+Similar to DM values implemented in `r Biocpkg("scran")`, these are defined as 
+deviations with respect to an overall regression trend that captures the 
+relationship between mean and over-dispersion values.
+
 Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
 observed variability in expression measurements into technical and biological 
 components [@Vallejos2015]. 
@@ -263,9 +296,8 @@ set of genes for subsequent analyses.
 `r Biocpkg("BASiCS")` can also highlight *lowly variable genes* (LVGs) that 
 exhibit stable expression across the population of cells.
 These may relate to essential cellular functions and can assist the development
-of new data normalisation or integration strategies [@Lin2019]. --->
+of new data normalisation or integration strategies [@Lin2019].
 
-<!--- BASiCS downstream analyses between populations 
 `r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
 perform differential expression analyses between two (or more) pre-specified 
 groups of cells [@Vallejos2016; @Eling2018].
@@ -277,7 +309,381 @@ expression, ignoring the more complex patterns that can arise at the single cell
 level [@Lahnemann2020]. 
 Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
 uncovering changes in cell-to-cell expression variability that are not 
-confounded by differences in technical noise or in overall expression. --->
+confounded by differences in technical noise or in overall expression. 
+
+# Case study: analysis of naive CD4^+^ T cells {#Tcells}
+
+As a case study, we use scRNA-seq data generated for CD4^+^ T cells
+using the C1 Single-Cell Auto Prep System (Fluidigm^®^). 
+Martinez-Jimenez _et al._ profiled naive (hereafter also referred to as 
+unstimulated) and activated (3 hours using _in vitro_ antibody stimulation) 
+CD4^+^ T cells from young and old animals across two mouse strains to study 
+changes in expression variability during ageing and upon immune activation 
+[@Martinez-jimenez2017].
+They extracted naive or effector memory CD4^+^ T cells from spleens of young or 
+old animals, obtaining purified populations using either magnetic-activated cell 
+sorting (MACS) or fluorescence activated cell sorting (FACS).
+External ERCC spike-in RNA [@Rna2005] was added to aid the quantification of 
+technical variability across all cells and all experiments were performed in 
+replicates (also referred to as batches) to control for batch effects.
+
+## Obtaining the data
+
+The matrix with raw read counts can be obtained from ArrayExpress under the 
+accession number 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
+In the matrix, column names contain library identifiers and row names
+display gene Ensembl identifiers. 
+
+```{r naive-data}
+if (!file.exists("downloads/raw_data.txt")) {
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
+  file <- "E-MTAB-4888.processed.1.zip"
+  destfile <- "downloads/raw_data.txt.zip"
+  download.file(
+    paste0(website, file),
+    destfile = destfile
+  )
+  unzip("downloads/raw_data.txt.zip", exdir = "downloads")
+  file.remove("downloads/raw_data.txt.zip")
+}
+
+# Read in raw data
+CD4_raw <- read.table("downloads/raw_data.txt", header = TRUE, sep = "\t")
+CD4_raw <- as.matrix(CD4_raw)
+```
+
+The input matrix contains data for `r format(ncol(CD4_raw), big.mark=",")`
+cells and `r format(nrow(CD4_raw), big.mark=",")`
+genes (including `r sum(grepl("ERCC", rownames(CD4_raw)))` ERCC spike-ins). 
+Information about experimental conditions and other metadata is available 
+under the same accession number. 
+
+```{r selecting-serum-cells}
+if (!file.exists("downloads/metadata_file.txt")) {
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888"
+  file <- "E-MTAB-4888.additional.1.zip"
+  download.file(
+    paste0(website, file),
+    destfile = "downloads/metadata.txt.zip"
+  )
+  unzip("downloads/metadata.txt.zip", exdir = "downloads")
+  file.remove("downloads/metadata.txt.zip")
+}
+
+CD4_metadata <- read.table(
+  "downloads/metadata_file.txt",
+  header = TRUE,
+  sep = "\t"
+)
+
+# Save sample identifiers as rownames
+rownames(CD4_metadata) <- CD4_metadata$X
+```
+
+The columns in the metadata file contain library identifiers (`X`), strain 
+information (`Strain`; *Mus musculus castaneus* or *Mus musculus domesticus*), 
+the age of the animals (`Age`; young or old), stimulation state of the cells 
+(`Stimulus`; naive or activated), batch information (`Individuals`; associated 
+to different mice), and cell type information (`Celltype`; via FACS or MACS 
+purification). 
+
+The data and metadata described above are then converted into a 
+`SingleCellExperiment` object. 
+For this purpose, we first separate the input matrix of expression counts into
+separate matrices associated to intrinsic genes and external spike-ins. 
+Within the `SingleCellExperiment` object, the latter is stored separately
+through as an alternative experiment (see `?altExp`).
+
+```{r CD4-SCE-object}
+# Separate intrinsic from ERCC counts
+bio_counts <- CD4_raw[!grepl("ERCC", rownames(CD4_raw)), ]
+spike_counts <- CD4_raw[grepl("ERCC", rownames(CD4_raw)), ]
+# Generate the SingleCellExperiment object
+sce_CD4_all <- SingleCellExperiment(
+  assays = list(counts = as.matrix(bio_counts)),
+  colData = CD4_metadata[colnames(CD4_raw), ]
+)
+# Add read-counts for spike-ins as an alternative experiment
+altExp(sce_CD4_all, "spike-ins") <- SummarizedExperiment(
+  assays = list(counts = spike_counts)
+)
+```
+
+Hereafter our analysis focuses on naive and activated CD4^+^ T cells obtained 
+from young *Mus musculus domesticus* animals, purified using MACS-based cell sorting. 
+Here, we extract these 
+`r sum(sce_CD4_all$Strain == "Mus musculus domesticus" & sce_CD4_all$Age == "Young" & sce_CD4_all$Celltype == "MACS-purified Naive")` samples.
+
+```{r naive-activated-CD4-SCE-object}
+ind_select <- sce_CD4_all$Strain == "Mus musculus domesticus" &
+  sce_CD4_all$Age == "Young" &
+  sce_CD4_all$Celltype == "MACS-purified Naive"
+sce_naive_active <- sce_CD4_all[, ind_select]
+sce_naive_active
+```
+
+## QC and exploratory analysis
+
+The data available at 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/) have
+been already filtered to remove poor quality samples.
+The QC applied in [@Martinez-jimenez2017] removed cells with: (i) fewer 
+than 1,000,000 total reads, (ii) less than 20% of reads mapped to 
+endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and 
+(iv) more than 10% or fewer than 0.5% of reads mapped to mitochondrial genes.
+As an illustration, we visualise some of these metrics. 
+We also include another widely used QC diagnostic plot which compares the total 
+number (or fraction) of spike-in counts versus the total number (or fraction) of 
+endogeneous counts.
+In such a plot, low quality samples are characterised by a high fraction of 
+spike-in counts and a low fraction of endogeneous counts 
+(see Figure \@ref(fig:PerCellQC)).
+
+```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
+# Calculate and plot per cell QC metrics
+sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
+p_cellQC1 <- plotColData(
+  sce_naive_active, 
+  x = "sum", 
+  y = "detected") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell")
+p_cellQC2 <- plotColData(
+  sce_naive_active, 
+  x = "sum", 
+  y = "altexps_spike-ins_sum") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Total spike-in reads per cell")
+multiplot(p_cellQC1, p_cellQC2, cols = 2)
+```
+
+These metrics can also be visualised with respect to cell-level metadata, such
+as the experimental conditions (active vs unstimulated) and the different mice 
+from which cells were collected (see Figure \@ref(fig:experimental-condition-batch)). 
+
+```{r experimental-condition-batch, fig.cap="Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
+p_stimulus <- plotColData(
+    sce_naive_active,
+    x = "sum",
+    y = "detected", 
+    colour_by = "Stimulus") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1))
+p_batch <- plotColData(
+    sce_naive_active,
+    x = "sum",
+    y = "detected", 
+    colour_by = "Individuals") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1))
+multiplot(p_stimulus, p_batch, cols = 2)
+```
+
+To further explore the underlying structure of the data, we compute global
+scaling normalisation factors using `r Biocpkg("scran")` and perform a 
+principal component analysis (PCA) of log-transformed normalised expression 
+counts using `r Biocpkg("scater")`. 
+As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
+suggests the absence of strong batch effects. 
+
+```{r pca-visualisation-stimulus-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
+# Global scaling normalisation
+sce_naive_active <- computeSumFactors(sce_naive_active)
+sce_naive_active <- logNormCounts(sce_naive_active)
+# PCA 
+sce_naive_active <- runPCA(sce_naive_active)
+p_stimulus <- plotPCA(sce_naive_active, colour_by = "Stimulus") +
+  theme(legend.position = "bottom")
+p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
+  theme(legend.position = "bottom")
+multiplot(p_stimulus, p_batch, cols = 2)
+```
+
+In addition to cell-specific QC, we also recommend to apply a gene filtering 
+step prior to the use of `r Biocpkg("BASiCS")`. 
+The purpose of this filter is to remove lowly expressed genes that were largely
+undetected through sequencing and for which variability estimates are less 
+reliable. 
+Here, we remove all genes that are not detected in at least 5 cells across both 
+experimental conditions or for which their average read count is below 1. 
+These thresholds can vary across datasets and might be informed by gene-specific 
+QC metrics such as those shown in \@ref(fig:gene-selection).
+
+```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
+# Calculate per gene QC metrics
+sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
+# Remove genes with zero total counts across all cells
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
+# Transform 'detected' metadata into number of cells 
+rowData(sce_naive_active)$detected_cells <- 
+  rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
+# Define inclusion criteria
+rowData(sce_naive_active)$include_gene <- rowData(sce_naive_active)$mean >= 1 &
+  rowData(sce_naive_active)$detected_cells >= 5
+  
+plotRowData(
+    sce_naive_active,
+    x = "detected_cells",
+    y = "mean",
+    colour_by = "include_gene") +
+  xlab("Total engogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)) +
+geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
+geom_hline(yintercept = 1, linetype = "dashed", col = "grey60")
+# Apply inclusion criteria
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
+```
+
+Subsequently we also recommend to remove spike-in molecules that were not 
+captured through sequencing. 
+
+```{r spike-ins-present}
+detected_spikes <- rowSums(assay(altExp(sce_naive_active)) > 0) > 0
+altExp(sce_naive_active) <- altExp(sce_naive_active)[detected_spikes, ]
+```
+
+The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`
+cells, `r nrow(sce_naive_active)` genes and `r nrow(altExp(sce_naive_active))` spike-ins. 
+
+## BASiCS analysis - input data
+
+Here, we apply the `r Biocpkg("BASiCS")` model separately to cells from each
+experimental condition (`r sum(sce_naive_active$Stimulus == "Unstimulated")` 
+naive and `r sum(sce_naive_active$Stimulus == "Active")` activated cells). 
+Separate `SingleCellExperiment` objects are created for each group of cells. 
+
+```{r SCE-separation}
+sce_naive <- sce_naive_active[, sce_naive_active$Stimulus == "Unstimulated"]
+sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
+```
+
+`r Biocpkg("BASiCS")` requires the user to update these objects with additional
+information, using a specific format.
+Firstly, if multiple batches of sequenced cells are available (e.g. multiple 
+donors from which cells were extracted or multiple sequencing batches from the 
+same experimental condition), this information must be included under the 
+`BatchInfo` label as part of the cell-level metadata.
+
+```{r BatchInfo}
+colData(sce_naive)$BatchInfo <- colData(sce_naive)$Individuals
+colData(sce_active)$BatchInfo <- colData(sce_active)$Individuals
+```
+
+If spike-ins will be used to aid data normalisation and technical noise 
+quantification, `r Biocpkg("BASiCS")` also requires the number of spike-in 
+molecules that were added to each well. 
+For each spike-in gene $i$, this corresponds to:
+
+$$ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
+\times V \times D \hspace{0.5cm} \mbox{where,} $$
+
+- $C_i$ is the concentration for the spike-in $i$ (measured in $aM\mu{}l^{-1}$),
+- $V$ is the volume added into each well (measure in $nl$) and
+- $D$ is a dilution factor. 
+
+The remaining factors in the equation above are unit conversion constants (e.g.
+from moles to molecules). 
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC 
+spike-in mix 1 and a volume of $9nl$ was added into each well (see [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9)).
+Finally, input concentrations $C_i$ can be downloaded from [https://assets.thermofisher.com/TFS-Assets/LSG/manuals](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt)). 
+
+```{r spike-in_download}
+if (!file.exists("downloads/spike_info.txt")) {
+  website <- "https://assets.thermofisher.com/TFS-Assets/LSG/manuals"
+  file <- "cms_095046.txt"
+  download.file(
+    paste0(website, file),
+    destfile = "downloads/spike_info.txt"
+  )  
+}
+
+ERCC_conc <- read.table("downloads/spike_info.txt", sep = "\t", header = TRUE)
+```
+
+Based on this information, the calculation above proceeds as follows
+
+```{r, ercc-mul}
+# Moles per micro litre
+ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
+# Molecule count per micro litre (1 mole comprises 6.02214076 x 10^{23} molecules)
+ERCC_countmul <- ERCC_mmul * (6.02214076 * (10^23))
+# Application of the dilution factor (1:50,000)
+ERCC_count <- ERCC_countmul / 50000
+# Multiplying by the volume added into each well
+ERCC_count_final <- ERCC_count * 0.009
+```
+
+To update the `sce_naive` and `sce_active` objects, the user must create a 
+`data.frame` whose first column contains the labels associated to 
+the spike-in molecule (e.g. ERCC-00130) and whose second column contains the 
+input number of molecules calculated above.
+This information is added as metadata for `altExp(sce_naive)` and 
+`altExp(sce_active)`, respectively. 
+
+```{r spike-info}
+SpikeInput <- data.frame(
+  Names = ERCC_conc$ERCC.ID,
+  count = ERCC_count_final
+)
+# Exclude spike-ins not included in the input SingleCellExperiment objects
+SpikeInput <- subset(SpikeInput, Names %in% rownames(altExp(sce_naive)))
+
+metadata(sce_naive)$SpikeInput <- SpikeInput
+metadata(sce_active)$SpikeInput <- SpikeInput
+```
+
+## BASiCS analysis - parameter estimation
+
+Parameter estimation is implemented in the `BASiCS_MCMC` function using an 
+adaptive Metropolis within Gibbs algorithm [@Roberts2009].
+The primary inputs for `BASiCS_MCMC` correspond to:
+
+- `Data`: a `SingleCellExperiment` object created as described in the previous
+sections. 
+- `N`: the total number of MCMC iterations
+- `Thin`: thining period for output storage (only the `Thin`-th MCMC draw will be stored)
+- `Burn`: the initial number of MCMC iterations to be discarded
+- `Regression`: whether or not the join ()
+- `WithSpikes`:
+
+As a default, we recommend to use `Regression = TRUE` as we have observed that
+the joint prior introduced by Eling *et al.* leads to m
+
+Additional optional parameters can be used to store the generated output 
+(`StoreChains`, `StoreDir`, `RunName`) and to monitor the progress of the 
+algorithm (`PrintProgress`). 
+
+<!--- whose convergence can
+be assessed using the `BASiCS_DiagHist` and `BASiCS_DiagPlot` functions, 
+among others. 
+The output from `BASiCS_MCMC` is a `BASiCS_Chain` object, which can be used 
+for further downstream analyses. In particular, `BASiCS_DetectHVG` and 
+`BASiCS_DetectLVG` can be respectively used to identify highly and lowly 
+variable genes within a cell population. Moreover, `BASiCS_TestDE` is used to
+perform differential mean and variability analyses between groups of cells.--->
+
+
+
+```{r}
+library("ggplot2")
+```
+
+
+
+<!--- BASiCS downstream analyses between populations 
+--->
 
 
 
