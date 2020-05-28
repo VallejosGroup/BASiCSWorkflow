@@ -334,7 +334,7 @@ respect to what would be expected in a homogeneous cell population, after
 taking into account technical noise.
 This is used as a proxy to quantify transcriptional variability.
 To account for the strong relationship that is typically observed
-between gene-specific mean expression and over-dispersion parameters,
+between gene-specific mean expression and over-dispersion estimates,
 Eling \emph{et al.} \citep{Eling2018} recently introduced a joint prior specification for
 these parameters.
 This joint prior formulation has been observed to improve posterior inference
@@ -674,7 +674,7 @@ QC metrics such as those shown in \ref{fig:gene-selection}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{# Apply inclusion criteria}
+\CommentTok{# Apply gene filter}
 \NormalTok{sce_naive_active <-}\StringTok{ }\NormalTok{sce_naive_active[}\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{include_gene, ]}
 \end{Highlighting}
 \end{Shaded}
@@ -807,23 +807,178 @@ The primary inputs for \texttt{BASiCS\_MCMC} correspond to:
   \texttt{Data}: a \texttt{SingleCellExperiment} object created as described in the previous
   sections.
 \item
-  \texttt{N}: the total number of MCMC iterations
+  \texttt{N}: the total number of MCMC iterations.
 \item
-  \texttt{Thin}: thining period for output storage (only the \texttt{Thin}-th MCMC draw will be stored)
+  \texttt{Thin}: thining period for output storage (only the \texttt{Thin}-th MCMC draw will be stored).
 \item
-  \texttt{Burn}: the initial number of MCMC iterations to be discarded
+  \texttt{Burn}: the initial number of MCMC iterations to be discarded.
 \item
-  \texttt{Regression}: whether or not the join ()
+  \texttt{Regression}: if \texttt{TRUE} a join prior is assigned to \(\mu_i\) and \(\delta_i\)
+  \citep{Eling2018}, and residual over-dispersion values \(\epsilon_i\) are inferred.
+  Alternatively, independent log-normal priors are assigned to \(\mu_i\) and
+  \(\delta_i\) \citep{Vallejos2016}.
 \item
-  \texttt{WithSpikes}:
+  \texttt{WithSpikes}: if \texttt{TRUE} information from spike-in molecules is used to aid
+  data normalisation and to quantify technical noise.
 \end{itemize}
 
 As a default, we recommend to use \texttt{Regression\ =\ TRUE} as we have observed that
-the joint prior introduced by Eling \emph{et al.} leads to m
-
+the joint prior introduced by Eling \emph{et al.} leads to improved inference for
+small sample sizes and lowly expressed genes.
+Moreover, the joint prior formulation enables users to obtain a measure of
+transcriptional variability that is not confounded by mean expression.
 Additional optional parameters can be used to store the generated output
 (\texttt{StoreChains}, \texttt{StoreDir}, \texttt{RunName}) and to monitor the progress of the
 algorithm (\texttt{PrintProgress}).
+
+Here, we run the MCMC sampler separately for naive and activated cells.
+We use 40,000 iterations, discarding the initial 20,000 iterations.
+We recommend this setting as a default choice, as we have observed it to
+ensure good convergence for the algorithm.
+However, for large datasets and less sparse datasets, a lower number of
+iterations may be sufficient.
+Practical guidance about convergence diagnostics is provided in the next section.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{MCMC_naive <-}\StringTok{ }\KeywordTok{BASiCS_MCMC}\NormalTok{(}
+  \DataTypeTok{Data =}\NormalTok{ sce_naive,}
+  \DataTypeTok{N =} \DecValTok{40000}\NormalTok{,}
+  \DataTypeTok{Thin =} \DecValTok{20}\NormalTok{,}
+  \DataTypeTok{Burn =} \DecValTok{20000}\NormalTok{,}
+  \DataTypeTok{Regression =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{WithSpikes =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{StoreChains =} \OtherTok{TRUE}\NormalTok{, }
+  \DataTypeTok{StoreDir =} \StringTok{"rds/"}\NormalTok{, }
+  \DataTypeTok{RunName =} \StringTok{"naive"}
+\NormalTok{)}
+
+\NormalTok{MCMC_active <-}\StringTok{ }\KeywordTok{BASiCS_MCMC}\NormalTok{(}
+  \DataTypeTok{Data =}\NormalTok{ sce_active,}
+  \DataTypeTok{N =} \DecValTok{40000}\NormalTok{,}
+  \DataTypeTok{Thin =} \DecValTok{20}\NormalTok{,}
+  \DataTypeTok{Burn =} \DecValTok{20000}\NormalTok{,}
+  \DataTypeTok{Regression =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{WithSpikes =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{StoreChains =} \OtherTok{TRUE}\NormalTok{, }
+  \DataTypeTok{StoreDir =} \StringTok{"rds/"}\NormalTok{, }
+  \DataTypeTok{RunName =} \StringTok{"active"}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+This sampler runs for 167 minutes on a 1.4 GHz Intel Core i5 procesor with 4GB
+RAM and produces a \texttt{BASiCS\_Chain} data object.
+For comparison, this sampler runs for 97 minutes on a 3.4 GHz Intel Core
+i7 procesor with 16GB RAM.
+For convenience, the MCMC chain can be obtained online at
+\url{https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"rds/MCMC_naive.rds"}\NormalTok{)) \{}
+\NormalTok{  website <-}\StringTok{ "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/"}
+\NormalTok{  file <-}\StringTok{ "MCMC_naive.rds"}
+  \KeywordTok{download.file}\NormalTok{(}
+    \KeywordTok{paste0}\NormalTok{(website, file),}
+    \DataTypeTok{destfile =} \StringTok{"rds/MCMC_naive.rds"}
+\NormalTok{  )  }
+\NormalTok{\}}
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"rds/MCMC_active.rds"}\NormalTok{)) \{}
+\NormalTok{  website <-}\StringTok{ "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/"}
+\NormalTok{  file <-}\StringTok{ "MCMC_active.rds"}
+  \KeywordTok{download.file}\NormalTok{(}
+    \KeywordTok{paste0}\NormalTok{(website, file),}
+    \DataTypeTok{destfile =} \StringTok{"rds/MCMC_active.rds"}
+\NormalTok{  )  }
+\NormalTok{\}}
+\NormalTok{MCMC_naive <-}\StringTok{ }\KeywordTok{readRDS}\NormalTok{(}\StringTok{"rds/MCMC_naive.rds"}\NormalTok{)}
+\NormalTok{MCMC_active <-}\StringTok{ }\KeywordTok{readRDS}\NormalTok{(}\StringTok{"rds/MCMC_active.rds"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+The output from \texttt{BASiCS\_MCMC} is a \texttt{BASiCS\_Chain} object which contains a list
+of matrices whose rows store the MCMC draws for each set of parameters
+(e.g. \(\mu_i\)'s).
+These can be accessed using the \texttt{displayChainBASiCS} function.
+For example, the following code displays the first 2 MCMC draws for mean
+expression parameters \(\mu_i\) associated to the first 3 genes.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{displayChainBASiCS}\NormalTok{(MCMC_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)[}\DecValTok{1}\OperatorTok{:}\DecValTok{2}\NormalTok{, }\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##      ENSMUSG00000000001 ENSMUSG00000000056 ENSMUSG00000000085
+## [1,]           9.291713           1.823314           1.237160
+## [2,]          15.078529           2.126944           1.494165
+\end{verbatim}
+
+\hypertarget{basics-analysis---convergence-diagnostics}{%
+\subsection{BASiCS analysis - convergence diagnostics}\label{basics-analysis---convergence-diagnostics}}
+
+Before we perform downstream analyses, it is critical to assess the convergence
+of the MCMC algorithm.
+Multiple graphical and quantitative convergence diagnostics have been proposed
+(e.g. \citep{CowlesCarlin1996, BrooksGelman1998}).
+For example, traceplots can be used to visualise the history of posterior draws
+generated by the algorithm for a specific parameter (e.g.~Figure
+\ref{fig:convergence-naive}, left panel).
+If the algorithm converged, draws are expected to be stochastic fluctuations
+around a horizontal trend.
+As illustrated in Figure \ref{fig:convergence-naive}, histograms can also be
+used to display the marginal distribution for each parameter.
+Users should expect these to follow a unimodal distribution.
+Failure to satisfy these graphical diagnostics suggest that \texttt{N} and \texttt{Burn} must
+be increased.
+
+Here, we highlight two ways of assessing the convergence of the MCMC sampler by
+(i) plotting trace plots, sample densities and autocorrelation, and
+(ii) plotting the the effective sample size across multiple parameters.
+Trace plots show the sampled parameter values over time.
+A chain is likely to have converged if, after burn-in, its trace plot
+shows a stable mean, with samples drawn around that mean, and without
+long periods without movement. Sample density plots
+show the marginal distribution of that parameter. A chain is likely to
+have converged when the sample density (in form of a histogram) shows a unimodal
+distribution. The autocorrelation of an MCMC chain is defined as the Pearson
+correlation between the chain and time-delayed versions of the chain.
+The difference in time-points is referred to as `lag'. This helps to assess
+whether a chain has sampled efficiently from its stationary distribution.
+High autocorrelation indicates that the obtained samples are not independent,
+and indicates that we may not have enough information about the posterior
+distribution of the parameters. The chain is likely to be sampling efficiently
+if the autocorrelation (except for lag = 1) is small (e.g. \textless{} 0.25), as it
+indicates that the stored samples are largely independent.
+
+Effective sample size is a measure of the number of independent samples
+generated for a model parameter \citep{Gelman2014}. Simply, it is defined as the
+number of samples taken relative to the total autocorrelation.
+More formally, it is defined as follows:
+\[
+  \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
+\]
+where \(n\) is the number of samples and \(\rho(k)\) is the autocorrelation at lag
+\(k\). We can visualise this parameter by plotting histograms of the effective
+sample size over all genes, and by plotting effective sample size against
+mean expression or over-dispersion for all genes.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{plot}\NormalTok{(MCMC_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{, }\DataTypeTok{Gene =} \DecValTok{1}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/convergence-naive-1} 
+
+}
+
+\caption{Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one.}\label{fig:convergence-naive}
+\end{figure}
 
 \begin{Shaded}
 \begin{Highlighting}[]
