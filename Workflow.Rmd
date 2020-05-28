@@ -58,10 +58,10 @@ urlcolor: Orange
 output:
   BiocWorkflowTools::f1000_article:
     fig_width: 6
-    fig_height: 4
+    fig_height: 3
   BiocStyle::html_document:
     fig_width: 8
-    fig_height: 5
+    fig_height: 4
 ---
 
 
@@ -112,7 +112,7 @@ fate decisions [@Mojtahedi2016] as well as during ageing [@Martinez-jimenez2017]
 
 <!--- Describes aims for the workflow and introduces BASiCS ---> 
 This article complements existing scRNA-seq workflows based on the
-Bioconductor package ecosystem (e.g. [@Lun2016; @Kim2019]). 
+Bioconductor package ecosystem (e.g. [@Lun2016; @Kim2019]), providing . 
 We describe a step-by-step analysis which uses `r Biocpkg("scater")` and 
 `r Biocpkg("scran")` to perform quality control (QC) as well as 
 initial exploratory analyses [@McCarthy2017; @Lun2016]. 
