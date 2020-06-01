@@ -96,12 +96,12 @@ knitr::opts_chunk$set(
 <!--- scRNA-seq and the different types of heterogeneity ---> 
 <!--- Nils to revisit and add additional references if required --->
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
-transcriptional heterogeneity in cell populations that cannot be 
-detected in bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
+transcriptional heterogeneity in cell populations that is not 
+captured by bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
 On the broadest level, this heterogeneity can reflect the presence of distinct 
 cell subtypes or states. 
-Alternatively, it can be due to gradual changes along biological processes, such 
-as development and differentiation. 
+Alternatively, it can be due to gradual changes along biological processes, 
+such as development and differentiation. 
 Several clustering and pseudotime inference methods have been developed to
 characterise these types of heterogeneity [@Kiselev2019; @Saelens2019].
 However, there is a limited availability of computational tools tailored 
@@ -111,58 +111,29 @@ gene expression and, among others, has been reported to increase prior to cell
 fate decisions [@Mojtahedi2016] as well as during ageing [@Martinez-jimenez2017]. 
 
 <!--- Describes aims for the workflow and introduces BASiCS ---> 
-This article complements existing scRNA-seq workflows based on the
-Bioconductor package ecosystem (e.g. [@Lun2016; @Kim2019]), providing . 
-We describe a step-by-step analysis which uses `r Biocpkg("scater")` and 
-`r Biocpkg("scran")` to perform quality control (QC) as well as 
-initial exploratory analyses [@McCarthy2017; @Lun2016]. 
-To robustly quantify transcriptional variability we use `r Biocpkg("BASiCS")` [@Vallejos2015; @Vallejos2016; @Eling2017] --- a Bayesian hierarchical framework 
-that jointly performs data normalisation (global scaling), technical noise 
-quantification and downstream analyses, whilst propagating statistical 
-uncertainty across these steps. 
-Among others, `r Biocpkg("BASiCS")`, has led to new insights about the 
-heterogeneity of immune cells [@Martinez-jimenez2017].
-
-<!--- BASiCS downstream analyses within a single population --->
-Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
-observed variability in expression measurements into technical and biological 
-components [@Vallejos2015]. 
-This enables the identification of *highly variable genes* (HVGs) that capture
-the major sources of heterogeneity within the analysed cells [@Brennecke2013]. 
-HVG detection is often used as feature selection, to identify the input 
-set of genes for subsequent analyses. 
-`r Biocpkg("BASiCS")` can also highlight *lowly variable genes* (LVGs) that 
-exhibit stable expression across the population of cells.
-These may relate to essential cellular functions and can assist the development
-of new data normalisation or integration strategies [@Lin2019]. 
-
-<!--- BASiCS downstream analyses between populations --->
-`r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
-perform differential expression analyses between two (or more) pre-specified 
-groups of cells [@Vallejos2016; @Eling2018].
-Whilst several differential expression tools have been proposed for scRNA-seq 
-data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that 
-these do not generally outperform popular bulk RNA-seq tools [@Soneson2018]. 
-Moreover, most of these methods are only designed to uncover changes in overall
-expression, ignoring the more complex patterns that can arise at the single cell 
-level [@Lahnemann2020]. 
-Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
-uncovering changes in cell-to-cell expression variability that are not 
-confounded by differences in technical noise or in overall expression. 
-
-<!--- Brief outline + reproducibility ---> 
-Here, we briefly discuss the sources of variability that arise in scRNA-seq data 
-and some of the strategies that have been designed to control or attenuate 
+This article complements existing scRNA-seq workflows based on the Bioconductor 
+ecosystem (e.g. [@Lun2016; @Kim2019]), providing a detailed framework for 
+transcriptional variability analyses. 
+Firstly, we briefly discuss the sources of variability that arise in scRNA-seq 
+data and the strategies that have been designed to control or attenuate 
 technical noise in these assays. 
-We also summarise the main features of the Bioconductor packages used
-throughout this workflow, and provide a description for the underlying 
-statistical model implemented in `r Biocpkg("BASiCS")`.
-This includes practical guidance to assess the convergence of the Markov Chain 
-Monte Carlo (MCMC) algorithm that is used to infer model parameters as well as 
-recommendations to interpret and post-process the model outputs. 
-Finally, we provide a step-by-step case study. <!--- using CD4^+^ T cells 
-[@Martinez-jimenez2017].-->
- 
+Subsequently, we describe a step-by-step workflow which uses
+`r Biocpkg("scater")` [@McCarthy2017] and `r Biocpkg("scran")` [@Lun2016] 
+to perform quality control (QC) as well as initial exploratory analyses. 
+To robustly quantify transcriptional variability we use `r Biocpkg("BASiCS")` 
+[@Vallejos2015; @Vallejos2016; @Eling2017] --- a Bayesian hierarchical framework 
+that jointly performs data normalisation, technical noise quantification and 
+downstream analyses, whilst propagating statistical uncertainty across these 
+steps. 
+Our analysis pipeline includes practical guidance to assess the convergence of 
+the Markov Chain Monte Carlo (MCMC) algorithm that is used to infer model 
+parameters as well as recommendations to interpret and post-process the model 
+outputs. 
+Finally, through a case study in the context of immune cells, we illustrate
+how `r Biocpkg("BASiCS")` can be used to identify highly and lowly variable
+genes within a cell population, as well as to compare expression profiles
+between experimental conditions or cell types. 
+
 All source code used to generate the results presented in this article is 
 available [on Github](https://github.com/VallejosGroup/BASiCSWorkflow).
 To ensure the 
@@ -173,23 +144,17 @@ can be obtained from
 
 # Sources of variability in scRNA-seq data
 
-The focus of this article is to quantify the magnitude of cell-to-cell
-expression heterogeneity within seemingly homogeneous cell populations. 
-Here, we briefly describe the underlying sources of heterogeneity that can be 
-captured by cell-to-cell variability estimates derived from scRNA-seq data. 
-
-Stochastic variability within a cell population --- often referred to as
-transcriptional *noise* --- can arise from intrinsic and extrinsic sources
-[@Elowitz2002; @Eling2019]. 
-Classically, extrinsic noise is defined as stochastic fluctuations induced by 
-different dynamic cellular states (e.g. cell cycle, metabolism, intra- and
-inter-cellular signalling) 
-[@Zopf2013; @Iwamoto2016; @Kiviet2014]. 
+Stochastic variability within a seemingly homogeneous cell population --- often 
+referred to as transcriptional *noise* --- can arise from intrinsic and 
+extrinsic sources [@Elowitz2002; @Eling2019]. 
+Extrinsic noise refers to stochastic fluctuations induced by 
+different dynamic cellular states (e.g. cell cycle, metabolism, 
+intra/inter-cellular signalling) [@Zopf2013; @Iwamoto2016; @Kiviet2014]. 
 In contrast, intrinsic noise arises from stochastic effects on biochemical 
 processes such as transcription and translation [@Elowitz2002].
 Intrinsic noise can be modulated by genetic and epigenetic modifications (such 
 as mutations, histone modifications, CpG island length and nucleosome 
-positioning) [@Eberwine2015; @Faure2017; @Morgan2018] and is usually measured 
+positioning) [@Eberwine2015; @Faure2017; @Morgan2018] and usually occurs 
 at the gene level [@Elowitz2002]. 
 Cell-to-cell gene expression variability estimates derived from scRNA-seq data 
 capture a combination of these effects, as well as deterministic regulatory 
@@ -212,7 +177,8 @@ attenuating technical variability associated to cell-to-cell differences
 in amplification and sequencing depth (these technical biases are not fully 
 removed unless sequencing to saturation [@Vallejos2017]). 
 However, despite the benefits associated to the use of spike-ins and UMIs, 
-these are not available for all scRNA-seq protocols [@Haque2017]. 
+these are not available for all scRNA-seq protocols [@Haque2017].
+
 
 # Methods {#methods}
 
@@ -246,54 +212,41 @@ Bioconductor packages [@Amezquita2019].
 ```{r}
 library("scater")
 library("scran")
-library("ggplot2")
 ```
 
-An critical step in scRNA-seq analyses is to apply QC diagnostics, removing low
-quality samples that may distort downstream analyses. 
-Among others, QC can help to identify samples that contain broken cells, that 
-are empty or that contain multiple cells [@Ilicic2016]. 
+An critical step in scRNA-seq analyses is QC, removing low quality samples that 
+may distort downstream analyses. 
+Among others, QC diagnostics can help to identify samples that contain broken 
+cells, that are empty or that contain multiple cells [@Ilicic2016]. 
 Moreover, lowly expressed genes for which less reliable information is 
 available are typically also removed. 
 The [*OSCA*](https://osca.bioconductor.org/) online book provides an extensive
 overview on important aspects of how to perform QC of scRNA-seq data, including
 exploratory analyses [@Amezquita2019].
 
-To perform QC, we use the `r Biocpkg("scater")` package [@McCarthy2017].
-The `addPerCellQC` and `addPerFeatureQC` functions are applied to calculate 
+Here, we use the `r Biocpkg("scater")` package [@McCarthy2017] to calculate 
 QC metrics for each cell (e.g. total read-count) and gene (e.g. percentage of 
 zeroes across all cells), respectively. 
-The package also provides a suite of visualisation tools that can be used to 
-explore the data under study and its associated QC diagnostic metrics. 
-
-The `r Biocpkg("scran")` package offers additional tools for QC 
-diagnostics and a variety of functions scRNA-seq data analysis [@Lun2016].
-It can perform *global scaling* normalisation, calculating cell-specific 
-scaling factors that capture global differences in read-counts across cells 
-(e.g. due to sequencing depth and PCR amplification) [@Lun2016pooling].
-<!--- CV: Removed next sentence as function not used --->
-<!--- Users can also explore how the observed variability in expression counts 
-can be decomposed into technical and biological sources (see `modelGeneVar`). --->
-To explore the strenght of transcriptional variability, we use the `modelGeneCV2` 
-function to infer an overall trend between mean expression and the
-squared coefficent of variation (CV^2^) for each gene. 
-To derive gene-specific variability estimates that are not confounded by this 
-overall trend, the `DM` function calculates the distance between CV$^2$ and a 
-rolling median along the range of mean expression values [@Kolodziejczyk2015cell].
+Moreover, we use the visualisation tools implemented in `r Biocpkg("scater")` to 
+explore the input dataset and its associated QC diagnostic metrics. 
+For further data exploration we use the `r Biocpkg("scran")` package [@Lun2016].
+`r Biocpkg("scran")` can perform *global scaling* normalisation, calculating 
+cell-specific scaling factors that capture global differences in read-counts 
+across cells (e.g. due to sequencing depth and PCR amplification) 
+[@Lun2016pooling]. 
+Moreover, `r Biocpkg("scran")` enables exploratory analyses of transcriptional
+variability. 
+For example, it can be used to infer an overall trend between mean expression 
+and the squared coefficent of variation (CV^2^) for each gene. 
+To derive variability estimates that are not confounded by this overall trend, 
+`r Biocpkg("scran")` also defines gene-specific DM (distance to the mean) 
+estimates as the distance between CV$^2$ and a rolling median along the range 
+of mean expression values [@Kolodziejczyk2015cell].
 DM estimates enable exploratory analyses of cell-to-cell heterogeneity, but a
 measure of uncertainty is not readily available. As such, gene-specific 
 downstream inference (e.g. differential variability testing) is precluded.
 
-Finally, we also load `r CRANpkg("ggplot2")` to visualise the results of these
-analyses. 
-<!---the cell- and gene- 
-specific quality control steps performed, and to visualise the results of 
-the analyses we perform. --> 
-
-<!-- I simplified this section to avoid too much mathematical formulation.
-Readers can go to the original papers for more details.
-I think it is important to emphasise the intution/interpretation instead. -->
-## Analysis of cell-to-cell transcriptional variability
+## BASiCS - Bayesian Analysis of Single Cell Sequencing data
 
 ```{r}
 library("BASiCS")
@@ -321,35 +274,49 @@ In contrast, $\delta_i$ captures the excess of variability that is observed with
 respect to what would be expected in a homogeneous cell population, after 
 taking into account technical noise. 
 This is used as a proxy to quantify transcriptional variability.
-Moreover, to account for the strong association that is typically observed 
-between mean expression and over-dispersion estimates, we recently introduced 
-gene-specific *residual over-dispersion* parameters $\epsilon_i$ [@Eling2018]. 
+To account for the strong relationship that is typically observed 
+between gene-specific mean expression and over-dispersion estimates, 
+Eling *et al.*  [@Eling2018] recently introduced a joint prior specification for 
+these parameters. 
+This joint prior formulation has been observed to improve posterior inference
+when the data is less informative (e.g. small sample size, lowly expressed 
+genes) and can be used to derive gene-specific *residual over-dispersion* 
+parameters $\epsilon_i$ that are not confounded by mean expression. 
 Similar to DM values implemented in `r Biocpkg("scran")`, these are defined as 
 deviations with respect to an overall regression trend that captures the 
 relationship between mean and over-dispersion values.
 
-Parameter inference is implemented in the `BASiCS_MCMC` function using an 
-adaptive Metropolis within Gibbs algorithm [@Roberts2009], whose convergence can
-be assessed using the `BASiCS_DiagHist` and `BASiCS_DiagPlot` functions, 
-among others. 
-<!--- Removed as I think it's better to explain ESS later, together with its formula ---> 
-<!--- The `plot` function provides
-parameterwise trace plots, marginal density plots, while the latter three 
-functions allow estimation and visualisation of the number of effective
-independent samples produced during using MCMC. ---> 
-The output from `BASiCS_MCMC` is a `BASiCS_Chain` object, which can be used 
-for further downstream analyses. In particular, `BASiCS_DetectHVG` and 
-`BASiCS_DetectLVG` can be respectively used to identify highly and lowly 
-variable genes within a cell population. Moreover, `BASiCS_TestDE` is used to
-perform differential mean and variability analyses between groups of cells.
+Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
+observed variability in expression measurements into technical and biological 
+components [@Vallejos2015]. 
+This enables the identification of *highly variable genes* (HVGs) that capture
+the major sources of heterogeneity within the analysed cells [@Brennecke2013]. 
+HVG detection is often used as feature selection, to identify the input 
+set of genes for subsequent analyses. 
+`r Biocpkg("BASiCS")` can also highlight *lowly variable genes* (LVGs) that 
+exhibit stable expression across the population of cells.
+These may relate to essential cellular functions and can assist the development
+of new data normalisation or integration strategies [@Lin2019].
 
+`r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
+perform differential expression analyses between two (or more) pre-specified 
+groups of cells [@Vallejos2016; @Eling2018].
+Whilst several differential expression tools have been proposed for scRNA-seq 
+data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that 
+these do not generally outperform popular bulk RNA-seq tools [@Soneson2018]. 
+Moreover, most of these methods are only designed to uncover changes in overall
+expression, ignoring the more complex patterns that can arise at the single cell 
+level [@Lahnemann2020]. 
+Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
+uncovering changes in cell-to-cell expression variability that are not 
+confounded by differences in technical noise or in overall expression. 
 
 # Case study: analysis of naive CD4^+^ T cells {#Tcells}
 
 As a case study, we use scRNA-seq data generated for CD4^+^ T cells
 using the C1 Single-Cell Auto Prep System (Fluidigm^®^). 
 Martinez-Jimenez _et al._ profiled naive (hereafter also referred to as 
-*unstimulated*) and activated (3 hours using _in vitro_ antibody stimulation) 
+unstimulated) and activated (3 hours using _in vitro_ antibody stimulation) 
 CD4^+^ T cells from young and old animals across two mouse strains to study 
 changes in expression variability during ageing and upon immune activation 
 [@Martinez-jimenez2017].
@@ -370,13 +337,11 @@ display gene Ensembl identifiers.
 
 ```{r naive-data}
 if (!file.exists("downloads/raw_data.txt")) {
-  # Download raw counts file
-  website <- "https://www.ebi.ac.uk/"
-  folder <- "arrayexpress/files/E-MTAB-4888/"
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
   file <- "E-MTAB-4888.processed.1.zip"
   destfile <- "downloads/raw_data.txt.zip"
   download.file(
-    paste0(website, folder, file),
+    paste0(website, file),
     destfile = destfile
   )
   unzip("downloads/raw_data.txt.zip", exdir = "downloads")
@@ -391,45 +356,44 @@ CD4_raw <- as.matrix(CD4_raw)
 The input matrix contains data for `r format(ncol(CD4_raw), big.mark=",")`
 cells and `r format(nrow(CD4_raw), big.mark=",")`
 genes (including `r sum(grepl("ERCC", rownames(CD4_raw)))` ERCC spike-ins). 
-Information about experimental conditions and batches is available in a metadata 
-file under the same accession number. 
+Information about experimental conditions and other metadata is available 
+under the same accession number. 
 
 ```{r selecting-serum-cells}
 if (!file.exists("downloads/metadata_file.txt")) {
-  # Download raw counts file
-  website <- "https://www.ebi.ac.uk/"
-  folder <- "arrayexpress/files/E-MTAB-4888/"
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888"
   file <- "E-MTAB-4888.additional.1.zip"
-  destfile <- "downloads/metadata.txt.zip"
   download.file(
-    paste0(website, folder, file),
-    destfile = destfile
+    paste0(website, file),
+    destfile = "downloads/metadata.txt.zip"
   )
   unzip("downloads/metadata.txt.zip", exdir = "downloads")
   file.remove("downloads/metadata.txt.zip")
 }
-# Read in metadata file
+
 CD4_metadata <- read.table(
   "downloads/metadata_file.txt",
   header = TRUE,
   sep = "\t"
 )
 
-# Save library identifier as rownames
+# Save sample identifiers as rownames
 rownames(CD4_metadata) <- CD4_metadata$X
-
-# Show metadata entries
-names(CD4_metadata)
 ```
 
-The metadata contains library identifiers (`X`), strain information (`Strain`;
-*Mus musculus castaneus* or *Mus musculus domesticus*), the age of the animals 
-(`Age`; young or old), stimulation state of the cells (`Stimulus`; naive or 
-activated), batch information (`Individuals`; associated to different mice), 
-and cell type information (`Celltype`; via FACS or MACS purification). 
+The columns in the metadata file contain library identifiers (`X`), strain 
+information (`Strain`; *Mus musculus castaneus* or *Mus musculus domesticus*), 
+the age of the animals (`Age`; young or old), stimulation state of the cells 
+(`Stimulus`; naive or activated), batch information (`Individuals`; associated 
+to different mice), and cell type information (`Celltype`; via FACS or MACS 
+purification). 
 
 The data and metadata described above are then converted into a 
-`r Biocpkg("SingleCellExperiment")` object. 
+`SingleCellExperiment` object. 
+For this purpose, we first separate the input matrix of expression counts into
+separate matrices associated to intrinsic genes and external spike-ins. 
+Within the `SingleCellExperiment` object, the latter is stored separately
+through as an alternative experiment (see `?altExp`).
 
 ```{r CD4-SCE-object}
 # Separate intrinsic from ERCC counts
@@ -440,16 +404,16 @@ sce_CD4_all <- SingleCellExperiment(
   assays = list(counts = as.matrix(bio_counts)),
   colData = CD4_metadata[colnames(CD4_raw), ]
 )
-# Add read-counts for spike-ins 
+# Add read-counts for spike-ins as an alternative experiment
 altExp(sce_CD4_all, "spike-ins") <- SummarizedExperiment(
   assays = list(counts = spike_counts)
 )
 ```
 
-Throughout our analysis, we focus on naive and activated CD4^+^ T cells obtained 
+Hereafter our analysis focuses on naive and activated CD4^+^ T cells obtained 
 from young *Mus musculus domesticus* animals, purified using MACS-based cell sorting. 
-The following code is used to extract these 
-`r sum(sce_CD4_all$Strain == "Mus musculus domesticus" & sce_CD4_all$Age == "Young" & sce_CD4_all$Celltype == "MACS-purified Naive")` samples from the full dataset.
+Here, we extract these 
+`r sum(sce_CD4_all$Strain == "Mus musculus domesticus" & sce_CD4_all$Age == "Young" & sce_CD4_all$Celltype == "MACS-purified Naive")` samples.
 
 ```{r naive-activated-CD4-SCE-object}
 ind_select <- sce_CD4_all$Strain == "Mus musculus domesticus" &
@@ -479,10 +443,16 @@ spike-in counts and a low fraction of endogeneous counts
 ```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
 # Calculate and plot per cell QC metrics
 sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
-p_cellQC1 <- plotColData(sce_naive_active, x = "sum", y = "detected") +
+p_cellQC1 <- plotColData(
+  sce_naive_active, 
+  x = "sum", 
+  y = "detected") +
   xlab("Total engogenous reads per cell") +
   ylab("Number of detected genes per cell")
-p_cellQC2 <- plotColData(sce_naive_active, x = "sum", y = "altexps_spike-ins_sum") +
+p_cellQC2 <- plotColData(
+  sce_naive_active, 
+  x = "sum", 
+  y = "altexps_spike-ins_sum") +
   xlab("Total engogenous reads per cell") +
   ylab("Total spike-in reads per cell")
 multiplot(p_cellQC1, p_cellQC2, cols = 2)
@@ -513,7 +483,6 @@ p_batch <- plotColData(
   theme(
     legend.position = "bottom",
     axis.text.x = element_text(angle = 45, hjust = 1))
-
 multiplot(p_stimulus, p_batch, cols = 2)
 ```
 
@@ -524,17 +493,12 @@ counts using `r Biocpkg("scater")`.
 As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
 suggests the absence of strong batch effects. 
 
-<!---We detect a higher number of expressed genes and a higher total read count in
-activated cells. Furthermore, cells within each group show a wide distribution
-of these quality measures, without clear outlying cells. ---> 
-
 ```{r pca-visualisation-stimulus-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
 # Global scaling normalisation
 sce_naive_active <- computeSumFactors(sce_naive_active)
 sce_naive_active <- logNormCounts(sce_naive_active)
-# Calculate PCA
+# PCA 
 sce_naive_active <- runPCA(sce_naive_active)
-# Visualise the conditions and batch structure
 p_stimulus <- plotPCA(sce_naive_active, colour_by = "Stimulus") +
   theme(legend.position = "bottom")
 p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
@@ -542,14 +506,15 @@ p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
 multiplot(p_stimulus, p_batch, cols = 2)
 ```
 
-Following cell-specific QC, we also recommend to remove lowly expressed genes 
-for which variability estimates are less reliable. 
+In addition to cell-specific QC, we also recommend to apply a gene filtering 
+step prior to the use of `r Biocpkg("BASiCS")`. 
+The purpose of this filter is to remove lowly expressed genes that were largely
+undetected through sequencing and for which variability estimates are less 
+reliable. 
 Here, we remove all genes that are not detected in at least 5 cells across both 
-experimental conditions or for which their average read count (across all cells) 
-is below 1. 
-These thresholds need to be set specifically for each dataset, and 
-gene-specific quality metrics should always be examined, as suggested by the 
-[*OSCA*](https://osca.bioconductor.org/) Bioconductor workflow [@Amezquita2019].
+experimental conditions or for which their average read count is below 1. 
+These thresholds can vary across datasets and might be informed by gene-specific 
+QC metrics such as those shown in \@ref(fig:gene-selection).
 
 ```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
 # Calculate per gene QC metrics
@@ -577,22 +542,20 @@ plotRowData(
     axis.text.x = element_text(angle = 45, hjust = 1)) +
 geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
 geom_hline(yintercept = 1, linetype = "dashed", col = "grey60")
-# Apply inclusion criteria
+# Apply gene filter
 sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
 ```
 
-Subsequently we also remove spike-in molecules that were not captured
-through sequencing. 
+Subsequently we also recommend to remove spike-in molecules that were not 
+captured through sequencing. 
 
 ```{r spike-ins-present}
-# Find which spike-ins were captured through sequencing
-detected_spikes <- rowSums(assay(altExp(sce_naive_active, "spike-ins")) > 0) > 0
-## Remove spike-ins that are not present from matrix and SCE object
-altExp(sce_naive_active, "spike-ins") <- altExp(sce_naive_active)[detected_spikes, ]
+detected_spikes <- rowSums(assay(altExp(sce_naive_active)) > 0) > 0
+altExp(sce_naive_active) <- altExp(sce_naive_active)[detected_spikes, ]
 ```
 
 The final dataset used in subsequent analyses contains `r ncol(sce_naive_active)`
-cells and `r nrow(sce_naive_active)` genes. 
+cells, `r nrow(sce_naive_active)` genes and `r nrow(altExp(sce_naive_active))` spike-ins. 
 
 ## BASiCS analysis - input data
 
@@ -606,21 +569,21 @@ sce_naive <- sce_naive_active[, sce_naive_active$Stimulus == "Unstimulated"]
 sce_active <- sce_naive_active[, sce_naive_active$Stimulus == "Active"]
 ```
 
-Here, we update these objects in order to match the format required by 
-`r Biocpkg("BASiCS")`. Firstly, if multiple batches of sequenced cells are 
-available (e.g. multiple donors from which cells were extracted or multiple 
-sequencing batches from the same experimental condition), this information 
-must be included under the `BatchInfo` label as part of the cell-level metadata.
+`r Biocpkg("BASiCS")` requires the user to update these objects with additional
+information, using a specific format.
+Firstly, if multiple batches of sequenced cells are available (e.g. multiple 
+donors from which cells were extracted or multiple sequencing batches from the 
+same experimental condition), this information must be included under the 
+`BatchInfo` label as part of the cell-level metadata.
 
 ```{r BatchInfo}
 colData(sce_naive)$BatchInfo <- colData(sce_naive)$Individuals
 colData(sce_active)$BatchInfo <- colData(sce_active)$Individuals
 ```
 
-When spike-in information is used to aid data normalisation and technical noise 
-quantification, the user also needs to provide the number of spike-in molecules 
-that were added to each well (this is not required when `WithSpikes = FALSE` in
-`BASiCS_MCMC`). 
+If spike-ins will be used to aid data normalisation and technical noise 
+quantification, `r Biocpkg("BASiCS")` also requires the number of spike-in 
+molecules that were added to each well. 
 For each spike-in gene $i$, this corresponds to:
 
 $$ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
@@ -630,23 +593,23 @@ $$ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23})
 - $V$ is the volume added into each well (measure in $nl$) and
 - $D$ is a dilution factor. 
 
-The remaining factors in the equation above are conversion constants. 
-For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC spike-in mix 1. Moreover, a volume of $9nl$ was added into each well (see [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9)) 
-and input concentrations $C_i$ can be downloaded from [https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt)). 
+The remaining factors in the equation above are unit conversion constants (e.g.
+from moles to molecules). 
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC 
+spike-in mix 1 and a volume of $9nl$ was added into each well (see [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9)).
+Finally, input concentrations $C_i$ can be downloaded from [https://assets.thermofisher.com/TFS-Assets/LSG/manuals](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt)). 
 
 ```{r spike-in_download}
-# Read in the spike-in concentrations
 if (!file.exists("downloads/spike_info.txt")) {
+  website <- "https://assets.thermofisher.com/TFS-Assets/LSG/manuals"
+  file <- "cms_095046.txt"
   download.file(
-    "https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt",
+    paste0(website, file),
     destfile = "downloads/spike_info.txt"
   )  
 }
 
-ERCC_conc <- read.table(
-  "downloads/spike_info.txt",
-  sep = "\t", header = TRUE
-)
+ERCC_conc <- read.table("downloads/spike_info.txt", sep = "\t", header = TRUE)
 ```
 
 Based on this information, the calculation above proceeds as follows
@@ -662,41 +625,59 @@ ERCC_count <- ERCC_countmul / 50000
 ERCC_count_final <- ERCC_count * 0.009
 ```
 
-To update the `sce_naive` and `sce_active` objects with this information, the 
-user to create `data.frame` whose first column contains the labels associated to 
+To update the `sce_naive` and `sce_active` objects, the user must create a 
+`data.frame` whose first column contains the labels associated to 
 the spike-in molecule (e.g. ERCC-00130) and whose second column contains the 
-input number of molecules calculated above (note: the code below assumes that 
-expression counts for spike-in genes are already available via 
-`altExp(sce_naive)` and `altExp(sce_active)`, respectively). 
+input number of molecules calculated above.
+This information is added as metadata for `altExp(sce_naive)` and 
+`altExp(sce_active)`, respectively. 
 
 ```{r spike-info}
-# Prepare the data.frame
 SpikeInput <- data.frame(
   Names = ERCC_conc$ERCC.ID,
   count = ERCC_count_final
 )
 # Exclude spike-ins not included in the input SingleCellExperiment objects
 SpikeInput <- subset(SpikeInput, Names %in% rownames(altExp(sce_naive)))
-# Added as metadata information to each SingleCellExperiment object
+
 metadata(sce_naive)$SpikeInput <- SpikeInput
 metadata(sce_active)$SpikeInput <- SpikeInput
 ```
 
-## BASiCS analysis - running the MCMC
+## BASiCS analysis - parameter estimation
 
-<!--- This text in this section has not been edited; 
-mostly focusing on structural changes for now --->
-It is recommended to run the `BASiCS_MCMC` sampler for at least 40,000 
-iterations to ensure convergence.
-However, if datasets are large and each condition contains hundreds of cells 
-from a homogeneous population, BASiCS can be run with fewer (e.g. 20,000) 
-iterations. For convenience, `BASiCS_MCMC` can be run with very few 
-(e.g 1,000) iterations for experimental purposes, and to identify systematic
-issues with the sampler for a particular dataset. However, small numbers of
-iterations do not provide sufficient information about the posterior 
-distribution to draw inference from. Therefore, unless the sampler has converged
-and produced an adequate number of samples (typically 1,000 or more), the 
-results of MCMC may be biased or unreliable.
+Parameter estimation is implemented in the `BASiCS_MCMC` function using an 
+adaptive Metropolis within Gibbs algorithm [@Roberts2009].
+The primary inputs for `BASiCS_MCMC` correspond to:
+
+- `Data`: a `SingleCellExperiment` object created as described in the previous
+sections. 
+- `N`: the total number of MCMC iterations.
+- `Thin`: thining period for output storage (only the `Thin`-th MCMC draw will be stored).
+- `Burn`: the initial number of MCMC iterations to be discarded.
+- `Regression`: if `TRUE` a join prior is assigned to $\mu_i$ and $\delta_i$ 
+[@Eling2018], and residual over-dispersion values $\epsilon_i$ are inferred. 
+Alternatively, independent log-normal priors are assigned to $\mu_i$ and 
+$\delta_i$ [@Vallejos2016]. 
+- `WithSpikes`: if `TRUE` information from spike-in molecules is used to aid
+data normalisation and to quantify technical noise. 
+
+As a default, we recommend to use `Regression = TRUE` as we have observed that
+the joint prior introduced by Eling *et al.* leads to improved inference for
+small sample sizes and lowly expressed genes. 
+Moreover, the joint prior formulation enables users to obtain a measure of
+transcriptional variability that is not confounded by mean expression. 
+Additional optional parameters can be used to store the generated output 
+(`StoreChains`, `StoreDir`, `RunName`) and to monitor the progress of the 
+algorithm (`PrintProgress`). 
+
+Here, we run the MCMC sampler separately for naive and activated cells.
+We use 40,000 iterations, discarding the initial 20,000 iterations. 
+We recommend this setting as a default choice, as we have observed it to 
+ensure good convergence for the algorithm.
+However, for large datasets and less sparse datasets, a lower number of 
+iterations may be sufficient. 
+Practical guidance about convergence diagnostics is provided in the next section.
 
 ```{r MCMC-run, eval = FALSE}
 MCMC_naive <- BASiCS_MCMC(
@@ -733,14 +714,18 @@ For convenience, the MCMC chain can be obtained online at
 
 ```{r download-chain-naive}
 if (!file.exists("rds/MCMC_naive.rds")) {
+  website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/"
+  file <- "MCMC_naive.rds"
   download.file(
-    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_naive.rds",
+    paste0(website, file),
     destfile = "rds/MCMC_naive.rds"
   )  
 }
 if (!file.exists("rds/MCMC_active.rds")) {
+  website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/"
+  file <- "MCMC_active.rds"
   download.file(
-    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/MCMC_active.rds",
+    paste0(website, file),
     destfile = "rds/MCMC_active.rds"
   )  
 }
@@ -748,53 +733,85 @@ MCMC_naive <- readRDS("rds/MCMC_naive.rds")
 MCMC_active <- readRDS("rds/MCMC_active.rds")
 ```
 
-The `BASiCS_Chain` object contains a list of matrices that store the 
-individual MCMC samples for each parameter. Each matrix contains cell- or 
-gene-specific parameters in the columns and MCMC samples in the rows.
-`r Biocpkg("BASiCS")` provides the `displayChainBASiCS` function to access the
-cell- or gene-specific parameters.
-As an example, we access the first 2 samples for $\mu_i$ of the first 5 genes.
+The output from `BASiCS_MCMC` is a `BASiCS_Chain` object which contains the MCMC 
+draws associated to each model parameter.
+These can be accessed using the `displayChainBASiCS` function.
+For example, the following code displays the first 2 MCMC draws for mean
+expression parameters $\mu_i$ associated to the first 3 genes.
 
 ```{r displayChainBASiCS}
-displayChainBASiCS(MCMC_naive, Param = "mu")[1:2, 1:5]
-```
-
-Given that we ran the MCMC samples for 40,000 iterations, discarding
-the first 20,000 samples as burn-in, and using a thining factor of 20,
-we obtained 1,000 draws for each parameter, stored in the `BASiCS_Chain` object:
-
-```{r dim-displayChainBASiCS}
-dim(displayChainBASiCS(MCMC_naive, Param = "mu"))
-dim(displayChainBASiCS(MCMC_active, Param = "mu"))
+displayChainBASiCS(MCMC_naive, Param = "mu")[1:2, 1:3]
 ```
 
 ## BASiCS analysis - convergence diagnostics
 
-<!--- This text in this section has not been edited; 
-mostly focusing on structural changes for now;
-needs to include active cells too --->
+<!--- THIS SECTION IS WIP ---> 
 
-In the next step, we need to assess the convergence of the chain to ensure 
-robust downstream analysis. Specifically, we must ensure that the chain
-converged to its stationary distribution before the burn-in period ended,
-and that after burn-in, it sampled efficiently from this stationary 
-distribution. There are multiple ways to visualise and assess the convergence 
-of MCMC chains [@CowlesCarlin1996; @BrooksGelman1998]. The `r CRANpkg("coda")`
-package contains diagnostic and plot functions for this task [@CODA2006].
+Before we perform downstream analyses, it is critical to assess the convergence 
+of the MCMC algorithm. 
+Multiple graphical and quantitative convergence diagnostics have been proposed 
+(e.g. [@CowlesCarlin1996; @BrooksGelman1998]). 
+For example, traceplots can be used to visualise the history of posterior draws 
+generated by the algorithm for a specific parameter (e.g. Figure 
+\@ref(fig:convergence-naive), left panel). 
+If the algorithm converged, draws are expected to be stochastic fluctuations 
+around a horizontal trend. 
+As illustrated in Figure \@ref(fig:convergence-naive), histograms can also be 
+used to display the marginal distribution for each parameter. 
+Users should expect these to follow a unimodal distribution. 
+Failure to satisfy these graphical diagnostics suggest that `N` and `Burn` must 
+be increased. 
+As `r Biocpkg("BASiCS")` infers thousands of parameters, it is impractical
+to assess these diagnostics individually for each parametr. 
 
-Here, we highlight two ways of assessing the convergence of the MCMC sampler by 
-(i) plotting trace plots, sample densities and autocorrelation, and 
-(ii) plotting the the effective sample size across multiple parameters.
-Trace plots show the sampled parameter values over time.
-A chain is likely to have converged if, after burn-in, its trace plot
-shows a stable mean, with samples drawn around that mean, and without
-long periods without movement. Sample density plots
-show the marginal distribution of that parameter. A chain is likely to
-have converged when the sample density (in form of a histogram) shows a unimodal
-distribution. The autocorrelation of an MCMC chain is defined as the Pearson 
+```{r}
+library(coda)
+library(ggplot2)
+
+# NOTE: transfer plots to ggplot2 format
+gew.mu_naive <- geweke.diag(mcmc(displayChainBASiCS(MCMC_naive, Param = "mu")))$z
+hist(gew.mu_naive)
+hist(2*pnorm(-abs(gew.mu_naive)))
+
+smoothScatter(log10(colMedians(displayChainBASiCS(MCMC_naive, Param = "mu"))),
+     gew.mu_naive)
+abline(h = c(-3,3), col = "red")
+
+smoothScatter(ess_naive, gew.mu_naive)
+abline(h = c(-3,3), col = "red")
+
+smoothScatter(rowData(sce_naive)$detected[rownames(rowData(sce_naive)) %in% rownames(MCMC_naive)], gew.mu_naive)
+abline(h = c(-3,3), col = "red")
+
+which(abs(gew.mu_naive) == max(abs(gew.mu_naive)) )
+
+ess_naive <- BASiCS_EffectiveSize(MCMC_naive, Param = "mu")
+
+plot(MCMC_naive, Param = "mu", Gene = 6142)
+
+```
+
+The autocorrelation function can be used to assess the efficiency of the MCMC
+algorithm (e.g. Figure \@ref(fig:convergence-naive), right panel).
+Strong autocorrelation between subsequent MCMC draws does not invalidate 
+
+
+MCMC samples are dependent. This does not effect the validity of inference on the posterior if the samplers has time to explore the posterior distribution, but it does affect the efficiency of the sampler.
+
+In other words, highly correlated MCMC samplers requires more samples to produce the same level of Monte Carlo error for an estimate.
+
+
+The autocorrelation of an MCMC chain is defined as the Pearson 
 correlation between the chain and time-delayed versions of the chain. 
-The difference in time-points is referred to as 'lag'. This helps to assess
-whether a chain has sampled efficiently from its stationary distribution.
+The difference in time-points is referred to as 'lag'. 
+
+As BASiCS has thousands of parameters, it is impractical to explore convergence
+diagnostics for each of them individually.
+Therefore, we provide graphical summaries based on the ESS. 
+
+
+This helps to assess whether a chain has sampled efficiently from its stationary 
+distribution.
 High autocorrelation indicates that the obtained samples are not independent,
 and indicates that we may not have enough information about the posterior
 distribution of the parameters. The chain is likely to be sampling efficiently
@@ -847,13 +864,6 @@ ess <- BASiCS_EffectiveSize(MCMC_naive, Param = "mu")
 low_ess_genes <- names(ess[ess < 100])
 head(low_ess_genes)
 ```
-
-Given that the sampler has generated less than 100 effectively independent 
-samples for these genes, there may not be sufficient posterior information to 
-reliably calculate differences in mean expression. Therefore it is appropriate 
-to exclude these genes from downstream analysis. As we will see later,
-`BASiCS_TestDE` automatically excludes these genes from tests of differential
-expression.
 
 Given that the sampler has generated less than 100 effectively independent 
 samples for these genes, there may not be sufficient posterior information to 
@@ -938,121 +948,6 @@ These normalised counts or rates can be further used for dimensionality
 reduction and clustering as explained elsewhere [@Lun2016;@Amezquita2019].
 Alternatively, a dimensionality reduction method that operates directly on the
 count matrix could be used [@Townes2019;@Lopez2018].
-
-## BASiCS analysis - HVG/LVG detection
-
-Numerous studies have highlighted the relationship between gene-specific 
-variability measures (e.g., squared coefficient of variation) and mean 
-abundance [@Ritchie2015;@Grun2014;@Love2014;@McCarthy2012].
-BASiCS provides the `BASiCS_ShowFit` function that plots the gene-specific 
-over-dispersion parameters (delta) versus mean expression parameters (mu). 
-
-```{r naive-fit, fig.cap="Over-dispersion is plotted against mean expression for naive cells on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density; a curve represents the inferred trend of over-dispersion against mean, while the shaded area represents the corresponding 95\\% high density interval."}
-BASiCS_ShowFit(MCMC_naive)
-```
-
-Here, we observe that the over-dispersion estimates are inversely correlated
-with mean expression.
-However, by performing a regression between over-dispersion and mean 
-expression, we can correct for this trend and obtain variability measures that 
-show no correlation with mean expression [@Eling2018]. This is performed jointly
-while estimating mean and over-dispersion for each gene, and incorporating
-this information can help to stabilise inference, in particular for genes
-with very low average counts. The purple points in the plot indicate genes that 
-are not expressed in at least 2 cells.
-BASiCS automatically excludes these genes when assessing gene variability,
-given that it is not possible to quantify variability or changes in variability
-for genes that are only expressed in one cell.
-
-BASiCS offers a function to select genes with large or small biological 
-variance. If the MCMC sampler was run with `Regression = TRUE`,
-the `BASiCS_DetectHVG` and `BASiCS_DetectLVG` functions take the 
-`BASiCS_Chain` object and a quantile threshold.
-Using the residual over-disperison parameters, genes are ranked by their 
-variability and the `BASiCS_DetectHVG` function selects (for example) the 
-10% most highly variable genes (`PercentileThreshold = 0.9`).
-Similarly, when detecting lowly variable genes, the `BASiCS_DetectLVG` selects 
-the 10% most lowly variable genes (`PercentileThreshold = 0.1`).
-The propability threshold for a gene showing higher variability than the 
-percentile threshold is found by controlling the expected false discovery 
-rate (EFDR) to 10% (by default) [@Newton2004].
-<!-- todo: explain EFDR -->
-
-```{r naive-HVG-LVG}
-# Highly variable genes
-HVG <- BASiCS_DetectHVG(MCMC_naive, PercentileThreshold = 0.9)
-
-# Lowly variable genes
-LVG <- BASiCS_DetectLVG(MCMC_naive, PercentileThreshold = 0.1)
-HVG_table <- HVG@Table
-LVG_table <- LVG@Table
-```
-
-This analysis results in the detection of *`r sum(HVG_table$HVG)`*
-highly variable genes and *`r sum(LVG_table$LVG)`*
-lowly variable genes.
-
-The `Biocpkg("scran")` provides similar functions to detect HVGs and we can 
-compare the results of both methods.
-`r Biocpkg("scran")` first fits a smooth regression between the squared
-coefficient of variation (CV^2^) of the gene-wise expression counts and their 
-mean abundance using the `modelGeneCV2` function.
-Furthermore, it computes a ratio of the observed CV^2^ to the value predicted by
-the trend fitted to the CV^2^ and mean values across all genes. Genes with larger
-ratios are assumed to demonstrate biologically variability, while genes with 
-lower ratios are assumed to be driven largely by technical noise.
-
-```{r HVG-LVG-scran}
-# Variance decomposition
-var_out <- modelGeneCV2(sce_naive)
-var_out <- var_out[HVG_table$GeneName, ]
-```
-
-Here, we define HVGs as those genes with a CV^2^ more than double that
-predicted based on mean expression using the fitted trend,
-while controlling the FDR to 5%.
-As described by `r Biocpkg("SimpleSingleCell")` and by 
-[*OSCA*](https://osca.bioconductor.org/), different methods
-can be used to identify depending on the intended downstream analysis,
-and thresholds should be adjusted based on the characteristics [@Lun2016;@Amezquita2019]
-We can then compare the the overlap of the HVG identified by 
-`r Biocpkg("scran")` and by `r Biocpkg("BASiCS")`.
-
-```{r scran-HVG, fig.cap="Epsilon (residual over-dispersion) is plotted against log(mu) (log mean expression). Colour indicates the results of scran and BASiCS HVG tests."}
-is_hvg <- var_out$ratio > 2 & var_out$FDR < 0.05
-ind_hvg <- which(is_hvg)
-hvg_out <- var_out[ind_hvg, ]
-hvg_out <- hvg_out[order(hvg_out$FDR), ]
-nrow(hvg_out)
-
-# Compare BASiCS and scran results
-plot_data <- data.frame(
-  Mu = HVG_table$Mu,
-  Epsilon = HVG_table$Epsilon,
-  # HVG = HVG_res
-  BASiCS = ifelse(HVG_table$HVG, "HVG", "Not HVG"),
-  scran = ifelse(is_hvg, "HVG", "Not HVG")
-)
-ord <- order(plot_data$scran, plot_data$BASiCS, decreasing = TRUE)
-plot_data <- plot_data[ord, ]
-plot_data$Status <- paste0(
-  "BASiCS: ", plot_data$BASiCS, "\n",
-  "scran: ", plot_data$scran, "\n")
-ggplot(plot_data) +
-  geom_point(
-    aes(log(Mu), Epsilon, colour = Status),
-    alpha = 0.6
-  )
-```
-
-*`r length(intersect(rownames(hvg_out), HVG_table$GeneName[HVG_table$HVG]))`*
-of the *`r nrow(hvg_out)`* HVGs of scran are among the
-*`r sum(HVG_table$HVG)`*
-HVGs identified by BASiCS.
-
-We can now compare these gene-specific variability measures (over-dispersion and 
-residual over-dispersion) to previously used measures to quantify cell-to-cell 
-expression variability [@Brennecke2013,@Kolodziejczyk2015cell].
 
 ## Comparison between BASiCS and other measures of cell-to-cell variability
 
@@ -1230,6 +1125,123 @@ posterior distribution of the test statistic.
 
 The workflow so far highlights the use of BASiCS for analysing cells of a 
 single condition.
+
+## BASiCS analysis - HVG/LVG detection
+
+Numerous studies have highlighted the relationship between gene-specific 
+variability measures (e.g., squared coefficient of variation) and mean 
+abundance [@Ritchie2015;@Grun2014;@Love2014;@McCarthy2012].
+BASiCS provides the `BASiCS_ShowFit` function that plots the gene-specific 
+over-dispersion parameters (delta) versus mean expression parameters (mu). 
+
+```{r naive-fit, fig.cap="Over-dispersion is plotted against mean expression for naive cells on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density; a curve represents the inferred trend of over-dispersion against mean, while the shaded area represents the corresponding 95\\% high density interval."}
+BASiCS_ShowFit(MCMC_naive)
+```
+
+Here, we observe that the over-dispersion estimates are inversely correlated
+with mean expression.
+However, by performing a regression between over-dispersion and mean 
+expression, we can correct for this trend and obtain variability measures that 
+show no correlation with mean expression [@Eling2018]. This is performed jointly
+while estimating mean and over-dispersion for each gene, and incorporating
+this information can help to stabilise inference, in particular for genes
+with very low average counts. The purple points in the plot indicate genes that 
+are not expressed in at least 2 cells.
+BASiCS automatically excludes these genes when assessing gene variability,
+given that it is not possible to quantify variability or changes in variability
+for genes that are only expressed in one cell.
+
+BASiCS offers a function to select genes with large or small biological 
+variance. If the MCMC sampler was run with `Regression = TRUE`,
+the `BASiCS_DetectHVG` and `BASiCS_DetectLVG` functions take the 
+`BASiCS_Chain` object and a quantile threshold.
+Using the residual over-disperison parameters, genes are ranked by their 
+variability and the `BASiCS_DetectHVG` function selects (for example) the 
+10% most highly variable genes (`PercentileThreshold = 0.9`).
+Similarly, when detecting lowly variable genes, the `BASiCS_DetectLVG` selects 
+the 10% most lowly variable genes (`PercentileThreshold = 0.1`).
+The propability threshold for a gene showing higher variability than the 
+percentile threshold is found by controlling the expected false discovery 
+rate (EFDR) to 10% (by default) [@Newton2004].
+<!-- todo: explain EFDR -->
+
+```{r naive-HVG-LVG}
+# Highly variable genes
+HVG <- BASiCS_DetectHVG(MCMC_naive, PercentileThreshold = 0.9)
+
+# Lowly variable genes
+LVG <- BASiCS_DetectLVG(MCMC_naive, PercentileThreshold = 0.1)
+HVG_table <- HVG@Table
+LVG_table <- LVG@Table
+```
+
+This analysis results in the detection of *`r sum(HVG_table$HVG)`*
+highly variable genes and *`r sum(LVG_table$LVG)`*
+lowly variable genes.
+
+The `Biocpkg("scran")` provides similar functions to detect HVGs and we can 
+compare the results of both methods.
+`r Biocpkg("scran")` first fits a smooth regression between the squared
+coefficient of variation (CV^2^) of the gene-wise expression counts and their 
+mean abundance using the `modelGeneCV2` function.
+Furthermore, it computes a ratio of the observed CV^2^ to the value predicted by
+the trend fitted to the CV^2^ and mean values across all genes. Genes with larger
+ratios are assumed to demonstrate biologically variability, while genes with 
+lower ratios are assumed to be driven largely by technical noise.
+
+```{r HVG-LVG-scran}
+# Variance decomposition
+var_out <- modelGeneCV2(sce_naive)
+var_out <- var_out[HVG_table$GeneName, ]
+```
+
+Here, we define HVGs as those genes with a CV^2^ more than double that
+predicted based on mean expression using the fitted trend,
+while controlling the FDR to 5%.
+As described by `r Biocpkg("SimpleSingleCell")` and by 
+[*OSCA*](https://osca.bioconductor.org/), different methods
+can be used to identify depending on the intended downstream analysis,
+and thresholds should be adjusted based on the characteristics [@Lun2016;@Amezquita2019]
+We can then compare the the overlap of the HVG identified by 
+`r Biocpkg("scran")` and by `r Biocpkg("BASiCS")`.
+
+```{r scran-HVG, fig.cap="Epsilon (residual over-dispersion) is plotted against log(mu) (log mean expression). Colour indicates the results of scran and BASiCS HVG tests."}
+is_hvg <- var_out$ratio > 2 & var_out$FDR < 0.05
+ind_hvg <- which(is_hvg)
+hvg_out <- var_out[ind_hvg, ]
+hvg_out <- hvg_out[order(hvg_out$FDR), ]
+nrow(hvg_out)
+
+# Compare BASiCS and scran results
+plot_data <- data.frame(
+  Mu = HVG_table$Mu,
+  Epsilon = HVG_table$Epsilon,
+  # HVG = HVG_res
+  BASiCS = ifelse(HVG_table$HVG, "HVG", "Not HVG"),
+  scran = ifelse(is_hvg, "HVG", "Not HVG")
+)
+ord <- order(plot_data$scran, plot_data$BASiCS, decreasing = TRUE)
+plot_data <- plot_data[ord, ]
+plot_data$Status <- paste0(
+  "BASiCS: ", plot_data$BASiCS, "\n",
+  "scran: ", plot_data$scran, "\n")
+ggplot(plot_data) +
+  geom_point(
+    aes(log(Mu), Epsilon, colour = Status),
+    alpha = 0.6
+  )
+```
+
+*`r length(intersect(rownames(hvg_out), HVG_table$GeneName[HVG_table$HVG]))`*
+of the *`r nrow(hvg_out)`* HVGs of scran are among the
+*`r sum(HVG_table$HVG)`*
+HVGs identified by BASiCS.
+
+We can now compare these gene-specific variability measures (over-dispersion and 
+residual over-dispersion) to previously used measures to quantify cell-to-cell 
+expression variability [@Brennecke2013,@Kolodziejczyk2015cell].
+
+
 
 ## Differential mean testing between naive and activated CD4^+^ T cells 
 
