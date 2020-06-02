@@ -30,7 +30,7 @@ abstract: |
   biological systems, such as immunity and development. Single-cell RNA 
   sequencing is a powerful tool to quantify this heterogeneity, but it is prone 
   to strong technical noise. In this article, we describe a step-by-step 
-  computational workflow which uses the BASiCS Bioconductor package to robustly 
+  computational workflow that uses the BASiCS Bioconductor package to robustly 
   quantify expression variability within and between known groups of cells (such 
   as experimental conditions or cell types). BASiCS uses an integrated framework 
   for data normalisation, technical noise quantification and downstream 
@@ -40,28 +40,24 @@ abstract: |
   variable genes with stable expression. BASiCS also uses a probabilistic 
   decision rule to identify changes in expression variability between cell 
   populations, whilst avoiding confounding effects related to differences in 
-  technical noise or in overall abundance. Using two publicly available 
-  datasets, we guide users through a complete pipeline which includes 
-  preliminary steps for quality control as well as data exploration 
-  using the scater and scran Bioconductor packages. Data for the first case 
+  technical noise or in overall abundance. Using a publicly available 
+  dataset, we guide users through a complete pipeline that includes 
+  preliminary steps for quality control, as well as data exploration 
+  using the scater and scran Bioconductor packages. Data for the case 
   study was generated using the Fluidigm\@ C1 system, in which extrinsic 
-  spike-in RNA molecules were added as a control. The second dataset was 
-  generated using a droplet-based system, for which spike-in RNA is not 
-  available. This analysis provides an example, in which differential 
-  variability testing reveals insights regarding a possible early cell fate 
-  commitment process. The workflow is accompanied by a Docker image that 
-  ensures the reproducibility of our results. 
+  spike-in RNA molecules were added as a control. The workflow is accompanied 
+  by a Docker image that ensures the reproducibility of our results. 
 keywords: Single-cell RNA sequencing, expression variability, 
   transcriptional noise, differential expression testing
 bibliography: Workflow.bib
 urlcolor: Orange
 output:
-  BiocStyle::html_document:
-    fig_width: 8
-    fig_height: 4
   BiocWorkflowTools::f1000_article:
     fig_width: 6
-    fig_height: 3
+    fig_height: 3.5
+  BiocStyle::html_document:
+    fig_width: 8
+    fig_height: 4.5
 ---
 
 
@@ -117,7 +113,7 @@ transcriptional variability analyses.
 Firstly, we briefly discuss the sources of variability that arise in scRNA-seq 
 data and the strategies that have been designed to control or attenuate 
 technical noise in these assays. 
-Subsequently, we describe a step-by-step workflow which uses
+Subsequently, we describe a step-by-step workflow that uses
 `r Biocpkg("scater")` [@McCarthy2017] and `r Biocpkg("scran")` [@Lun2016] 
 to perform quality control (QC) as well as initial exploratory analyses. 
 To robustly quantify transcriptional variability we use `r Biocpkg("BASiCS")` 
@@ -200,10 +196,10 @@ library("SingleCellExperiment")
 
 We use `r Biocpkg("SingleCellExperiment")` to convert an input
 matrix of raw read-counts (molecule counts for UMI-based protocols) into a 
-`SingleCellExperiment` object which can also store its associated 
+`SingleCellExperiment` object that can also store its associated 
 metadata, such as gene- and cell-specific information. 
 Moreover, when available, the same object can also store read-counts for 
-spike-in molecules (see `altExp()`).
+spike-in molecules (see `?altExp`).
 A major advantage of using a `SingleCellExperiment` object as the input for 
 scRNA-seq analyses is the interoperability across a large number of 
 Bioconductor packages [@Amezquita2019]. 
@@ -219,7 +215,7 @@ An critical step in scRNA-seq analyses is QC, removing low quality samples that
 may distort downstream analyses. 
 Among others, QC diagnostics can help to identify samples that contain broken 
 cells, that are empty or that contain multiple cells [@Ilicic2016]. 
-Moreover, lowly expressed genes for which less reliable information is 
+Moreover, lowly expressed genes that represent less reliable information is 
 available are typically also removed. 
 The [*OSCA*](https://osca.bioconductor.org/) online book provides an extensive
 overview on important aspects of how to perform QC of scRNA-seq data, including
@@ -260,12 +256,12 @@ transcriptional variability [@Vallejos2015BASiCS].
 Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
 infers cell-specific global scaling normalisation parameters. 
 However, instead of inferring these as a pre-processing step, 
-`r Biocpkg("BASiCS")` uses an integrated approach in which data normalisation 
+`r Biocpkg("BASiCS")` uses an integrated approach wherein data normalisation 
 and downstream analyses are performed simultaneously, thereby propagating
 statistical uncertainty. 
 To quantify technical noise, the original implementation of 
 `r Biocpkg("BASiCS")` uses information from extrinsic spike-in molecules as 
-control features, but the model has been extended to address situations in which
+control features, but the model has been extended to address situations wherein
 spike-ins are not available [@Eling2018].
 
 `r Biocpkg("BASiCS")` summarises expression patterns through 
@@ -437,7 +433,7 @@ than 1,000,000 total reads, (ii) less than 20% of reads mapped to
 endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and 
 (iv) more than 10% or fewer than 0.5% of reads mapped to mitochondrial genes.
 As an illustration, we visualise some of these metrics. 
-We also include another widely used QC diagnostic plot which compares the total 
+We also include another widely used QC diagnostic plot that compares the total 
 number (or fraction) of spike-in counts versus the total number (or fraction) of 
 endogeneous counts.
 In such a plot, low quality samples are characterised by a high fraction of 
@@ -452,19 +448,22 @@ p_cellQC1 <- plotColData(
   x = "sum", 
   y = "detected") +
   xlab("Total engogenous reads per cell") +
-  ylab("Number of detected genes per cell")
+  ylab("Number of detected genes per cell") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
 p_cellQC2 <- plotColData(
   sce_naive_active, 
   x = "sum", 
   y = "altexps_spike-ins_sum") +
   xlab("Total engogenous reads per cell") +
-  ylab("Total spike-in reads per cell")
+  ylab("Total spike-in reads per cell") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
 multiplot(p_cellQC1, p_cellQC2, cols = 2)
 ```
 
 These metrics can also be visualised with respect to cell-level metadata, such
 as the experimental conditions (active vs unstimulated) and the different mice 
-from which cells were collected (see Figure \@ref(fig:experimental-condition-batch)). 
+that cells were collected from 
+(see Figure \@ref(fig:experimental-condition-batch)). 
 
 ```{r experimental-condition-batch, fig.cap="Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
 p_stimulus <- plotColData(
@@ -493,9 +492,13 @@ multiplot(p_stimulus, p_batch, cols = 2)
 To further explore the underlying structure of the data, we compute global
 scaling normalisation factors using `r Biocpkg("scran")` and perform a 
 principal component analysis (PCA) of log-transformed normalised expression 
-counts using `r Biocpkg("scater")`. 
+counts using `r Biocpkg("scater")`.
 As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
-suggests the absence of strong batch effects. 
+suggests the absence of strong batch effects.
+It should be noted that normalisation
+is not strictly necessary in the `r Biocpkg("BASiCS")` workflow.
+Count-based models for dimensionality reduction and can be used throughout,
+removing the need for log normalisation [@Townes2019;@Lopez2018].
 
 ```{r pca-visualisation-stimulus-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
 # Global scaling normalisation
@@ -513,12 +516,12 @@ multiplot(p_stimulus, p_batch, cols = 2)
 In addition to cell-specific QC, we also recommend to apply a gene filtering 
 step prior to the use of `r Biocpkg("BASiCS")`. 
 The purpose of this filter is to remove lowly expressed genes that were largely
-undetected through sequencing and for which variability estimates are less 
-reliable. 
+undetected through sequencing, making reliable variability estimates difficult
+to obtain.
 Here, we remove all genes that are not detected in at least 5 cells across both 
-experimental conditions or for which their average read count is below 1. 
+experimental conditions or that have an average read count below 1. 
 These thresholds can vary across datasets and might be informed by gene-specific 
-QC metrics such as those shown in \@ref(fig:gene-selection).
+QC metrics such as those shown in Figure \@ref(fig:gene-selection).
 
 ```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
 # Calculate per gene QC metrics
@@ -582,7 +585,7 @@ sce_active <- sce_naive_active[, ind_active]
 `r Biocpkg("BASiCS")` requires the user to update these objects with additional
 information, using a specific format.
 Firstly, if multiple batches of sequenced cells are available (e.g. multiple 
-donors from which cells were extracted or multiple sequencing batches from the 
+donors that cells were extracted from, or multiple sequencing batches from the 
 same experimental condition), this information must be included under the 
 `BatchInfo` label as part of the cell-level metadata.
 
@@ -746,7 +749,7 @@ chain_naive <- readRDS("rds/chain_naive.Rds")
 chain_active <- readRDS("rds/chain_active.Rds")
 ```
 
-The output from `BASiCS_MCMC` is a `BASiCS_Chain` object which contains the MCMC 
+The output from `BASiCS_MCMC` is a `BASiCS_Chain` object that contains the MCMC 
 draws associated to each model parameter.
 These can be accessed using the `displayChainBASiCS` function.
 For example, the following code displays the first 2 MCMC draws for mean
@@ -773,94 +776,32 @@ multiple graphical and quantitative convergence diagnostics have been proposed
 multiple MCMC chains using different starting values in order to ensure that
 the algorithm consistently converges to the same distribution.
 For `r Biocpkg("BASiCS")`, we have observed that by using informed starting
-values and a 
-sufficient value for `N` and `Burn`, convergence is consistent.
-In this instance, we focus on the diagnostic criterion proposed by 
-Geweke [@Geweke1995]. This produces a Z-score comparing a portion of the draws 
-from the beginning of the chain (0.1 by default) to a portion of the draws
-from the end of the chain (0.5 by default). Large absolute Z-scores indicate
-a large difference in mean between the beginning and end of the chain, 
-indicating that the stationary distribution has not been reached by the end of
-burn-in.
+values and a sufficient value for `N` and `Burn`, convergence is consistent.
+However, it is still important to evaluate quantitative measures of chain
+convergence [@Heidelberger1981;@Geweke1995].
 
-Traceplots can be used to visually assess the history of posterior draws
-generated by the algorithm for a specific parameter (e.g. Figure 
-\@ref(fig:convergence-naive), left panel). 
+As well as assessing the convergence of the MCMC algorithm, it is important
+to ensure that the MCMC algorithm has efficiently sampled from the posterior
+distribution. `r Biocpkg("BASiCS")` provides a number of graphical functions 
+to assess the efficiency of the MCMC algorithm. One such output can be
+obtained using the `plot` method for `BASiCS_Chain` objects.
+The output of this function contains three pieces of information: traceplots,
+marginal distributions, and the autocorrelation function.
+
+Traceplots can be used to 
+visually assess the history of posterior draws generated by the algorithm for a
+specific parameter (e.g. Figure \@ref(fig:convergence-naive), left panel). 
 As mentioned, if the algorithm has converged, this is expected to only show 
 stochastic fluctuations around a horizontal trend. Departures from this 
 indicate a lack of convergence.
+
 As illustrated in Figure \@ref(fig:convergence-naive), histograms can also be 
 used to display the marginal distribution for each parameter. 
 Users should expect these to follow a unimodal distribution. 
 Failure to satisfy these graphical diagnostics suggest that `N` and `Burn` must 
-be increased, and possibly to perform more stringent quality control
-on the input data.
-As `r Biocpkg("BASiCS")` infers thousands of parameters, it is impractical
-to assess these diagnostics individually for each parameter.
-
-```{r, fig.cap = "Histogram of Geweke diagnostic for mean expression across all genes in naive cells. Large absolute values for this diagnostic indicate that the sampler may not have reached the stationary distribution by the end of the burn-in period."}
-library("coda")
-library("ggplot2")
-
-gew_mu_naive <- geweke.diag(mcmc(displayChainBASiCS(chain_naive, Param = "mu")))$z
-which(abs(gew_mu_naive) == max(abs(gew_mu_naive)) )
-ess_naive <- BASiCS_EffectiveSize(chain_naive, Param = "mu")
-
-hist(
-  gew_mu_naive,
-  breaks = "FD",
-  main = NULL,
-  xlab = "Geweke diagnostic"
-)
-abline(v = c(-3, 3), col = "firebrick", lty = "dashed")
-## AOC: not sure what this is meant to show?
-# hist(2*pnorm(-abs(gew_mu_naive)))
-```
-
-
-```{r, fig.cap="Geweke diagnostic criterion for mean expression plotted against mean expression in naive cells."}
-ggplot() +
-  aes(
-    log10(colMedians(displayChainBASiCS(chain_naive, Param = "mu"))),
-    gew_mu_naive
-  ) +
-  geom_hex() +
-  labs(x = "Mean expression", y = "Geweke diagnostic for mean expression") +
-  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
-  scale_fill_viridis()
-```
-
-
-```{r, fig.cap="Geweke diagnostic criterion for mean expression plotted against effective sample size in naive cells."}
-ggplot() +
-  aes(
-    ess_naive,
-    gew_mu_naive
-  ) +
-  geom_hex() +
-  labs(x = "Effective sample size", y = "Geweke diagnostic for mean expression") +
-  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
-  scale_fill_viridis()
-```
-
-
-```{r, fig.cap="Geweke diagnostic criterion for mean expression plotted against the number of detected genes per cell in naive cells."}
-ggplot() +
-  aes(
-    rowData(sce_naive)$detected[rownames(rowData(sce_naive)) %in% rownames(chain_naive)], 
-    gew_mu_naive
-  ) +
-  geom_hex() +
-  labs(x = "Number of detected genes", y = "Geweke diagnostic for mean expression") +
-  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
-  scale_fill_viridis()
-```  
-
-
-```{r convergence-naive, fig.cap="Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
-plot(chain_naive, Param = "mu", Gene = 6142)
-```
-
+be increased. It is also helpful to perform more stringent quality control
+on the input data, given that genes with very low counts often suffer from slow
+convergence and poor sampling efficiency.
 
 The autocorrelation of an MCMC chain is defined as the Pearson 
 correlation between the chain and time-delayed versions of the chain. 
@@ -882,6 +823,73 @@ the same level of Monte Carlo error for an estimate. Monte Carlo error is
 defined as the variance of a Monte Carlo estimate across repetitions
 [@Koehler2009].
 
+```{r convergence-naive, fig.cap="Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
+plot(chain_naive, Param = "mu", Gene = 6142)
+```
+
+
+As `r Biocpkg("BASiCS")` infers thousands of parameters, it is 
+impractical to assess graphical diagnostics, as described previously, for each 
+parameter. Thus, it is helpful to use numerical diagnostics that can be applied 
+to many parameters simultaneously to judge whether the algorithm has failed
+to converge, or failed to sample efficiently.
+For the former case, we focus here on the diagnostic criterion proposed by 
+Geweke [@Geweke1995]. This produces a Z-score comparing a portion of the draws 
+from the beginning of the chain (0.1 by default) to a portion of the draws
+from the end of the chain (0.5 by default). Large absolute Z-scores indicate
+a large difference in mean between the beginning and end of the chain, 
+indicating that the algorithm has not converged by the end of the burn-in
+period. As seen in Figure \@ref(fig:geweke-diag-hist), most genes have small
+absolute values for this diagnostic criterion.
+Further, as seen in Figures \@ref(fig:geweke-diag-mean) and
+\@ref(fig:geweke-diag-detected), genes with large absolute values for this 
+criterion are often those genes that have a low average expression level, or 
+that are expressed only in a small proportion of cells.
+
+```{r geweke-diag-hist, fig.cap = "Histogram of Geweke diagnostic for mean expression across all genes in naive cells. Large absolute values for this diagnostic indicate that the sampler may not have reached the stationary distribution by the end of the burn-in period."}
+library("coda")
+library("ggplot2")
+
+gew_mu_naive <- geweke.diag(mcmc(displayChainBASiCS(chain_naive, Param = "mu")))$z
+which(abs(gew_mu_naive) == max(abs(gew_mu_naive)) )
+ess_naive <- BASiCS_EffectiveSize(chain_naive, Param = "mu")
+
+hist(
+  gew_mu_naive,
+  breaks = "FD",
+  main = NULL,
+  xlab = "Geweke diagnostic"
+)
+abline(v = c(-3, 3), col = "firebrick", lty = "dashed")
+## AOC: not sure what this is meant to show?
+# hist(2*pnorm(-abs(gew_mu_naive)))
+```
+
+
+```{r geweke-diag-mean, fig.cap="Geweke diagnostic criterion for mean expression plotted against mean expression in naive cells."}
+ggplot() +
+  aes(
+    log10(colMedians(displayChainBASiCS(chain_naive, Param = "mu"))),
+    gew_mu_naive
+  ) +
+  geom_hex() +
+  labs(x = "Mean expression", y = "Geweke diagnostic\nfor mean expression") +
+  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
+  scale_fill_viridis()
+```
+
+```{r geweke-diag-detected, fig.cap="Geweke diagnostic criterion for mean expression plotted against the detection rate for all genes in naive cells."}
+ggplot() +
+  aes(
+    rowData(sce_naive)$detected[rownames(rowData(sce_naive)) %in% rownames(chain_naive)], 
+    gew_mu_naive
+  ) +
+  geom_hex() +
+  labs(x = "Number of detected genes", y = "Geweke diagnostic\nfor mean expression") +
+  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
+  scale_fill_viridis()
+```  
+
 
 Given that high levels of autocorrelation reduce the efficiency of an MCMC 
 sampler, it is helpful to evaluate the 
@@ -896,40 +904,63 @@ $$
   \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
 $$
 where $n$ is the number of samples and $\rho(k)$ is the autocorrelation at lag 
-$k$. We can visualise this parameter by plotting histograms of the effective
-sample size over all genes, and by plotting effective sample size against
-mean expression or over-dispersion for all genes.
+$k$. 
 
 As `r Biocpkg("BASiCS")` has thousands of parameters, it is impractical to 
 explore convergence diagnostics for each of them individually.
-Therefore, we provide graphical summaries based on the ESS. It is also useful
-to examine, in a similar way, other diagnostics, such as the Geweke diagnostic.
+Therefore, we provide graphical summaries based on the ESS. We can visualise
+this metric by plotting histograms of the effective sample size across all 
+genes using `BASiCS_DiagHist`, or by plotting effective sample size against
+mean expression or over-dispersion for all genes using `BASiCS_DiagPlot`.
+As seen in Figure \@ref(fig:diag-plot-naive), most genes have effective sample 
+sizes near 1,000. Furthermore, Figure \@ref(fig:geweke-diag-ess) demonstrates 
+that the Geweke diagnostic criterion is closely related to effective sample 
+size, such that parameters with large Z-scores often have very low effective 
+sample sizes.
 
 
-```{r diag-hist-naive, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests."}
+```{r diag-hist-naive, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters in naive cells. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests.", eval=FALSE,echo=FALSE}
 mu_ess <- BASiCS_DiagHist(chain_naive, Param = "mu") +
   xlab("ESS: mu") +
-  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey60")
 delta_ess <- BASiCS_DiagHist(chain_naive, Param = "delta") +
   xlab("ESS: delta") +
-  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey60")
 multiplot(mu_ess, delta_ess, cols = 2)
 ```
 
-```{r diag-plot-naive, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
+```{r diag-plot-naive, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters in naive cells. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
 mu_ess2 <- BASiCS_DiagPlot(chain_naive, Param = "mu") +
-  theme(legend.position = "none") +
+  theme(legend.position = "bottom") +
   ylab("ESS") +
-  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey60")
 delta_ess2 <- BASiCS_DiagPlot(chain_naive, Param = "delta") +
-  theme(legend.position = "none") +
+  theme(legend.position = "bottom") +
   ylab("ESS") +
-  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey60")
 multiplot(mu_ess2, delta_ess2, cols = 2)
 ```
 
-We can see several genes show very low sample size for mu. We can identify 
-these using `BASiCS_EffectiveSize`.
+
+```{r geweke-diag-ess, fig.cap="Geweke diagnostic criterion for mean expression plotted against effective sample size in naive cells."}
+ggplot() +
+  aes(
+    ess_naive,
+    gew_mu_naive
+  ) +
+  geom_hex() +
+  labs(x = "Effective sample size", y = "Geweke diagnostic for mean expression") +
+  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
+  scale_fill_viridis()
+```
+
+
+
+Several genes show very low effective sample size for mu. These genes may 
+indicate systematic problems with the MCMC algorithm; thus,
+it may be useful to identify these genes.
+`BASiCS_EffectiveSize` allows the calculation of effective sample size for
+any parameters in a `BASiCS_Chain` object.
 
 ```{r low-ess-genes}
 ess <- BASiCS_EffectiveSize(chain_naive, Param = "mu")
@@ -939,7 +970,7 @@ head(low_ess_genes)
 
 Given that the sampler has generated less than 100 effectively independent 
 samples for these genes, there may not be sufficient posterior information to 
-reliably calculate differences in mean expression. Therefore it is appropriate 
+reliably estimate changes in mean expression. Therefore it is appropriate 
 to exclude these genes from downstream analysis. As we will see later,
 `BASiCS_TestDE` automatically excludes these genes from tests of differential
 expression.
@@ -949,29 +980,29 @@ plot(chain_active, Param = "mu", Gene = 1)
 ```
 
 
-```{r ess-diag-hist, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests."}
+```{r ess-diag-hist, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters in active cells. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests.", eval=FALSE, echo=FALSE}
 mu_ess <- BASiCS_DiagHist(chain_active, Param = "mu") +
   xlab("ESS: mu") +
   theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
-  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey60")
 delta_ess <- BASiCS_DiagHist(chain_active, Param = "delta") +
   xlab("ESS: mu") +
   theme(axis.text.x = element_text(hjust = 1, angle = 45)) +
-  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey80")
+  geom_vline(xintercept = 100, linetype = "dashed", colour = "grey60")
 multiplot(mu_ess, delta_ess, cols = 2)
 ```
 
-```{r ess-diag-plot, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
+```{r ess-diag-plot, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters in active cells. A dashed line indicates the minimum effective sample size for genes to be considered in differential expression tests. Colour indicates local density, with lighter colours representing higher density."}
 mu_ess2 <- BASiCS_DiagPlot(chain_active, Param = "mu") +
   theme(
-    legend.position = "none",
+    legend.position = "bottom",
   axis.text.x = element_text(hjust = 1, angle = 45)) +
-  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey60")
 delta_ess2 <- BASiCS_DiagPlot(chain_active, Param = "delta") +
   theme(
-    legend.position = "none",
+    legend.position = "bottom",
     axis.text.x = element_text(hjust = 1, angle = 45)) +
-  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey80")
+  geom_hline(yintercept = 100, linetype = "dashed", colour = "grey60")
 multiplot(mu_ess2, delta_ess2, cols = 2)
 ```
 
@@ -1031,8 +1062,7 @@ scran_size_factors <- sizeFactors(sce_naive)
 g1 <- ggplot(data.frame(basics_size_factors, scran_size_factors)) +
   aes(basics_size_factors, scran_size_factors) +
   geom_point() +
-  ggtitle("active")
-
+  ggtitle("Naive")
 
 basics_size_factors <- colMedians(
   displayChainBASiCS(chain_active, "phi")
@@ -1042,9 +1072,19 @@ scran_size_factors <- sizeFactors(sce_active)
 g2 <- ggplot(data.frame(basics_size_factors, scran_size_factors)) +
   aes(basics_size_factors, scran_size_factors) +
   geom_point() +
-  ggtitle("active")
+  ggtitle("Active")
 multiplot(g1, g2, cols = 2)
 ```
+
+
+As shown in Figure \@ref(fig:normalisation-vs-scran), the capture efficiency and 
+scaling factors ($\nu_j$ and $\phi_j$ respectively) inferred by 
+`r Biocpkg("BASiCS")` are highly correlated with the global scaling 
+normalisation factors inferred using the method of @Lun2016.
+An advantage of jointly inferring normalisation rather than using pre-computed
+normalisation factors is that uncertainty is propagated from the normalisation
+step to all downstream analyses.
+
 
 ## Quantification of variability using BASiCS
 
@@ -1059,12 +1099,12 @@ Here, we will highlight the mean-variance relationship for each variability
 measures. For this analysis, we exclude genes that are not expressed in at 
 least 2 cells.
 These genes have missing (`NA`) values for the residual over-dispersion 
-parameter, $\epsilon$. These values can be
-obtained by running `displayChainBASiCS(chain_naive, Param = "epsilon")`.
-We will use `r CRANpkg("ggpointdensity")` to visualise the density of
-the genes along the axes of mean and variability.
+parameter, $\epsilon$. These values can be obtained using the function
+`displayChainBASiCS`.
+We will use `r CRANpkg("ggpointdensity")` to visualise the local density of
+genes along the axes of mean and variability.
 
-```{r variability-measures, fig.cap="Variance is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r variability-measures, fig.cap="Variance is plotted against mean expression for all genes on a log-log scale. Colour represents local density, with lighter colours representing higher density."}
 library("ggpointdensity")
 library("viridis")
 # Exclude ERCCs
@@ -1090,7 +1130,7 @@ ggplot(
   scale_colour_viridis()
 ```
 
-```{r fano-fig, fig.cap="Fano factor is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r fano-fig, fig.cap="Fano factor is plotted against mean expression for all genes on a log-log scale. Colour represents local density, with lighter colours representing higher density."}
 # Fano factor
 ggplot(
     data.frame(
@@ -1102,7 +1142,7 @@ ggplot(
   scale_colour_viridis()
 ```
 
-```{r cv-fig, fig.cap="Squared coefficient of variation is plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r cv-fig, fig.cap="Squared coefficient of variation is plotted against mean expression for all genes on a log-log scale. Colour represents local density, with lighter colours representing higher density."}
 # Squared coefficient of variation
 ggplot(
     data.frame(
@@ -1114,13 +1154,17 @@ ggplot(
   scale_colour_viridis()
 ```
 
-We see that all measures correlate with mean expression.
-The same is true for the over-dispersion parameters estimated by 
-`r Biocpkg("BASiCS")`, as
-shown below. Again, for this comparison, we exclude genes that are not observed
-to be expressed in at least 2 cells
+Figures \@ref(fig:variability-measures), \@ref(fig:fano-fig),
+and \@ref(fig:cv-fig) demonstrate that these measures each correlate strongly
+with mean expression. The same is true for the over-dispersion parameters 
+estimated by `r Biocpkg("BASiCS")`, as shown in Figure
+\@ref(fig:CV-comparison-BASiCS). Again, for this comparison,
+we exclude genes that are not observed to be expressed in at least 2 cells,
+given that variability cannot meaningfully be quantified given a single 
+observation.
 
-```{r CV-comparison-BASiCS, fig.cap="Over-dispersion estimates from BASiCS are plotted against mean expression for all genes. Colour represents local density, with lighter colours representing higher density."}
+
+```{r CV-comparison-BASiCS, fig.cap="Over-dispersion estimates from BASiCS are plotted against mean expression for all genes on a log-log scale. Colour represents local density, with lighter colours representing higher density."}
 summary_naive <- Summary(chain_naive)
 # Remove genes
 eps_not_na <- !is.na(displaySummaryBASiCS(summary_naive, Param = "epsilon")[, "median"])
@@ -1138,7 +1182,7 @@ ggplot(
   scale_colour_viridis()
 ```
 
-```{r cv-basics, fig.cap="Over-dispersion estimates from BASiCS are plotted against squared coefficient of variation for all genes. Colour represents local density, with lighter colours representing higher density."}
+```{r cv-basics, fig.cap="Over-dispersion estimates from BASiCS are plotted against squared coefficient of variation for all genes on a log-log scale. Colour represents local density, with lighter colours representing higher density."}
 # Compare delta to CV2
 ggplot(
     data.frame(
@@ -1151,14 +1195,18 @@ ggplot(
 ```
 
 The over-dispersion parameters estimated using `r Biocpkg("BASiCS")`
-show strong correlation 
-with CV^2^. Recently, we extended `r Biocpkg("BASiCS")` to avoid the 
-mean-variability 
-relationship by performing an internal regression between the over-dispersion 
-and mean expression parameters (as visualised in figure *Figure showFit*).
+show strong correlation with CV^2^, as seen in Figure \@ref(fig:cv-basics).
+Recently, we extended `r Biocpkg("BASiCS")` to explicitly model this 
+mean-variability relationship by performing an internal regression between the 
+over-dispersion and mean expression parameters, as visualised in Figure 
+\@ref(fig:naive-fit). This results in the $\epsilon$ parameter, a measure
+of variability above or below that expected based on the overall mean-variance
+relationship.
 Similarly, Kolodziejczyk _et al._ used the distance to a rolling median (DM) 
 along the mean-variability trend to correct for this confounding factor 
 [@Kolodziejczyk2015cell].
+Furthermore, Figure \@ref(fig:epsilon-dm) shows that these parameters are highly
+correlated.
 Here, we highlight how to obtain the residual variability estimates using 
 `r Biocpkg("BASiCS")` and `r Biocpkg("scran")`.
 
@@ -1179,13 +1227,13 @@ ggplot(
 
 ```{r mean-dispersion-dm, fig.cap="DM dispersion estimates are plotted against mean expression."}
 # DM values
-DM.naive <- DM(mean = mean_genes, cv2 = var_genes / mean_genes^2)
+DM_naive <- DM(mean = mean_genes, cv2 = var_genes / mean_genes^2)
 
 # DM versus mean expression
 ggplot(
     data.frame(
       mean = mean_genes,
-      DM = DM.naive
+      DM = DM_naive
     )
   ) +
   geom_pointdensity(aes(log(mean), DM)) +
@@ -1197,7 +1245,7 @@ ggplot(
 ggplot(
     data.frame(
       epsilon = epsilon_naive[rownames(counts_denoised), "median"],
-      DM = DM.naive
+      DM = DM_naive
     )
   ) +
   geom_pointdensity(aes(epsilon, DM)) +
@@ -1205,17 +1253,20 @@ ggplot(
 ```
 
 Neither the DM nor the residual over-dispersion estimates show association 
-with mean expression.
-Furthermore, the mean-independent variability measures display high correlation.
+with mean expression, as shown in Figures \@ref(fig:mean-dispersion-basics) 
+and \@ref(fig:mean-dispersion-dm).
+Furthermore, these mean-independent variability measures are highly correlated,
+as seen in Figure \@ref(fig:epsilon-dm).
 These measures can be used to associate genomic features 
 [@Morgan2018;@Faure2017] or transcriptional dynamics [@Antolovic2017] to 
 gene expression variability.
 While the DM is calculated as a point estimate, `r Biocpkg("BASiCS")` stores 
 each posterior 
 sample within the `BASiCS_Chain` object.
-They can be accessed using the `displayChain` function, which displays cell- 
-or gene-specific samples in the form of a matrix, wherein each column contains 
-cell- or gene-specific parameters, and rows contain the MCMC samples.
+They can be accessed using the `displayChain` function. This function
+extracts cell- or gene-specific samples in the form of a matrix, wherein each 
+column contains cell- or gene-specific parameters, and rows contain the MCMC 
+samples.
 
 ```{r individual-samples}
 displayChainBASiCS(chain_naive, Param = "epsilon")[1:10, 1:10]
@@ -1257,8 +1308,7 @@ given that it is not possible to quantify variability or changes in variability
 for genes that are only expressed in one cell.
 
 `r Biocpkg("BASiCS")` offers a function to select genes with large or small 
-biological 
-variance. If the MCMC sampler was run with `Regression = TRUE`,
+biological variance. If the MCMC sampler was run with `Regression = TRUE`,
 the `BASiCS_DetectHVG` and `BASiCS_DetectLVG` functions take the 
 `BASiCS_Chain` object and a quantile threshold.
 Using the residual over-disperison parameters, genes are ranked by their 
@@ -1291,9 +1341,9 @@ compare the results of both methods.
 coefficient of variation (CV^2^) of the gene-wise expression counts and their 
 mean abundance using the `modelGeneCV2` function.
 Furthermore, it computes a ratio of the observed CV^2^ to the value predicted by
-the trend fitted to the CV^2^ and mean values across all genes. Genes with larger
-ratios are assumed to demonstrate biologically variability, while genes with 
-lower ratios are assumed to be driven largely by technical noise.
+the trend fitted to the CV^2^ and mean values across all genes. Genes with 
+larger ratios are assumed to demonstrate biologically variability, while genes
+with smaller ratios are assumed to be driven largely by technical noise.
 
 ```{r HVG-LVG-scran}
 # Variance decomposition
@@ -1307,9 +1357,11 @@ while controlling the FDR to 5%.
 As described by `r Biocpkg("SimpleSingleCell")` and by 
 [*OSCA*](https://osca.bioconductor.org/), different methods
 can be used to identify depending on the intended downstream analysis,
-and thresholds should be adjusted based on the characteristics [@Lun2016;@Amezquita2019]
+and thresholds should be adjusted based on the characteristics
+[@Lun2016;@Amezquita2019]
 We can then compare the the overlap of the HVG identified by 
-`r Biocpkg("scran")` and by `r Biocpkg("BASiCS")`.
+`r Biocpkg("scran")` and by `r Biocpkg("BASiCS")` (shown in Figure
+\@ref(fig:scran-HVG)).
 
 ```{r scran-HVG, fig.cap="Epsilon (residual over-dispersion) is plotted against log(mu) (log mean expression). Colour indicates the results of scran and BASiCS HVG tests."}
 is_hvg <- var_out$ratio > 2 & var_out$FDR < 0.05
@@ -1322,10 +1374,16 @@ nrow(hvg_out)
 plot_data <- data.frame(
   Mu = HVG_table$Mu,
   Epsilon = HVG_table$Epsilon,
-  # HVG = HVG_res
-  BASiCS = ifelse(HVG_table$HVG, "HVG", "Not HVG"),
-  scran = ifelse(is_hvg, "HVG", "Not HVG")
+  BASiCS_HVG = HVG_table$HVG,
+  scran_HVG = is_hvg
 )
+plot_data <- plot_data[complete.cases(plot_data), ]
+plot_data <- cbind(plot_data, 
+  BASiCS = ifelse(plot_data$BASiCS_HVG, "HVG", "Not HVG"),
+  scran = ifelse(plot_data$scran_HVG, "HVG", "Not HVG")
+)
+
+
 ord <- order(plot_data$scran, plot_data$BASiCS, decreasing = TRUE)
 plot_data <- plot_data[ord, ]
 plot_data$Status <- paste0(
@@ -1334,18 +1392,21 @@ plot_data$Status <- paste0(
 ggplot(plot_data) +
   geom_point(
     aes(log(Mu), Epsilon, colour = Status),
-    alpha = 0.6
-  )
+    alpha = 0.5,
+    shape = 16
+  ) +
+  scale_colour_brewer(palette = "Paired")
 ```
 
 *`r length(intersect(rownames(hvg_out), HVG_table$GeneName[HVG_table$HVG]))`*
 of the *`r nrow(hvg_out)`* HVGs of scran are among the
 *`r sum(HVG_table$HVG)`* HVGs identified by `r Biocpkg("BASiCS")`.
 
+<!-- 
 We can now compare these gene-specific variability measures (over-dispersion and 
 residual over-dispersion) to previously used measures to quantify cell-to-cell 
 expression variability [@Brennecke2013,@Kolodziejczyk2015cell].
-
+-->
 
 ## Differential expression testing using BASiCS
 
@@ -1354,7 +1415,7 @@ expression variability [@Brennecke2013,@Kolodziejczyk2015cell].
 This section highlights the use of `r Biocpkg("BASiCS")` to perform 
 differential expression
 tests for mean and variability between cells of two conditions. 
-For convenience, we will compare the naive CD4^+^ T cells, which were analysed 
+For convenience, we will compare the naive CD4^+^ T cells, analysed 
 in the previous section, to activated CD4^+^ T cells of the same dataset 
 [@Martinez-jimenez2017]. Naive CD4^+^ T cells were activated for 3 hours 
 using plate-bound CD3e and CD28 antibodies.
@@ -1362,7 +1423,7 @@ T cell activation is linked to strong transcriptional shifts and the
 up-regulation of lineage specific marker genes, such as Tbx21 and Gata1 
 [@Best2013;@Fu2012].
 To generate this data, the authors did not add cytokines, which are needed for 
-T cell differentiation [@Zhu2010], meaning that any heterogeneity in the activated 
+T cell differentiation [@Zhu2010]. Therefore, any heterogeneity in the activated
 cell population does not arise from cells residing in different lineage-specific 
 differentiation states. Prior to differential testing, and as explained above, 
 we need to generate a `SingleCellExperiment` object that is compatible for
@@ -1399,8 +1460,9 @@ Test_DE <- BASiCS_TestDE(
 ```
 
 After running the test, we can now visualise the results in form of a MA-plot 
-(log ratio _versus_ mean average) and volcano plot (posterior probability
-_versus_ log ratio).
+(log ratio _versus_ mean average; Figure \@ref(fig:visualise-MA-plot))
+and volcano plot (posterior probability _versus_ log ratio; Figure
+\@ref(fig:visualise-volcano-plot)).
 
 ```{r visualise-MA-plot, fig.cap="Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
 BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "MA")
@@ -1439,6 +1501,7 @@ TableMean <- format(Test_DE, Which = "Mean", Filter = FALSE)
 TableDisp <- format(Test_DE, Which = "Disp", Filter = FALSE)
 table(TableMean$ResultDiffMean)
 ```
+
 <!---
 In this case, this results in 
 r  `sum(TableMean$ResultDiffMean=="ExcludedLowESS")` genes with low 
@@ -1453,7 +1516,9 @@ to visualise the differentially expressed genes in order to appraise the
 significance of the results. It is also useful to
 perform functional enrichment analysis to identify biologically 
 meaningful patterns, for example using `r Biocpkg("goseq")` [@Young2010].
-We do not perform, as it is outside of the scope of `r Biocpkg("BASiCS")`.
+We do not perform this here, as it is outside of the scope of 
+`r Biocpkg("BASiCS")`. However, a workflow for this process 
+is detailed in Supplementary section TODO.
 
 The molecule counts used in this workflow are annotated using Ensembl gene
 identifiers. In order to facilitate the visualisation and interpretation
@@ -1493,7 +1558,8 @@ if (!file.exists("rds/genenames.rds")) {
 It is useful to visualise differentially expressed genes to ensure that
 the identified genes are the result of biologically meaningful shifts in 
 expression and not technical issues. As an example, we visualise the
-expression of Cd69, a known marker of T cell activation [@Ziegler1994].
+expression of Cd69, a known marker of T cell activation [@Ziegler1994],
+in Figure \@ref(fig:violin-plots).
 
 ```{r violin-plots, fig.cap="Violin plot of Cd69 expression in naive and active cells."}
 # Expression of Cd69 in both conditions
@@ -1516,9 +1582,14 @@ It may also useful to visualise many genes at once. This is useful in quality
 checking the results of a differential expression analysis, and may also
 aid in identifying systematic patterns among differentially expressed genes
 and guiding downstream analysis. Here we use `r Biocpkg("ComplexHeatmap")`
-to visualise genes that are up-regulated in each condition [@Gu2016].
+to visualise genes that are up-regulated in each condition [@Gu2016],
+the output of which is shown in Figure \@ref(fig:heatmap-diffexp).
 
-```{r gene-lists-mean}
+```{r heatmap-diffexp, fig.width = 7, fig.height = 5, fig.cap="Heatmap of 30 differentially expressed genes in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the logged average expression for each gene in each population."}
+library("ComplexHeatmap")
+library("circlize")
+library("RColorBrewer")
+
 # Up-regulated in naive
 ind_n <- TableMean$ResultDiffMean == "Naive+"
 naive_mean <- TableMean[ind_n, ]
@@ -1530,13 +1601,7 @@ ind_a <- TableMean$ResultDiffMean == "Active+"
 active_mean <- TableMean[ind_a, ]
 active_mean <- active_mean[order(active_mean$MeanLog2FC, decreasing = TRUE), ]
 active_mean$Symbol <- genenames[active_mean$GeneName, 2]
-```
 
-
-```{r heatmap-diffexp, fig.cap="Heatmap of 30 differentially expressed genes in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the logged average expression for each gene in each population."}
-library("ComplexHeatmap")
-library("circlize")
-library("RColorBrewer")
 heatmap_ngenes <- 15
 heatmap_seq <- seq_len(heatmap_ngenes)
 
@@ -1647,7 +1712,9 @@ Test_DE_LFC0 <- BASiCS_TestDE(
 
 We first select the genes that remain similarly expressed between both 
 conditions and highlight the differential over-dispersion results in 
-the form of MA plots and boxplots.
+the form of boxplots and MA plots, shown in 
+Figures \@ref(fig:over-dispersion-result) and 
+\@ref(fig:over-dispersion-boxplot).
 
 ```{r over-dispersion-result, fig.cap="Over-dispersion log fold change (naive relative to active) is plotted against mean expression."}
 # Select genes with no changes in mean expression
@@ -1680,9 +1747,7 @@ higher expression variabilty), it does not allow the testing of changes in
 mean expression and expression variability in parallel.
 For this, `r Biocpkg("BASiCS")` compares the residual over-dispersion 
 parameters, which do not scale with mean expression, between the two conditions.
-Here, we filter on genes that are lowly expressed in both conditions and, as 
-explained above, remove genes for which the MCMC sampler obtained a low 
-effective sample size:
+Here, we filter on genes that are lowly expressed in both conditions.
 
 ```{r res-over-disp-filtering}
 # exclude lowly expressed genes
@@ -1710,7 +1775,8 @@ Test_DE <- BASiCS_TestDE(
 ```
 
 We can now visualise the changes in residual over-dispersion between naive and 
-activated CD4^+^ T cells in the form of a MA-plot.
+activated CD4^+^ T cells in the form of a MA-plot 
+(Figure \@ref(fig:diff-res-plot)).
 In this visualisation, the difference between the posterior medians of the 
 residual over-dispersion parameters $\epsilon$ are shown on the y-axis.
 Epsilon values for genes that are not expressed in at least 2 cells per 
@@ -1738,7 +1804,8 @@ res_df <- res_df[!ind_exclude, ]
 ```
 
 Next, we can visualise the regulation of each individual gene based on its 
-changes in mean expression and expression variability.
+changes in mean expression and expression variability
+(Figure \@ref(fig:DV-DE-vis)).
 
 ```{r DV-DE-vis, fig.cap="Difference in residual over-dispersion is plotted against log fold change for all genes. Colour indicates whether significant differences were detected between the groups for each parameter."}
 res_df$ResultDiffMean[grep("Excluded", res_df$ResultDiffMean)] <- "NoDiff"
@@ -1760,9 +1827,12 @@ ggplot(res_df) +
 As discussed [previously](#vis-diff-exp), it is useful to visualise the results
 of differential expression tests in order to appraise the quality of the 
 results, and to identify systematic patterns among the genes identified.
-For this purpose, we again use `r Biocpkg("ComplexHeatmap")`.
+For this purpose, we again use `r Biocpkg("ComplexHeatmap")`; the result is
+shown in Figure \@ref(fig:heatmap-diffresdisp).
 
-```{r gene-lists-disp}
+
+
+```{r heatmap-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Heatmap of 30 genes with higher residual over-dispersion in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the residual over-dispersion for each gene in that population."}
 # More variable in naive
 ind_n <- TableResDisp$ResultDiffResDisp == "Naive+"
 naive_resdisp <- TableResDisp[ind_n, ]
@@ -1776,10 +1846,7 @@ active_resdisp <- TableResDisp[ind_a, ]
 ord <- order(active_resdisp$ResDispDistance, decreasing = TRUE)
 active_resdisp <- active_resdisp[ord, ]
 active_resdisp$Symbol <- genenames[active_resdisp$GeneName, 2]
-```
 
-
-```{r heatmap-diffresdisp, fig.cap="Heatmap of 30 genes with higher residual over-dispersion in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the residual over-dispersion for each gene in that population."}
 heatmap_ngenes <- 15
 heatmap_seq <- seq_len(heatmap_ngenes)
 
@@ -1914,8 +1981,12 @@ the vertical integration approach, as described above.
 
 As discussed previously, it is important to ensure that an adequate effective
 sample size has been generated using MCMC.
+Figure \@ref(fig:diag-plot-naive-nospikes) shows that the sampler has generated
+a large effective sample size, similar to the case when we included spike-in
+molecules.
 
-```{r diag-hist-naive-nospikes, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters using the horizontal integration approach."}
+
+```{r diag-hist-naive-nospikes, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters using the horizontal integration approach.", eval=FALSE, echo=FALSE}
 mu_ess <- BASiCS_DiagHist(chain_naive, Param = "mu") +
   xlab("ESS: mu")
 delta_ess <- BASiCS_DiagHist(chain_naive, Param = "delta") +
@@ -1925,9 +1996,9 @@ multiplot(mu_ess, delta_ess, cols = 2)
 
 ```{r diag-plot-naive-nospikes, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters using the horizontal integration approach. Colour indicates local density, with lighter colours representing higher density."}
 mu_ess2 <- BASiCS_DiagPlot(chain_naive, Param = "mu") +
-  theme(legend.position = "none")
+  theme(legend.position = "bottom")
 delta_ess2 <- BASiCS_DiagPlot(chain_naive, Param = "delta") +
-  theme(legend.position = "none")
+  theme(legend.position = "bottom")
 multiplot(mu_ess2, delta_ess2, cols = 2)
 ```
 
@@ -1940,9 +2011,10 @@ could be exactly offset by an equivalent shift in cell-specific normalisation
 parameters. Therefore, the geometric mean of the mean expression parameters
 is fixed to a constant value. Relative expression level estimates are broadly 
 consistent between the horizontal and vertical integration approaches; 
-however there may
-be a global difference in mean expression estimates. We can remove this global
-offset using `BASiCS_CorrectOffset`.
+however there may be a global difference in mean expression estimates, as shown
+in Figure \@ref(fig:offset). It is important to remove this global scale offset
+before performing comparative analyses. This is performed by default in
+`BASiCS_TestDE`, but can be performed manually using `BASiCS_CorrectOffset`.
 
 ```{r offset, fig.cap="Distribution of mean expression values before and after correcting the global difference in scale."}
 BASiCS_PlotOffset(chain_naive_nospikes, chain_naive,
@@ -1955,8 +2027,8 @@ chain_naive_nospikes_offset
 
 Following removal of the global offset, the mean expression and over-dispersion 
 estimates obtained from each method are directly comparable.
-As seen in Figure \@ref(fig:mu-spike-comp) and 
-Figure \@ref(fig:delta-spike-comp), parameter point estimates from the two 
+As seen in Figures \@ref(fig:mu-spike-comp) and 
+\@ref(fig:delta-spike-comp), parameter point estimates from the two 
 methods are highly correlated.
 
 ```{r mu-spike-comp, fig.cap="Comparison of mean expression point estimates using spike-in genes, and the same parameters estimated without using spike-in genes."}
