@@ -106,39 +106,6 @@ This variability can reflect deterministic or stochastic events that regulate
 gene expression and, among others, has been reported to increase prior to cell
 fate decisions [@Mojtahedi2016] as well as during ageing [@Martinez-jimenez2017]. 
 
-<!--- Describes aims for the workflow and introduces BASiCS ---> 
-This article complements existing scRNA-seq workflows based on the Bioconductor 
-ecosystem (e.g. [@Lun2016; @Kim2019]), providing a detailed framework for 
-transcriptional variability analyses. 
-Firstly, we briefly discuss the sources of variability that arise in scRNA-seq 
-data and the strategies that have been designed to control or attenuate 
-technical noise in these assays. 
-Subsequently, we describe a step-by-step workflow that uses
-`r Biocpkg("scater")` [@McCarthy2017] and `r Biocpkg("scran")` [@Lun2016] 
-to perform quality control (QC) as well as initial exploratory analyses. 
-To robustly quantify transcriptional variability we use `r Biocpkg("BASiCS")` 
-[@Vallejos2015; @Vallejos2016; @Eling2017] --- a Bayesian hierarchical framework 
-that jointly performs data normalisation, technical noise quantification and 
-downstream analyses, whilst propagating statistical uncertainty across these 
-steps. 
-Our analysis pipeline includes practical guidance to assess the convergence of 
-the Markov Chain Monte Carlo (MCMC) algorithm that is used to infer model 
-parameters as well as recommendations to interpret and post-process the model 
-outputs. 
-Finally, through a case study in the context of immune cells, we illustrate
-how `r Biocpkg("BASiCS")` can be used to identify highly and lowly variable
-genes within a cell population, as well as to compare expression profiles
-between experimental conditions or cell types. 
-
-All source code used to generate the results presented in this article is 
-available [on Github](https://github.com/VallejosGroup/BASiCSWorkflow).
-To ensure the 
-reproducibility of this workflow, the analysis environment and all software 
-dependencies are provided as a Docker image [@Boettiger2015]. The image 
-can be obtained from
-[Docker Hub](https://hub.docker.com/repository/docker/alanocallaghan/bocker).
-
-# Sources of variability in scRNA-seq data
 
 Stochastic variability within a seemingly homogeneous cell population --- often 
 referred to as transcriptional *noise* --- can arise from intrinsic and 
@@ -174,6 +141,51 @@ in amplification and sequencing depth (these technical biases are not fully
 removed unless sequencing to saturation [@Vallejos2017]). 
 However, despite the benefits associated to the use of spike-ins and UMIs, 
 these are not available for all scRNA-seq protocols [@Haque2017].
+
+The Bioconductor package `r Biocpkg("BASiCS")` aims to account for these
+sources of noise, both technical and biological. In particular, we
+encourage the use of UMIs when performing a scRNAseq study.
+It is well-established that scRNAseq data is distributed
+according to a negative binomial distribution when UMIs are used in the 
+sequencing protocol [@Svennson2020;@Townes2020;@Townes2019]. Thus, the
+distributional assumptions of `r Biocpkg("BASiCS")` are more likely to be valid
+for datasets wherein UMIs have been used. Furthermore, 
+`r Biocpkg("BASiCS")` leverages spike-in molecules to aid in normalisation when
+available, though a recent extension of the model allows the application of
+the model in the absence of spike-in molecules [@Eling2018]. Moreover,
+`r Biocpkg("BASiCS")` enables the quantification of variability within a 
+population, while accounting for the overall mean-variance relationship in
+an scRNAseq dataset [@Eling2018].
+
+
+<!--- Describes aims for the workflow and introduces BASiCS ---> 
+This article complements existing scRNA-seq workflows based on the Bioconductor 
+ecosystem (e.g. [@Lun2016; @Kim2019]), providing a detailed framework for 
+transcriptional variability analyses. 
+Firstly, we describe a step-by-step workflow that uses
+`r Biocpkg("scater")` [@McCarthy2017] and `r Biocpkg("scran")` [@Lun2016] 
+to perform quality control (QC) as well as initial exploratory analyses. 
+To robustly quantify transcriptional variability we use `r Biocpkg("BASiCS")` 
+[@Vallejos2015; @Vallejos2016; @Eling2017] --- a Bayesian hierarchical framework 
+that jointly performs data normalisation, technical noise quantification and 
+downstream analyses, whilst propagating statistical uncertainty across these 
+steps. 
+Our analysis pipeline includes practical guidance to assess the convergence of 
+the Markov Chain Monte Carlo (MCMC) algorithm that is used to infer model 
+parameters as well as recommendations to interpret and post-process the model 
+outputs. 
+Finally, through a case study in the context of immune cells, we illustrate
+how `r Biocpkg("BASiCS")` can be used to identify highly and lowly variable
+genes within a cell population, as well as to compare expression profiles
+between experimental conditions or cell types. 
+
+All source code used to generate the results presented in this article is 
+available [on Github](https://github.com/VallejosGroup/BASiCSWorkflow).
+To ensure the 
+reproducibility of this workflow, the analysis environment and all software 
+dependencies are provided as a Docker image [@Boettiger2015]. The image 
+can be obtained from
+[Docker Hub](https://hub.docker.com/repository/docker/alanocallaghan/bocker).
 
 
 # Methods {#methods}
