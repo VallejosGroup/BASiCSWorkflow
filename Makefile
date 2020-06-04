@@ -1,7 +1,7 @@
-.PHONY: Workflow run server
+.PHONY: run server
 
 all:
-	docker run -v $(shell pwd):/home/rstudio/mycode -w /home/rstudio/mycode alanocallaghan/bocker /bin/bash -c make Workflow.pdf && make Supplements.pdf
+	docker run -v $(shell pwd):/home/rstudio/mycode -w /home/rstudio/mycode alanocallaghan/bocker /bin/bash -c "make Workflow.pdf && make Supplements.pdf"
 
 %.pdf: %.Rmd
 	Rscript -e 'rmarkdown::render("$<", output_format="all")'

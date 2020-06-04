@@ -2,24 +2,22 @@
 title: "A BASiCS workflow for expression variability analysis using scRNA-Seq data"
 subtitle: "Supplementary material"
 author: 
-  - name: Nils Eling
-    affiliation: 
-    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
-      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
-    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
-      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
-    - &UZH Department of Quantitative Biomedicine, University of Zurich,
-      Winterthurerstrasse 190, CH-8057, Zurich, Switzerland
-    email: eling@ebi.ac.uk
   - name: Alan O'Callaghan
     affiliation: 
     - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
       University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
       EH4 2XU, UK
+    email: "a.b.o'callaghan@sms.ed.ac.uk"
+  - name: Nils Eling
+    affiliation: 
+    - &UZH Department of Quantitative Biomedicine, University of Zurich,
+      Winterthurerstrasse 190, CH-8057, Zurich, Switzerland
   - name: John C. Marioni
     affiliation: 
-    - *EBI
-    - *CRUK
+    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
+      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
   - name: Catalina A. Vallejos
     affiliation: 
     - *MRC 
@@ -170,7 +168,7 @@ differential variability testing.
 
 ```{r load-chain-naive}
 library("BASiCS")
-MCMC_naive <- readRDS("rds/MCMC_naive.rds")
+MCMC_naive <- readRDS("rds/chain_naive.Rds")
 ```
 
 ```{r trace-naive}
@@ -185,7 +183,7 @@ plot(MCMC_naive, Param = "s", Cell = 50)
 
 
 ```{r load-chain-active}
-MCMC_active <- readRDS("rds/MCMC_active.rds")
+MCMC_active <- readRDS("rds/chain_active.Rds")
 ```
 
 ```{r trace-active}
@@ -200,7 +198,7 @@ plot(MCMC_active, Param = "s", Cell = 50)
 
 
 ```{r load-chain-naive-nospikes}
-MCMC_naive_nospikes <- readRDS("rds/MCMC_naive_nospikes.rds")
+MCMC_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
 ```
 
 ```{r trace-naive-nospikes}

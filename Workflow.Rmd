@@ -1,24 +1,22 @@
 ---
 title: "BASiCS workflow: a step-by-step analysis of expression variability using single cell RNA sequencing data"
 author: 
-  - name: Nils Eling
-    affiliation: 
-    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
-      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
-    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
-      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
-    - &UZH Department of Quantitative Biomedicine, University of Zurich,
-      Winterthurerstrasse 190, CH-8057, Zurich, Switzerland
   - name: Alan O'Callaghan
     affiliation: 
     - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
       University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
       EH4 2XU, UK
     email: "a.b.o'callaghan@sms.ed.ac.uk"
+  - name: Nils Eling
+    affiliation: 
+    - &UZH Department of Quantitative Biomedicine, University of Zurich,
+      Winterthurerstrasse 190, CH-8057, Zurich, Switzerland
   - name: John C. Marioni
     affiliation: 
-    - *EBI
-    - *CRUK
+    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
+      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
   - name: Catalina A. Vallejos
     affiliation: 
     - *MRC 
