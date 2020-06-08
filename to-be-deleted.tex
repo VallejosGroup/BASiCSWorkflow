@@ -90,14 +90,14 @@
 
 \title{BASiCS workflow: a step-by-step analysis of expression variability using single cell RNA sequencing data}
 
-\author[1,2,3]{Nils Eling}
-\author[4]{Alan O'Callaghan\thanks{\ttfamily a.b.o'callaghan@sms.ed.ac.uk}}
-\author[1,2]{John C. Marioni}
-\author[4,5]{Catalina A. Vallejos\thanks{\ttfamily catalina.vallejos@igmm.ed.ac.uk}}
-\affil[1]{European Molecular Biology Laboratory, European Bioinformatics Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK}
-\affil[2]{Cancer Research UK Cambridge Institute, University of Cambridge, Li Ka Shing Centre, Cambridge, CB2 0RE, UK}
-\affil[3]{Department of Quantitative Biomedicine, University of Zurich, Winterthurerstrasse 190, CH-8057, Zurich, Switzerland}
-\affil[4]{MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, EH4 2XU, UK}
+\author[1]{Alan O'Callaghan\thanks{\ttfamily a.b.o'callaghan@sms.ed.ac.uk}}
+\author[2]{Nils Eling}
+\author[3,4]{John C. Marioni}
+\author[1,5]{Catalina A. Vallejos\thanks{\ttfamily catalina.vallejos@igmm.ed.ac.uk}}
+\affil[1]{MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, EH4 2XU, UK}
+\affil[2]{Department of Quantitative Biomedicine, University of Zurich, Winterthurerstrasse 190, CH-8057, Zurich, Switzerland}
+\affil[3]{European Molecular Biology Laboratory, European Bioinformatics Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK}
+\affil[4]{Cancer Research UK Cambridge Institute, University of Cambridge, Li Ka Shing Centre, Cambridge, CB2 0RE, UK}
 \affil[5]{The Alan Turing Institute, British Library, 96 Euston Road, London, NW1 2DB, UK}
 
 \maketitle
@@ -108,7 +108,7 @@ Cell-to-cell gene expression variability is an inherent feature of complex
 biological systems, such as immunity and development. Single-cell RNA
 sequencing is a powerful tool to quantify this heterogeneity, but it is prone
 to strong technical noise. In this article, we describe a step-by-step
-computational workflow which uses the BASiCS Bioconductor package to robustly
+computational workflow that uses the BASiCS Bioconductor package to robustly
 quantify expression variability within and between known groups of cells (such
 as experimental conditions or cell types). BASiCS uses an integrated framework
 for data normalisation, technical noise quantification and downstream
@@ -118,17 +118,13 @@ highly variable genes that exhibit strong heterogeneity as well as lowly
 variable genes with stable expression. BASiCS also uses a probabilistic
 decision rule to identify changes in expression variability between cell
 populations, whilst avoiding confounding effects related to differences in
-technical noise or in overall abundance. Using two publicly available
-datasets, we guide users through a complete pipeline which includes
-preliminary steps for quality control as well as data exploration
-using the scater and scran Bioconductor packages. Data for the first case
+technical noise or in overall abundance. Using a publicly available
+dataset, we guide users through a complete pipeline that includes
+preliminary steps for quality control, as well as data exploration
+using the scater and scran Bioconductor packages. Data for the case
 study was generated using the Fluidigm@ C1 system, in which extrinsic
-spike-in RNA molecules were added as a control. The second dataset was
-generated using a droplet-based system, for which spike-in RNA is not
-available. This analysis provides an example, in which differential
-variability testing reveals insights regarding a possible early cell fate
-commitment process. The workflow is accompanied by a Docker image that
-ensures the reproducibility of our results.
+spike-in RNA molecules were added as a control. The workflow is accompanied
+by a Docker image that ensures the reproducibility of our results.
 \end{abstract}
 
 \section*{Keywords}
@@ -155,40 +151,6 @@ to study more subtle variability within seemingly homogeneous cell populations.
 This variability can reflect deterministic or stochastic events that regulate
 gene expression and, among others, has been reported to increase prior to cell
 fate decisions \citep{Mojtahedi2016} as well as during ageing \citep{Martinez-jimenez2017}.
-
-This article complements existing scRNA-seq workflows based on the Bioconductor
-ecosystem (e.g. \citep{Lun2016, Kim2019}), providing a detailed framework for
-transcriptional variability analyses.
-Firstly, we briefly discuss the sources of variability that arise in scRNA-seq
-data and the strategies that have been designed to control or attenuate
-technical noise in these assays.
-Subsequently, we describe a step-by-step workflow which uses
-\emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} \citep{McCarthy2017} and \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} \citep{Lun2016}
-to perform quality control (QC) as well as initial exploratory analyses.
-To robustly quantify transcriptional variability we use \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
-\citep{Vallejos2015, Vallejos2016, Eling2017} --- a Bayesian hierarchical framework
-that jointly performs data normalisation, technical noise quantification and
-downstream analyses, whilst propagating statistical uncertainty across these
-steps.
-Our analysis pipeline includes practical guidance to assess the convergence of
-the Markov Chain Monte Carlo (MCMC) algorithm that is used to infer model
-parameters as well as recommendations to interpret and post-process the model
-outputs.
-Finally, through a case study in the context of immune cells, we illustrate
-how \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} can be used to identify highly and lowly variable
-genes within a cell population, as well as to compare expression profiles
-between experimental conditions or cell types.
-
-All source code used to generate the results presented in this article is
-available \href{https://github.com/VallejosGroup/BASiCSWorkflow}{on Github}.
-To ensure the
-reproducibility of this workflow, the analysis environment and all software
-dependencies are provided as a Docker image \citep{Boettiger2015}. The image
-can be obtained from
-\href{https://hub.docker.com/repository/docker/alanocallaghan/bocker}{Docker Hub}.
-
-\hypertarget{sources-of-variability-in-scrna-seq-data}{%
-\section{Sources of variability in scRNA-seq data}\label{sources-of-variability-in-scrna-seq-data}}
 
 Stochastic variability within a seemingly homogeneous cell population --- often
 referred to as transcriptional \emph{noise} --- can arise from intrinsic and
@@ -224,6 +186,49 @@ removed unless sequencing to saturation \citep{Vallejos2017}).
 However, despite the benefits associated to the use of spike-ins and UMIs,
 these are not available for all scRNA-seq protocols \citep{Haque2017}.
 
+The Bioconductor package \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} aims to account for these
+sources of noise, both technical and biological. In particular, we
+encourage the use of UMIs when performing a scRNAseq study.
+It is well-established that scRNAseq data is distributed
+according to a negative binomial distribution when UMIs are used in the
+sequencing protocol \citep{Svennson2020, Townes2020, Townes2019}. Thus, the
+distributional assumptions of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} are more likely to be valid
+for datasets wherein UMIs have been used. Furthermore,
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} leverages spike-in molecules to aid in normalisation when
+available, though a recent extension of the model allows the application of
+the model in the absence of spike-in molecules \citep{Eling2018}. Moreover,
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} enables the quantification of variability within a
+population, while accounting for the overall mean-variance relationship in
+an scRNAseq dataset \citep{Eling2018}.
+
+This article complements existing scRNA-seq workflows based on the Bioconductor
+ecosystem (e.g. \citep{Lun2016, Kim2019}), providing a detailed framework for
+transcriptional variability analyses.
+Firstly, we describe a step-by-step workflow that uses
+\emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} \citep{McCarthy2017} and \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} \citep{Lun2016}
+to perform quality control (QC) as well as initial exploratory analyses.
+To robustly quantify transcriptional variability we use \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
+\citep{Vallejos2015, Vallejos2016, Eling2017} --- a Bayesian hierarchical framework
+that jointly performs data normalisation, technical noise quantification and
+downstream analyses, whilst propagating statistical uncertainty across these
+steps.
+Our analysis pipeline includes practical guidance to assess the convergence of
+the Markov Chain Monte Carlo (MCMC) algorithm that is used to infer model
+parameters as well as recommendations to interpret and post-process the model
+outputs.
+Finally, through a case study in the context of immune cells, we illustrate
+how \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} can be used to identify highly and lowly variable
+genes within a cell population, as well as to compare expression profiles
+between experimental conditions or cell types.
+
+All source code used to generate the results presented in this article is
+available \href{https://github.com/VallejosGroup/BASiCSWorkflow}{on Github}.
+To ensure the
+reproducibility of this workflow, the analysis environment and all software
+dependencies are provided as a Docker image \citep{Boettiger2015}. The image
+can be obtained from
+\href{https://hub.docker.com/repository/docker/alanocallaghan/bocker}{Docker Hub}.
+
 \hypertarget{methods}{%
 \section{Methods}\label{methods}}
 
@@ -242,7 +247,7 @@ and its main components are described below.
 \end{figure}
 
 \hypertarget{input-data}{%
-\subsection{Input data}\label{input-data}}
+\subsubsection{Input data}\label{input-data}}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -252,16 +257,16 @@ and its main components are described below.
 
 We use \emph{\href{https://bioconductor.org/packages/3.11/SingleCellExperiment}{SingleCellExperiment}} to convert an input
 matrix of raw read-counts (molecule counts for UMI-based protocols) into a
-\texttt{SingleCellExperiment} object which can also store its associated
+\texttt{SingleCellExperiment} object that can also store its associated
 metadata, such as gene- and cell-specific information.
 Moreover, when available, the same object can also store read-counts for
-spike-in molecules (see \texttt{altExp()}).
+spike-in molecules (see \texttt{?altExp}).
 A major advantage of using a \texttt{SingleCellExperiment} object as the input for
 scRNA-seq analyses is the interoperability across a large number of
 Bioconductor packages \citep{Amezquita2019}.
 
-\hypertarget{quality-control-and-exploratory-analysis}{%
-\subsection{Quality control and exploratory analysis}\label{quality-control-and-exploratory-analysis}}
+\hypertarget{qc-and-exploratory-data-analysis}{%
+\subsection{QC and exploratory data analysis}\label{qc-and-exploratory-data-analysis}}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -272,10 +277,10 @@ Bioconductor packages \citep{Amezquita2019}.
 
 An critical step in scRNA-seq analyses is QC, removing low quality samples that
 may distort downstream analyses.
-Among others, QC diagnostics can help to identify samples that contain broken
-cells, that are empty or that contain multiple cells \citep{Ilicic2016}.
-Moreover, lowly expressed genes for which less reliable information is
-available are typically also removed.
+In this step, we use QC diagnostics to identify and remove samples that
+correspond to broken cells, that are empty, or that contain multiple cells
+\citep{Ilicic2016}. We also typically remove lowly expressed genes that represent
+less reliable information.
 The \href{https://osca.bioconductor.org/}{\emph{OSCA}} online book provides an extensive
 overview on important aspects of how to perform QC of scRNA-seq data, including
 exploratory analyses \citep{Amezquita2019}.
@@ -317,16 +322,16 @@ transcriptional variability \citep{Vallejos2015BASiCS}.
 Similar to the approach adopted in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
 infers cell-specific global scaling normalisation parameters.
 However, instead of inferring these as a pre-processing step,
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses an integrated approach in which data normalisation
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses an integrated approach wherein data normalisation
 and downstream analyses are performed simultaneously, thereby propagating
 statistical uncertainty.
 To quantify technical noise, the original implementation of
 \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses information from extrinsic spike-in molecules as
-control features, but the model has been extended to address situations in which
+control features, but the model has been extended to address situations wherein
 spike-ins are not available \citep{Eling2018}.
 
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} summarises expression patterns through
-gene-specific \emph{mean} (\(\mu_i\)) and \emph{over-dispersion} (\(\delta_i\)) parameters.
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} summarises the expression pattern for each gene through
+gene-specific \emph{mean} and \emph{over-dispersion} parameters.
 Mean parameters \(\mu_i\) quantify the overall expression for each gene \(i\)
 across the population of cells under study.
 In contrast, \(\delta_i\) captures the excess of variability that is observed with
@@ -339,11 +344,12 @@ Eling \emph{et al.} \citep{Eling2018} recently introduced a joint prior specific
 these parameters.
 This joint prior formulation has been observed to improve posterior inference
 when the data is less informative (e.g.~small sample size, lowly expressed
-genes) and can be used to derive gene-specific \emph{residual over-dispersion}
+genes), borroring information across all genes to infer an overall trend that
+captures the relationship between mean and over-dispersion values.
+The trend is subsequently used to derive gene-specific \emph{residual over-dispersion}
 parameters \(\epsilon_i\) that are not confounded by mean expression.
 Similar to DM values implemented in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, these are defined as
-deviations with respect to an overall regression trend that captures the
-relationship between mean and over-dispersion values.
+deviations with respect to an overall regression trend .
 
 Within a population of cells, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} decomposes the total
 observed variability in expression measurements into technical and biological
@@ -360,7 +366,7 @@ of new data normalisation or integration strategies \citep{Lin2019}.
 \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} also provides a probabilistic decision rule to
 perform differential expression analyses between two (or more) pre-specified
 groups of cells \citep{Vallejos2016, Eling2018}.
-Whilst several differential expression tools have been proposed for scRNA-seq
+While several differential expression tools have been proposed for scRNA-seq
 data (e.g. \citep{Kharchenko2014, Finak2015}), some evidence suggests that
 these do not generally outperform popular bulk RNA-seq tools \citep{Soneson2018}.
 Moreover, most of these methods are only designed to uncover changes in overall
@@ -385,10 +391,10 @@ old animals, obtaining purified populations using either magnetic-activated cell
 sorting (MACS) or fluorescence activated cell sorting (FACS).
 External ERCC spike-in RNA \citep{Rna2005} was added to aid the quantification of
 technical variability across all cells and all experiments were performed in
-replicates (also referred to as batches) to control for batch effects.
+replicates (hereafter also referred to as batches).
 
-\hypertarget{obtaining-the-data}{%
-\subsection{Obtaining the data}\label{obtaining-the-data}}
+\hypertarget{downloading-the-data}{%
+\subsection{Downloading the data}\label{downloading-the-data}}
 
 The matrix with raw read counts can be obtained from ArrayExpress under the
 accession number
@@ -401,16 +407,14 @@ display gene Ensembl identifiers.
 \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"downloads/raw_data.txt"}\NormalTok{)) \{}
 \NormalTok{  website <-}\StringTok{ "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"}
 \NormalTok{  file <-}\StringTok{ "E-MTAB-4888.processed.1.zip"}
-\NormalTok{  destfile <-}\StringTok{ "downloads/raw_data.txt.zip"}
   \KeywordTok{download.file}\NormalTok{(}
     \KeywordTok{paste0}\NormalTok{(website, file),}
-    \DataTypeTok{destfile =}\NormalTok{ destfile}
+    \DataTypeTok{destfile =} \StringTok{"downloads/raw_data.txt.zip"}
 \NormalTok{  )}
   \KeywordTok{unzip}\NormalTok{(}\StringTok{"downloads/raw_data.txt.zip"}\NormalTok{, }\DataTypeTok{exdir =} \StringTok{"downloads"}\NormalTok{)}
   \KeywordTok{file.remove}\NormalTok{(}\StringTok{"downloads/raw_data.txt.zip"}\NormalTok{)}
 \NormalTok{\}}
 
-\CommentTok{# Read in raw data}
 \NormalTok{CD4_raw <-}\StringTok{ }\KeywordTok{read.table}\NormalTok{(}\StringTok{"downloads/raw_data.txt"}\NormalTok{, }\DataTypeTok{header =} \OtherTok{TRUE}\NormalTok{, }\DataTypeTok{sep =} \StringTok{"}\CharTok{\textbackslash{}t}\StringTok{"}\NormalTok{)}
 \NormalTok{CD4_raw <-}\StringTok{ }\KeywordTok{as.matrix}\NormalTok{(CD4_raw)}
 \end{Highlighting}
@@ -453,12 +457,12 @@ the age of the animals (\texttt{Age}; young or old), stimulation state of the ce
 to different mice), and cell type information (\texttt{Celltype}; via FACS or MACS
 purification).
 
-The data and metadata described above are then converted into a
+Here, we convert the data and metadata described above into a
 \texttt{SingleCellExperiment} object.
 For this purpose, we first separate the input matrix of expression counts into
-separate matrices associated to intrinsic genes and external spike-ins.
+two matrices associated to intrinsic genes and external spike-ins, respectively.
 Within the \texttt{SingleCellExperiment} object, the latter is stored separately
-through as an alternative experiment (see \texttt{?altExp}).
+as an alternative experiment (see \texttt{?altExp}).
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -477,7 +481,7 @@ through as an alternative experiment (see \texttt{?altExp}).
 \end{Highlighting}
 \end{Shaded}
 
-Hereafter our analysis focuses on naive and activated CD4\textsuperscript{+} T cells obtained
+Hereafter, our analysis focuses on naive and activated CD4\textsuperscript{+} T cells obtained
 from young \emph{Mus musculus domesticus} animals, purified using MACS-based cell sorting.
 Here, we extract these
 146 samples.
@@ -506,8 +510,8 @@ Here, we extract these
 ## altExpNames(1): spike-ins
 \end{verbatim}
 
-\hypertarget{qc-and-exploratory-analysis}{%
-\subsection{QC and exploratory analysis}\label{qc-and-exploratory-analysis}}
+\hypertarget{qc-and-exploratory-data-analysis-1}{%
+\subsection{QC and exploratory data analysis}\label{qc-and-exploratory-data-analysis-1}}
 
 The data available at
 \href{https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/}{E-MTAB-4888} have
@@ -517,7 +521,7 @@ than 1,000,000 total reads, (ii) less than 20\% of reads mapped to
 endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and
 (iv) more than 10\% or fewer than 0.5\% of reads mapped to mitochondrial genes.
 As an illustration, we visualise some of these metrics.
-We also include another widely used QC diagnostic plot which compares the total
+We also include another widely used QC diagnostic plot that compares the total
 number (or fraction) of spike-in counts versus the total number (or fraction) of
 endogeneous counts.
 In such a plot, low quality samples are characterised by a high fraction of
@@ -533,13 +537,15 @@ spike-in counts and a low fraction of endogeneous counts
   \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{, }
   \DataTypeTok{y =} \StringTok{"detected"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{)}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{, }\DataTypeTok{angle =} \DecValTok{45}\NormalTok{))}
 \NormalTok{p_cellQC2 <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
 \NormalTok{  sce_naive_active, }
   \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{, }
   \DataTypeTok{y =} \StringTok{"altexps_spike-ins_sum"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Total spike-in reads per cell"}\NormalTok{)}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Total spike-in reads per cell"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{, }\DataTypeTok{angle =} \DecValTok{45}\NormalTok{))}
 \KeywordTok{multiplot}\NormalTok{(p_cellQC1, p_cellQC2, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
@@ -553,9 +559,10 @@ spike-in counts and a low fraction of endogeneous counts
 \caption{Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right).}\label{fig:PerCellQC}
 \end{figure}
 
-These metrics can also be visualised with respect to cell-level metadata, such
+We can also visualise these metrics with respect to cell-level metadata, such
 as the experimental conditions (active vs unstimulated) and the different mice
-from which cells were collected (see Figure \ref{fig:experimental-condition-batch}).
+that cells were collected from
+(see Figure \ref{fig:experimental-condition-batch}).
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -598,13 +605,17 @@ principal component analysis (PCA) of log-transformed normalised expression
 counts using \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}}.
 As seen in Figure \ref{fig:pca-visualisation-stimulus-batch}, this analysis
 suggests the absence of strong batch effects.
+It should be noted that \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} normalisation
+is not strictly necessary in the \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} workflow and we only
+use it here as part of the exploratory data analysis.
+Moreover, count-based models for dimensionality reduction (e.g. \citep{Townes2019, Lopez2018}) could be used as an alternative to PCA,
+removing the need for log normalisation .
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{# Global scaling normalisation}
+\CommentTok{# Global scaling normalisation + log tranformation + PCA}
 \NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{computeSumFactors}\NormalTok{(sce_naive_active)}
 \NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{logNormCounts}\NormalTok{(sce_naive_active)}
-\CommentTok{# PCA }
 \NormalTok{sce_naive_active <-}\StringTok{ }\KeywordTok{runPCA}\NormalTok{(sce_naive_active)}
 \NormalTok{p_stimulus <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"Stimulus"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
@@ -623,15 +634,16 @@ suggests the absence of strong batch effects.
 \caption{First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell.}\label{fig:pca-visualisation-stimulus-batch}
 \end{figure}
 
-In addition to cell-specific QC, we also recommend to apply a gene filtering
+In addition to cell-specific QC, we also recommend the use of a gene filtering
 step prior to the use of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
 The purpose of this filter is to remove lowly expressed genes that were largely
-undetected through sequencing and for which variability estimates are less
-reliable.
+undetected through sequencing, making reliable variability estimates difficult
+to obtain.
 Here, we remove all genes that are not detected in at least 5 cells across both
-experimental conditions or for which their average read count is below 1.
-These thresholds can vary across datasets and might be informed by gene-specific
-QC metrics such as those shown in \ref{fig:gene-selection}.
+experimental conditions or that have an average read count below 1.
+These thresholds can vary across datasets and should be informed by
+gene-specific QC metrics such as those shown in
+Figure \ref{fig:gene-selection}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -642,10 +654,9 @@ QC metrics such as those shown in \ref{fig:gene-selection}.
 \CommentTok{# Transform 'detected' metadata into number of cells }
 \KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected_cells <-}\StringTok{ }
 \StringTok{  }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected }\OperatorTok{*}\StringTok{ }\KeywordTok{ncol}\NormalTok{(sce_naive_active) }\OperatorTok{/}\StringTok{ }\DecValTok{100}
-\CommentTok{# Define inclusion criteria}
+\CommentTok{# Define inclusion criteria for genes}
 \KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{include_gene <-}\StringTok{ }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{mean }\OperatorTok{>=}\StringTok{ }\DecValTok{1} \OperatorTok{&}
 \StringTok{  }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{detected_cells }\OperatorTok{>=}\StringTok{ }\DecValTok{5}
-  
 \KeywordTok{plotRowData}\NormalTok{(}
 \NormalTok{    sce_naive_active,}
     \DataTypeTok{x =} \StringTok{"detected_cells"}\NormalTok{,}
@@ -679,38 +690,45 @@ QC metrics such as those shown in \ref{fig:gene-selection}.
 \end{Highlighting}
 \end{Shaded}
 
-Subsequently we also recommend to remove spike-in molecules that were not
-captured through sequencing.
+Subsequently, we also require users to remove spike-in molecules that were not
+captured through sequencing. We will do this separately for naive and active
+cells separately.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{detected_spikes <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(}\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive_active)) }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>}\StringTok{ }\DecValTok{0}
+\NormalTok{ind_active <-}\StringTok{ }\NormalTok{sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Active"}
+\NormalTok{ind_naive <-}\StringTok{ }\NormalTok{sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Unstimulated"}
+\NormalTok{spikes <-}\StringTok{ }\KeywordTok{assay}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive_active))}
+\NormalTok{detected_spikes_active <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(spikes[, ind_active] }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>}\StringTok{ }\DecValTok{0}
+\NormalTok{detected_spikes_naive <-}\StringTok{ }\KeywordTok{rowSums}\NormalTok{(spikes[, ind_naive] }\OperatorTok{>}\StringTok{ }\DecValTok{0}\NormalTok{) }\OperatorTok{>}\StringTok{ }\DecValTok{0}
+\NormalTok{detected_spikes <-}\StringTok{ }\NormalTok{detected_spikes_naive }\OperatorTok{&}\StringTok{ }\NormalTok{detected_spikes_active}
 \KeywordTok{altExp}\NormalTok{(sce_naive_active) <-}\StringTok{ }\KeywordTok{altExp}\NormalTok{(sce_naive_active)[detected_spikes, ]}
 \end{Highlighting}
 \end{Shaded}
 
-The final dataset used in subsequent analyses contains 146
-cells, 8953 genes and 58 spike-ins.
+The final dataset used in subsequent analyses contains
+146 cells, 8953 genes and
+49 spike-ins.
 
-\hypertarget{basics-analysis---input-data}{%
-\subsection{BASiCS analysis - input data}\label{basics-analysis---input-data}}
+\hypertarget{input-data-for-basics}{%
+\subsection{Input data for BASiCS}\label{input-data-for-basics}}
 
 Here, we apply the \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} model separately to cells from each
 experimental condition (93
 naive and 53 activated cells).
-Separate \texttt{SingleCellExperiment} objects are created for each group of cells.
+We create separate \texttt{SingleCellExperiment} objects for each group of cells.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{sce_naive <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Unstimulated"}\NormalTok{]}
-\NormalTok{sce_active <-}\StringTok{ }\NormalTok{sce_naive_active[, sce_naive_active}\OperatorTok{$}\NormalTok{Stimulus }\OperatorTok{==}\StringTok{ "Active"}\NormalTok{]}
+\NormalTok{sce_naive <-}\StringTok{ }\NormalTok{sce_naive_active[, ind_naive]}
+\NormalTok{sce_active <-}\StringTok{ }\NormalTok{sce_naive_active[, ind_active]}
 \end{Highlighting}
 \end{Shaded}
 
 \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} requires the user to update these objects with additional
 information, using a specific format.
 Firstly, if multiple batches of sequenced cells are available (e.g.~multiple
-donors from which cells were extracted or multiple sequencing batches from the
+donors that cells were extracted from, or multiple sequencing batches from the
 same experimental condition), this information must be included under the
 \texttt{BatchInfo} label as part of the cell-level metadata.
 
@@ -738,11 +756,12 @@ For each spike-in gene \(i\), this corresponds to:
   \(D\) is a dilution factor.
 \end{itemize}
 
-The remaining factors in the equation above are unit conversion constants (
-e.g.~from moles to molecules).
+The remaining factors in the equation above are unit conversion constants
+(e.g.~from moles to molecules).
 For the CD4\textsuperscript{+} T cell data, the authors added a 1:50,000 dilution of the ERCC
 spike-in mix 1 and a volume of \(9nl\) was added into each well (see \url{https://www.fluidigm.com/faq/ifc-9}).
-Finally, input concentrations \(C_i\) can be downloaded from \href{https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt}{https://assets.thermofisher.com/TFS-Assets/LSG/manuals}).
+Finally, input concentrations \(C_i\) can be downloaded from
+\href{https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt}{https://assets.thermofisher.com/TFS-Assets/LSG/manuals}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -778,7 +797,7 @@ To update the \texttt{sce\_naive} and \texttt{sce\_active} objects, the user mus
 \texttt{data.frame} whose first column contains the labels associated to
 the spike-in molecule (e.g.~ERCC-00130) and whose second column contains the
 input number of molecules calculated above.
-This information is added as metadata for \texttt{altExp(sce\_naive)} and
+We add this information as metadata for \texttt{altExp(sce\_naive)} and
 \texttt{altExp(sce\_active)}, respectively.
 
 \begin{Shaded}
@@ -788,15 +807,16 @@ This information is added as metadata for \texttt{altExp(sce\_naive)} and
   \DataTypeTok{count =}\NormalTok{ ERCC_count_final}
 \NormalTok{)}
 \CommentTok{# Exclude spike-ins not included in the input SingleCellExperiment objects}
-\NormalTok{SpikeInput <-}\StringTok{ }\KeywordTok{subset}\NormalTok{(SpikeInput, Names }\OperatorTok{%in%}\StringTok{ }\KeywordTok{rownames}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive)))}
+\CommentTok{# and ensure the order of the rows is identical}
+\NormalTok{SpikeInput <-}\StringTok{ }\NormalTok{SpikeInput[}\KeywordTok{match}\NormalTok{(}\KeywordTok{rownames}\NormalTok{(}\KeywordTok{altExp}\NormalTok{(sce_naive)), SpikeInput}\OperatorTok{$}\NormalTok{Names), ]}
 
 \KeywordTok{metadata}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{SpikeInput <-}\StringTok{ }\NormalTok{SpikeInput}
 \KeywordTok{metadata}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{SpikeInput <-}\StringTok{ }\NormalTok{SpikeInput}
 \end{Highlighting}
 \end{Shaded}
 
-\hypertarget{basics-analysis---parameter-estimation}{%
-\subsection{BASiCS analysis - parameter estimation}\label{basics-analysis---parameter-estimation}}
+\hypertarget{parameter-estimation-using-basics}{%
+\subsection{Parameter estimation using BASiCS}\label{parameter-estimation-using-basics}}
 
 Parameter estimation is implemented in the \texttt{BASiCS\_MCMC} function using an
 adaptive Metropolis within Gibbs algorithm \citep{Roberts2009}.
@@ -804,12 +824,13 @@ The primary inputs for \texttt{BASiCS\_MCMC} correspond to:
 
 \begin{itemize}
 \item
-  \texttt{Data}: a \texttt{SingleCellExperiment} object created as described in the previous
-  sections.
+  \texttt{Data}: a \texttt{SingleCellExperiment} object created as described in the
+  previous sections.
 \item
   \texttt{N}: the total number of MCMC iterations.
 \item
-  \texttt{Thin}: thining period for output storage (only the \texttt{Thin}-th MCMC draw will be stored).
+  \texttt{Thin}: thining period for output storage
+  (only the \texttt{Thin}-th MCMC draw is stored).
 \item
   \texttt{Burn}: the initial number of MCMC iterations to be discarded.
 \item
@@ -834,134 +855,123 @@ algorithm (\texttt{PrintProgress}).
 Here, we run the MCMC sampler separately for naive and activated cells.
 We use 40,000 iterations, discarding the initial 20,000 iterations.
 We recommend this setting as a default choice, as we have observed it to
-ensure good convergence for the algorithm.
+ensure good convergence for the algorithm across multiple datasets.
 However, for large datasets and less sparse datasets, a lower number of
 iterations may be sufficient.
-Practical guidance about convergence diagnostics is provided in the next section.
+Practical guidance about the diagnostics criteria required to assess the
+performance of the MCMC algorithn is provided in the next section.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{MCMC_naive <-}\StringTok{ }\KeywordTok{BASiCS_MCMC}\NormalTok{(}
+\NormalTok{chain_naive <-}\StringTok{ }\KeywordTok{BASiCS_MCMC}\NormalTok{(}
   \DataTypeTok{Data =}\NormalTok{ sce_naive,}
   \DataTypeTok{N =} \DecValTok{40000}\NormalTok{,}
   \DataTypeTok{Thin =} \DecValTok{20}\NormalTok{,}
   \DataTypeTok{Burn =} \DecValTok{20000}\NormalTok{,}
   \DataTypeTok{Regression =} \OtherTok{TRUE}\NormalTok{,}
   \DataTypeTok{WithSpikes =} \OtherTok{TRUE}\NormalTok{,}
-  \DataTypeTok{StoreChains =} \OtherTok{TRUE}\NormalTok{, }
-  \DataTypeTok{StoreDir =} \StringTok{"rds/"}\NormalTok{, }
+  \DataTypeTok{StoreChains =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{StoreDir =} \StringTok{"rds/"}\NormalTok{,}
   \DataTypeTok{RunName =} \StringTok{"naive"}
 \NormalTok{)}
 
-\NormalTok{MCMC_active <-}\StringTok{ }\KeywordTok{BASiCS_MCMC}\NormalTok{(}
+\NormalTok{chain_active <-}\StringTok{ }\KeywordTok{BASiCS_MCMC}\NormalTok{(}
   \DataTypeTok{Data =}\NormalTok{ sce_active,}
   \DataTypeTok{N =} \DecValTok{40000}\NormalTok{,}
   \DataTypeTok{Thin =} \DecValTok{20}\NormalTok{,}
   \DataTypeTok{Burn =} \DecValTok{20000}\NormalTok{,}
   \DataTypeTok{Regression =} \OtherTok{TRUE}\NormalTok{,}
   \DataTypeTok{WithSpikes =} \OtherTok{TRUE}\NormalTok{,}
-  \DataTypeTok{StoreChains =} \OtherTok{TRUE}\NormalTok{, }
-  \DataTypeTok{StoreDir =} \StringTok{"rds/"}\NormalTok{, }
+  \DataTypeTok{StoreChains =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{StoreDir =} \StringTok{"rds/"}\NormalTok{,}
   \DataTypeTok{RunName =} \StringTok{"active"}
 \NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-This sampler runs for 167 minutes on a 1.4 GHz Intel Core i5 procesor with 4GB
-RAM and produces a \texttt{BASiCS\_Chain} data object.
-For comparison, this sampler runs for 97 minutes on a 3.4 GHz Intel Core
-i7 procesor with 16GB RAM.
-For convenience, the MCMC chain can be obtained online at
+This first of these samplers takes 127 minutes to complete on a 3.4 GHz Intel
+Core i7 4770k procesor with 16GB RAM, while the second takes 75 minutes.
+For convenience, these can be obtained online at
 \url{https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"rds/MCMC_naive.rds"}\NormalTok{)) \{}
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"rds/chain_naive.Rds"}\NormalTok{)) \{}
 \NormalTok{  website <-}\StringTok{ "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/"}
-\NormalTok{  file <-}\StringTok{ "MCMC_naive.rds"}
+\NormalTok{  file <-}\StringTok{ "chain_naive.Rds"}
   \KeywordTok{download.file}\NormalTok{(}
     \KeywordTok{paste0}\NormalTok{(website, file),}
-    \DataTypeTok{destfile =} \StringTok{"rds/MCMC_naive.rds"}
+    \DataTypeTok{destfile =} \StringTok{"rds/chain_naive.Rds"}
 \NormalTok{  )  }
 \NormalTok{\}}
-\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"rds/MCMC_active.rds"}\NormalTok{)) \{}
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(}\StringTok{"rds/chain_active.Rds"}\NormalTok{)) \{}
 \NormalTok{  website <-}\StringTok{ "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/"}
-\NormalTok{  file <-}\StringTok{ "MCMC_active.rds"}
+\NormalTok{  file <-}\StringTok{ "chain_active.Rds"}
   \KeywordTok{download.file}\NormalTok{(}
     \KeywordTok{paste0}\NormalTok{(website, file),}
-    \DataTypeTok{destfile =} \StringTok{"rds/MCMC_active.rds"}
+    \DataTypeTok{destfile =} \StringTok{"rds/chain_active.Rds"}
 \NormalTok{  )  }
 \NormalTok{\}}
-\NormalTok{MCMC_naive <-}\StringTok{ }\KeywordTok{readRDS}\NormalTok{(}\StringTok{"rds/MCMC_naive.rds"}\NormalTok{)}
-\NormalTok{MCMC_active <-}\StringTok{ }\KeywordTok{readRDS}\NormalTok{(}\StringTok{"rds/MCMC_active.rds"}\NormalTok{)}
+\NormalTok{chain_naive <-}\StringTok{ }\KeywordTok{readRDS}\NormalTok{(}\StringTok{"rds/chain_naive.Rds"}\NormalTok{)}
+\NormalTok{chain_active <-}\StringTok{ }\KeywordTok{readRDS}\NormalTok{(}\StringTok{"rds/chain_active.Rds"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-The output from \texttt{BASiCS\_MCMC} is a \texttt{BASiCS\_Chain} object which contains the MCMC
-draws associated to each model parameter.
+The output from \texttt{BASiCS\_MCMC} is a \texttt{BASiCS\_Chain} object that contains the
+draws associated to all model parameters.
 These can be accessed using the \texttt{displayChainBASiCS} function.
-For example, the following code displays the first 2 MCMC draws for mean
+For example, the following code displays the first 2 draws for mean
 expression parameters \(\mu_i\) associated to the first 3 genes.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{displayChainBASiCS}\NormalTok{(MCMC_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)[}\DecValTok{1}\OperatorTok{:}\DecValTok{2}\NormalTok{, }\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{]}
+\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)[}\DecValTok{1}\OperatorTok{:}\DecValTok{2}\NormalTok{, }\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{]}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
 ##      ENSMUSG00000000001 ENSMUSG00000000056 ENSMUSG00000000085
-## [1,]           9.291713           1.823314           1.237160
-## [2,]          15.078529           2.126944           1.494165
+## [1,]           11.90910           1.854180          0.9695263
+## [2,]           14.97279           1.625154          0.8400265
 \end{verbatim}
 
-\hypertarget{basics-analysis---convergence-diagnostics}{%
-\subsection{BASiCS analysis - convergence diagnostics}\label{basics-analysis---convergence-diagnostics}}
+\hypertarget{mcmc-diagnostics}{%
+\subsection{MCMC diagnostics}\label{mcmc-diagnostics}}
 
-Before we perform downstream analyses, it is critical to assess the convergence
-of the MCMC algorithm.
-Multiple graphical and quantitative convergence diagnostics have been proposed
-(e.g. \citep{CowlesCarlin1996, BrooksGelman1998}).
-For example, traceplots can be used to visualise the history of posterior draws
-generated by the algorithm for a specific parameter (e.g.~Figure
-\ref{fig:convergence-naive}, left panel).
-If the algorithm converged, draws are expected to be stochastic fluctuations
+Before interpreting the parameter estimates obtained by \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}},
+it is critical to assess the convergence of the MCMC algorithm, i.e.~whether
+the MCMC reached its stationary distribution.
+If convergence has been achieved, each parameter should not (on average) evolve
+significantly over time, and draws are expected to be stochastic fluctuations
 around a horizontal trend.
+Generally, it is not possible to prove convergence but multiple graphical and
+quantitative convergence diagnostics have been proposed to assess the lack
+of convergence (e.g. \citep{CowlesCarlin1996, BrooksGelman1998}).
+Some advocate the use of multiple MCMC chains using different starting values in
+order to ensure that the algorithm consistently converges to the same
+distribution.
+For \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}, we have observed that using informed starting values
+(e.g.~based on \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} normalisation) and a sufficiently large
+value for \texttt{N} and \texttt{Burn} generally leads to consistent across multiple MCMC runs.
+Hence, the focus of this section is to evaluate quantitative measures of
+convergence (e.g. \citep{Geweke1995}) based on a single MCMC chain.
+
+Traceplots can be used to visually assess the history of posterior draws
+generated by the algorithm for a specific parameter (e.g.~Figure
+\ref{fig:convergence-naive}).
+As mentioned above, significan departures from a horizontal trend suggest a
+lack of convergence.
 As illustrated in Figure \ref{fig:convergence-naive}, histograms can also be
 used to display the marginal distribution for each parameter.
 Users should expect these to follow a unimodal distribution.
 Failure to satisfy these graphical diagnostics suggest that \texttt{N} and \texttt{Burn} must
 be increased.
-
-The autocorrelation
-
-The autocorrelation of an MCMC chain is defined as the Pearson
-correlation between the chain and time-delayed versions of the chain.
-The difference in time-points is referred to as `lag'.
-
-This helps to assess whether a chain has sampled efficiently from its stationary
-distribution.
-High autocorrelation indicates that the obtained samples are not independent,
-and indicates that we may not have enough information about the posterior
-distribution of the parameters. The chain is likely to be sampling efficiently
-if the autocorrelation (except for lag = 1) is small (e.g. \textless{} 0.25), as it
-indicates that the stored samples are largely independent.
-
-Effective sample size is a measure of the number of independent samples
-generated for a model parameter \citep{Gelman2014}. Simply, it is defined as the
-number of samples taken relative to the total autocorrelation.
-More formally, it is defined as follows:
-\[
-  \mbox{ESS} = \frac{n}{1 + 2\sum_{k=1}^\infty \rho(k)}
-\]
-where \(n\) is the number of samples and \(\rho(k)\) is the autocorrelation at lag
-\(k\). We can visualise this parameter by plotting histograms of the effective
-sample size over all genes, and by plotting effective sample size against
-mean expression or over-dispersion for all genes.
+Alternatively, more stringent quality control could be applied to the input
+data, as genes with very low counts often suffer from slow convergence and poor sampling efficiency.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{plot}\NormalTok{(MCMC_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{, }\DataTypeTok{Gene =} \DecValTok{1}\NormalTok{)}
+\KeywordTok{plot}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{, }\DataTypeTok{Gene =} \DecValTok{1}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -974,11 +984,85 @@ mean expression or over-dispersion for all genes.
 \caption{Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one.}\label{fig:convergence-naive}
 \end{figure}
 
+As \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} infers thousands of parameters, it is
+impractical to assess these graphical diagnostics for each parameter.
+Thus, it is helpful to use numerical diagnostics that can be applied to multiple
+parameters simultaneously to judge whether the algorithm has failed to converge.
+Here, we focus on the diagnostic criterion proposed by Geweke \citep{Geweke1995}
+which compares the average draws obtained at the initial (10\%, after burn in,
+by default) and the final part of the chain (50\% by default).
+Large absolute Z-scores indicate a large difference in mean between the
+beginning and end of the chain, indicating that the algorithm has not converged.
+As seen in Figure \ref{fig:geweke-diag-hist}, most genes have small
+absolute values for this diagnostic criterion.
+Further, as seen in Figures \ref{fig:geweke-diag-mean} and
+\ref{fig:geweke-diag-detected}, genes with large absolute values for this
+criterion are often those genes that have a low average expression level, or
+that are expressed only in a small proportion of cells.
+
 \begin{Shaded}
 \begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(}\StringTok{"coda"}\NormalTok{)}
 \KeywordTok{library}\NormalTok{(}\StringTok{"ggplot2"}\NormalTok{)}
+\KeywordTok{library}\NormalTok{(}\StringTok{"viridis"}\NormalTok{)}
+
+\CommentTok{# Calculate Geweke Z scores}
+\NormalTok{gew_mu_naive <-}\StringTok{ }\KeywordTok{geweke.diag}\NormalTok{(}\KeywordTok{mcmc}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)))}\OperatorTok{$}\NormalTok{z}
+\NormalTok{gew_mu_active <-}\StringTok{ }\KeywordTok{geweke.diag}\NormalTok{(}\KeywordTok{mcmc}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)))}\OperatorTok{$}\NormalTok{z}
+
+\NormalTok{p_geweke_naive_}\DecValTok{1}\NormalTok{ <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{aes}\NormalTok{(}
+    \KeywordTok{log10}\NormalTok{(}\KeywordTok{colMedians}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{))),}
+\NormalTok{    gew_mu_naive}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hex}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"log(mu)"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Geweke diagnostic}\CharTok{\textbackslash{}n}\StringTok{for mean expression"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_fill_viridis}\NormalTok{()}
+\NormalTok{p_geweke_naive_}\DecValTok{2}\NormalTok{ <-}\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{aes}\NormalTok{(}
+    \KeywordTok{rowData}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{detected, }
+\NormalTok{    gew_mu_naive}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hex}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}
+    \DataTypeTok{x =} \StringTok{"Proportion of cells detected"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"Geweke diagnostic}\CharTok{\textbackslash{}n}\StringTok{for mean expression"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_fill_viridis}\NormalTok{()}
+\NormalTok{p_geweke_active_}\DecValTok{1}\NormalTok{ <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{aes}\NormalTok{(}
+    \KeywordTok{log10}\NormalTok{(}\KeywordTok{colMedians}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{))),}
+\NormalTok{    gew_mu_active}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hex}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"log(mu)"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Geweke diagnostic}\CharTok{\textbackslash{}n}\StringTok{for mean expression"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_fill_viridis}\NormalTok{()}
+\NormalTok{p_geweke_active_}\DecValTok{2}\NormalTok{ <-}\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{aes}\NormalTok{(}
+    \KeywordTok{rowData}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{detected, }
+\NormalTok{    gew_mu_active}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hex}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}
+    \DataTypeTok{x =} \StringTok{"Proportion of cells detected"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"Geweke diagnostic}\CharTok{\textbackslash{}n}\StringTok{for mean expression"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_fill_viridis}\NormalTok{()}
+\KeywordTok{multiplot}\NormalTok{(p_geweke_naive_}\DecValTok{1}\NormalTok{, p_geweke_naive_}\DecValTok{2}\NormalTok{, }
+\NormalTok{          p_geweke_active_}\DecValTok{1}\NormalTok{, p_geweke_active_}\DecValTok{2}\NormalTok{, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/geweke-diag-1} 
+
+}
+
+\caption{Geweke diagnostic criterion for mean expression plotted against mean expression in naive cells.}\label{fig:geweke-diag}
+\end{figure}
 
 {\small\bibliography{Workflow.bib}}
 
