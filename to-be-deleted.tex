@@ -918,7 +918,8 @@ For convenience, these can be obtained online at
 \end{Shaded}
 
 The output from \texttt{BASiCS\_MCMC} is a \texttt{BASiCS\_Chain} object that contains the
-draws associated to all model parameters.
+draws associated to all model parameters (as \texttt{N} = 40,000, \texttt{Thin} = 20 and
+\texttt{Burn} = 20,000, the object contains 1,000 draws for each parameter).
 These can be accessed using the \texttt{displayChainBASiCS} function.
 For example, the following code displays the first 2 draws for mean
 expression parameters \(\mu_i\) associated to the first 3 genes.
@@ -989,16 +990,11 @@ impractical to assess these graphical diagnostics for each parameter.
 Thus, it is helpful to use numerical diagnostics that can be applied to multiple
 parameters simultaneously to judge whether the algorithm has failed to converge.
 Here, we focus on the diagnostic criterion proposed by Geweke \citep{Geweke1995}
-which compares the average draws obtained at the initial (10\%, after burn in,
-by default) and the final part of the chain (50\% by default).
-Large absolute Z-scores indicate a large difference in mean between the
-beginning and end of the chain, indicating that the algorithm has not converged.
-As seen in Figure \ref{fig:geweke-diag-hist}, most genes have small
-absolute values for this diagnostic criterion.
-Further, as seen in Figures \ref{fig:geweke-diag-mean} and
-\ref{fig:geweke-diag-detected}, genes with large absolute values for this
-criterion are often those genes that have a low average expression level, or
-that are expressed only in a small proportion of cells.
+which compares the average draws obtained during the initial (10\% after burn
+in, by default) and the final part of the chain (50\% by default).
+Large absolute Z-scores suggest that the algorithm has not converged.
+For the naive and activatived CD4\textsuperscript{+} T datasets most Z-scores associated to mean
+expression parameters \(\mu_i\) were small in aboslute value (see Figure \ref{fig:geweke-diag}).
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1006,63 +1002,74 @@ that are expressed only in a small proportion of cells.
 \KeywordTok{library}\NormalTok{(}\StringTok{"ggplot2"}\NormalTok{)}
 \KeywordTok{library}\NormalTok{(}\StringTok{"viridis"}\NormalTok{)}
 
-\CommentTok{# Calculate Geweke Z scores}
+\CommentTok{# Calculate and plot Geweke Z scores }
 \NormalTok{gew_mu_naive <-}\StringTok{ }\KeywordTok{geweke.diag}\NormalTok{(}\KeywordTok{mcmc}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)))}\OperatorTok{$}\NormalTok{z}
 \NormalTok{gew_mu_active <-}\StringTok{ }\KeywordTok{geweke.diag}\NormalTok{(}\KeywordTok{mcmc}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)))}\OperatorTok{$}\NormalTok{z}
 
-\NormalTok{p_geweke_naive_}\DecValTok{1}\NormalTok{ <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\NormalTok{myplot_params <-}\StringTok{ }\KeywordTok{list}\NormalTok{(}
+  \KeywordTok{geom_hex}\NormalTok{(),}
+  \KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{),}
+  \KeywordTok{scale_fill_viridis}\NormalTok{(),}
+  \KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"log(mu)"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Geweke Z-score"}\NormalTok{))}
+
+\NormalTok{p_geweke_naive <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
 \StringTok{  }\KeywordTok{aes}\NormalTok{(}
     \KeywordTok{log10}\NormalTok{(}\KeywordTok{colMedians}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{))),}
 \NormalTok{    gew_mu_naive}
 \NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hex}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"log(mu)"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Geweke diagnostic}\CharTok{\textbackslash{}n}\StringTok{for mean expression"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_fill_viridis}\NormalTok{()}
-\NormalTok{p_geweke_naive_}\DecValTok{2}\NormalTok{ <-}\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{aes}\NormalTok{(}
-    \KeywordTok{rowData}\NormalTok{(sce_naive)}\OperatorTok{$}\NormalTok{detected, }
-\NormalTok{    gew_mu_naive}
-\NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hex}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}
-    \DataTypeTok{x =} \StringTok{"Proportion of cells detected"}\NormalTok{,}
-    \DataTypeTok{y =} \StringTok{"Geweke diagnostic}\CharTok{\textbackslash{}n}\StringTok{for mean expression"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_fill_viridis}\NormalTok{()}
-\NormalTok{p_geweke_active_}\DecValTok{1}\NormalTok{ <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Naive cells"}\NormalTok{)}
+\NormalTok{p_geweke_active <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
 \StringTok{  }\KeywordTok{aes}\NormalTok{(}
     \KeywordTok{log10}\NormalTok{(}\KeywordTok{colMedians}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{))),}
 \NormalTok{    gew_mu_active}
 \NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hex}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"log(mu)"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Geweke diagnostic}\CharTok{\textbackslash{}n}\StringTok{for mean expression"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_fill_viridis}\NormalTok{()}
-\NormalTok{p_geweke_active_}\DecValTok{2}\NormalTok{ <-}\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{aes}\NormalTok{(}
-    \KeywordTok{rowData}\NormalTok{(sce_active)}\OperatorTok{$}\NormalTok{detected, }
-\NormalTok{    gew_mu_active}
-\NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hex}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}
-    \DataTypeTok{x =} \StringTok{"Proportion of cells detected"}\NormalTok{,}
-    \DataTypeTok{y =} \StringTok{"Geweke diagnostic}\CharTok{\textbackslash{}n}\StringTok{for mean expression"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_fill_viridis}\NormalTok{()}
-\KeywordTok{multiplot}\NormalTok{(p_geweke_naive_}\DecValTok{1}\NormalTok{, p_geweke_naive_}\DecValTok{2}\NormalTok{, }
-\NormalTok{          p_geweke_active_}\DecValTok{1}\NormalTok{, p_geweke_active_}\DecValTok{2}\NormalTok{, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\StringTok{  }\NormalTok{myplot_params}\OperatorTok{+}
+\StringTok{  }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Activated cells"}\NormalTok{)}
+
+\KeywordTok{multiplot}\NormalTok{(p_geweke_naive, p_geweke_active, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{figure}
+As well as assessing the convergence of the MCMC algorithm, it is important
+to ensure that the MCMC algorithm has efficiently explored the parameter space.
+For example, the autocorrelation function (e.g.~Figure
+\ref{fig:convergence-naive}, right panel) can be used to quantify the
+correlation between the chain and its lagged versions.
+Strong autocorrelation indicates that neighbouring MCMC samples are highly
+dependent and suggest poor sampling efficiency.
+Low sampling efficiency may indicate that the MCMC draws do not contain
+sufficient information to produce accurate posterior estimates.
+In other words, highly correlated MCMC samplers require more samples to produce
+the same level of Monte Carlo error for an estimate
+(defined as the variance of a Monte Carlo estimate across repetitions \citep{Koehler2009}).
 
-{\centering \includegraphics{figure/geweke-diag-1} 
+The effective sample size (ESS) is a related measure which represents a proxy
+for the number of independent draws generated by the MCMC sampler \citep{Gelman2014}.
+The latter is defined as:
+\[
+  \mbox{ESS} = \frac{N_{tot}}{1 + 2\sum_{k=1}^\infty \rho(k)},
+\]
+where \(N_{tot}\) represents the total number of MCMC draws (after burn-in and
+thining) and \(\rho(k)\) \(\rho(k)\) is the autocorrelation at lag \(k\).
+ESS estimates associated to mean expression parameters for the naive and
+activated CD4\textsuperscript{+} T cells are displayed in Figure \ref{fig:ess-diag}.
+Whilst ESS is around 1,000 for most genes, we observe low ESS values for a
+small proportion of genes (primarily lowly expressed genes whose expression
+was only captured in a small number of cells).
+As described later in this manuscript, \texttt{BASiCS\_TestDE} automatically excludes
+genes with low ESS when performing differential expression testing.
 
-}
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ess_mu_naive <-}\StringTok{ }\KeywordTok{BASiCS_DiagPlot}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{) }
+\NormalTok{ess_mu_active <-}\StringTok{ }\KeywordTok{BASiCS_DiagPlot}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)}
+\KeywordTok{multiplot}\NormalTok{(ess_mu_naive, ess_mu_active, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
 
-\caption{Geweke diagnostic criterion for mean expression plotted against mean expression in naive cells.}\label{fig:geweke-diag}
-\end{figure}
+\hypertarget{quantification-of-variability-using-basics}{%
+\subsection{Quantification of variability using BASiCS}\label{quantification-of-variability-using-basics}}
 
 {\small\bibliography{Workflow.bib}}
 
