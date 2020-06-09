@@ -888,9 +888,15 @@ genes with low ESS when performing differential expression testing.
 
 ```{r ess-diag, fig.cap="ESS for mean expression parameters is plotted against mean expression estimates for naive (left) and activated (right) cells."}
 ess_mu_naive <- BASiCS_DiagPlot(chain_naive, Param = "mu") +
-  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+  theme(
+    # axis.text.x = element_text(hjust = 1, angle = 45),
+    legend.position = "bottom"
+  )
 ess_mu_active <- BASiCS_DiagPlot(chain_active, Param = "mu") +
-  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+  theme(
+    # axis.text.x = element_text(hjust = 1, angle = 45),
+    legend.position = "bottom"
+  )
 multiplot(ess_mu_naive, ess_mu_active, cols = 2)
 ```
 
@@ -936,7 +942,7 @@ parameters, rather than using pre-computed
 normalisation factors, is that in the former case, statistical uncertainty is 
 propagated from normalisation to all downstream analyses.
 
-```{r normalisation-vs-scran, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
+```{r normalisation-vs-scran, fig.width=4, fig.height=5, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
 # BASiCS scaling factors within each group of samples
 basics_sf_naive <- colMedians(
   displayChainBASiCS(chain_naive, "phi")
@@ -950,10 +956,9 @@ basics_sf_active <- colMedians(
 scran_sf_naive <- calculateSumFactors(sce_naive)
 scran_sf_active <- calculateSumFactors(sce_active)
 
-g1 <- ggplot() +
+ggplot() +
   aes(basics_sf_naive, scran_sf_naive) +
   geom_point() +
-  ggtitle("Naive cells") +
   labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
   annotate(
     x = 14,
@@ -968,25 +973,6 @@ g1 <- ggplot() +
     geom = "text",
     size = 4
   )
-g2 <- ggplot() +
-  aes(basics_sf_active, scran_sf_active) +
-  geom_point() +
-  ggtitle("Activated cells") +
-  labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
-  annotate(
-    x = 12,
-    y = 0.6, 
-    label = paste(
-      "Pearson's r = ", 
-      round(
-        cor(basics_sf_active, scran_sf_active), 
-        digits = 2
-      )
-    ), 
-    geom = "text",
-    size = 4
-  )
-multiplot(g1, g2, cols = 2)
 ```
 
 
@@ -1005,14 +991,9 @@ and how these relate to mean expression estimates. To generate this plot,
 we can use the `BASiCS_ShowFit` function. This plots the gene-specific 
 over-dispersion parameters (delta) versus mean expression parameters (mu).
 
-```{r dispersion-vs-mean, fig.cap="Over-dispersion is plotted against mean expression for naive and active cells on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density; a curve represents the inferred trend of over-dispersion against mean, while the shaded area represents the corresponding 95\\% high density interval."}
-fit_plot_naive <- BASiCS_ShowFit(chain_naive) +
-  theme_bw() +
-  ggtitle("Naive cells")
-fit_plot_active <- BASiCS_ShowFit(chain_active) +
-  theme_bw() +
-  ggtitle("Active cells")
-multiplot(fit_plot_naive, fit_plot_active, cols = 2)
+```{r dispersion-vs-mean, fig.width=4, fig.height=5, fig.cap="Over-dispersion is plotted against mean expression for naive cells on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density; a curve represents the inferred trend of over-dispersion against mean, while the shaded area represents the corresponding 95\\% high density interval."}
+BASiCS_ShowFit(chain_naive) +
+  theme_bw()
 ```
 
 Recently [@Eling2018], we extended `r Biocpkg("BASiCS")` to explicitly model 
@@ -1031,8 +1012,10 @@ least 2 cells. These genes have missing (`NA`) values for the residual
 over-dispersion parameter, $\epsilon$. These values can be obtained using the
 function `displayChainBASiCS`. We will use `r CRANpkg("ggpointdensity")` 
 to visualise the local density of genes along the axes of mean and variability.
+Here, we focus on naive cells, but a similar analysis for active cells would
+show very similar results.
 
-```{r residual-vs-mean, fig.cap="Residual over-dispersion estimates obtained by BASiCS are plotted against mean expression (log-scale). Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
+```{r residual-vs-mean, fig.width=4, fig.height=5, fig.cap="Residual over-dispersion estimates obtained by BASiCS are plotted against mean expression (log-scale) for naive cells. Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
 library("ggpointdensity")
 library("viridis")
 
@@ -1045,61 +1028,31 @@ summary_naive <- Summary(chain_naive)
 summary_active <- Summary(chain_active)
 parameter_df <- data.frame(
   mu_naive = displaySummaryBASiCS(summary_naive, Param = "mu")[, 1],
-  mu_active = displaySummaryBASiCS(summary_active, Param = "mu")[, 1],
   delta_naive = displaySummaryBASiCS(summary_naive, Param = "delta")[, 1],
-  delta_active = displaySummaryBASiCS(summary_active, Param = "delta")[, 1],
   eps_naive = displaySummaryBASiCS(summary_naive, Param = "epsilon")[, 1],
-  eps_active = displaySummaryBASiCS(summary_active, Param = "epsilon")[, 1],
   ## mean and variance of scran-normalised counts
   mean_scran_naive = rowMeans(assay(sce_naive, "normcounts")),
-  mean_scran_active = rowMeans(assay(sce_active, "normcounts")),
-  var_scran_naive = rowVars(assay(sce_naive, "normcounts")),
-  var_scran_active = rowVars(assay(sce_active, "normcounts"))
+  var_scran_naive = rowVars(assay(sce_naive, "normcounts"))
 )
 ## Use scran mean and variance to calculate cv2 and DM
 parameter_df$cv2_scran_naive <- parameter_df$var_scran_naive /
   parameter_df$mean_scran_naive^2
-parameter_df$cv2_scran_active <- parameter_df$var_scran_active /
-  parameter_df$mean_scran_active^2
 
 parameter_df$DM_naive <- DM(
   mean = parameter_df$mean_scran_naive,
   cv2 = parameter_df$cv2_scran_naive
 )
-parameter_df$DM_active <- DM(
-  mean = parameter_df$mean_scran_active,
-  cv2 = parameter_df$cv2_scran_active
-)
 
 ## Remove genes without counts in > 2 cells
-ind_not_na <- !(is.na(parameter_df$eps_naive) | is.na(parameter_df$eps_active))
+ind_not_na <- !(is.na(parameter_df$eps_naive))
 
-p_eps_naive <- ggplot(parameter_df[ind_not_na, ]) +
+ggplot(parameter_df[ind_not_na, ]) +
   geom_pointdensity(aes(log(mu_naive), eps_naive)) +
   scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)
-  ) +
   labs(
     x = "Mean expression",
-    y = "Residual over-dispersion",
-    title = "Naive cells"
+    y = "Residual over-dispersion"
   )
-p_eps_active <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(mu_active), eps_active)) +
-  scale_colour_viridis() + 
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)
-  ) +
-  labs(
-    x = "Mean expression",
-    y = "Residual over-dispersion",
-    title = "Activated cells"
-  ) +
-  ggtitle("Activated cells")
-multiplot(p_eps_naive, p_eps_active, cols = 2)
 ```
 
 
@@ -1113,69 +1066,25 @@ over-dispersion parameters estimated by `r Biocpkg("BASiCS")` are strongly
 correlated with mean expression. 
 
 
-```{r delta-var, fig.cap="Over-dispersion estimates obtained by BASiCS are plotted against variance of scran-normalised counts (log-scale). Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
-p_delta_var_naive <- ggplot(parameter_df[ind_not_na, ]) +
+```{r delta-var, fig.width=4, fig.height=5, fig.cap="Over-dispersion estimates obtained by BASiCS are plotted against variance of scran-normalised counts for naive cells on a log-log scale. Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
+ggplot(parameter_df[ind_not_na, ]) +
   geom_pointdensity(aes(log(delta_naive), log(var_scran_naive))) +
   scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)
-  ) +
   labs(
     x = "Over-dispersion",
-    y = "Variance",
-    title = "Naive cells"
+    y = "Variance"
   )
-p_delta_var_active <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(delta_active), log(var_scran_active))) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)
-  ) +
-  labs(
-    x = "Over-dispersion",
-    y = "Variance",
-    title = "Activated cells"
-  )
-
-multiplot(
-  p_delta_var_naive, p_delta_var_active,
-  cols = 2
-)
 ```
 
 
-```{r delta-cv2, fig.cap="b"}
-p_delta_cv2_naive <- ggplot(parameter_df[ind_not_na, ]) +
+```{r delta-cv2, fig.width=4, fig.height=5, fig.cap="CV2 estimates from normalised counts are plotted against over-dispersion estimates obtained by BASiCS for naive cells on a log-log scale. Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
+ggplot(parameter_df[ind_not_na, ]) +
   geom_pointdensity(aes(log(delta_naive), log(cv2_scran_naive))) +
   scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)
-  ) +
   labs(
     x = "Over-dispersion",
-    y = "CV^2",
-    title = "Naive cells"
+    y = "CV^2"
   )
-p_delta_cv2_active <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(delta_active), log(cv2_scran_active))) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)
-  ) +
-  labs(
-    x = "Over-dispersion",
-    y = "CV^2",
-    title = "Activated cells"
-  )
-
-multiplot(
-  p_delta_cv2_naive, p_delta_cv2_active,
-  cols = 2
-)
 ```
 
 Neither the DM nor the residual over-dispersion estimates show association 
@@ -1198,59 +1107,24 @@ displayChainBASiCS(chain_naive, Param = "epsilon")[1:10, 1:10]
 ```
 
 
-```{r mean-dm, fig.cap="DM estimates obtained using scran are plotted against mean expression (log-scale). Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
-p_dm_naive <- ggplot(parameter_df[ind_not_na, ]) +
+```{r mean-dm, fig.width=4, fig.height=5, fig.cap="DM estimates obtained using scran are plotted against mean expression (log-scale) for naive cells. Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
+ggplot(parameter_df[ind_not_na, ]) +
   geom_pointdensity(aes(log(mean_scran_naive), DM_naive)) +
   scale_colour_viridis() +
-  theme(legend.position = "bottom") +
   labs(
     x = "Mean expression",
-    y = "DM",
-    title = "Naive cells"
+    y = "DM"
   )
-p_dm_active <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(mean_scran_active), DM_active)) +
-  scale_colour_viridis() + 
-  theme(legend.position = "bottom") +
-  labs(
-    x = "Mean expression",
-    y = "DM",
-    title = "Activated cells"
-  ) +
-  ggtitle("Activated cells")
-multiplot(p_eps_naive, p_eps_active, cols = 2)
 ```
 
-```{r eps-dm, fig.cap = "c"}
-p_eps_DM_naive <- ggplot(parameter_df[ind_not_na, ]) +
+```{r eps-dm, fig.width=4, fig.height=5, fig.cap = "Residual over-dispersion estimates obtained using BASiCS are plotted against DM estimates for naive cells. Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
+ggplot(parameter_df[ind_not_na, ]) +
   geom_pointdensity(aes(eps_naive, DM_naive)) +
   scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)
-  ) +
   labs(
     x = "Residual over-dispersion",
-    y = "DM",
-    title = "Naive cells"
+    y = "DM"
   )
-p_eps_DM_active <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(eps_active, DM_active)) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(hjust = 1, angle = 45)
-  ) +
-  labs(
-    x = "Residual over-dispersion",
-    y = "DM",
-    title = "Activated cells"
-  )
-
-multiplot(
-  p_eps_DM_naive, p_eps_DM_active,
-  cols = 2
-)
 ```
 
 ## HVG/LVG detection using BASiCS
@@ -1330,7 +1204,6 @@ plot_data <- cbind(plot_data,
   BASiCS = ifelse(plot_data$BASiCS_HVG, "HVG", "Not HVG"),
   scran = ifelse(plot_data$scran_HVG, "HVG", "Not HVG")
 )
-
 
 ord <- order(plot_data$scran, plot_data$BASiCS, decreasing = TRUE)
 plot_data <- plot_data[ord, ]
