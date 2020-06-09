@@ -145,7 +145,7 @@ sources of noise, both technical and biological. In particular, we
 encourage the use of UMIs when performing a scRNAseq study.
 It is well-established that scRNAseq data is distributed
 according to a negative binomial distribution when UMIs are used in the 
-sequencing protocol [@Svennson2020;@Townes2020;@Townes2019]. Thus, the
+sequencing protocol [@Svensson2020;@Townes2020;@Townes2019]. Thus, the
 distributional assumptions of `r Biocpkg("BASiCS")` are more likely to be valid
 for datasets wherein UMIs have been used. Furthermore, 
 `r Biocpkg("BASiCS")` leverages spike-in molecules to aid in normalisation when
@@ -887,20 +887,14 @@ As described later in this manuscript, `BASiCS_TestDE` automatically excludes
 genes with low ESS when performing differential expression testing.
 
 ```{r ess-diag, fig.cap="ESS for mean expression parameters is plotted against mean expression estimates for naive (left) and activated (right) cells."}
-ess_mu_naive <- BASiCS_DiagPlot(chain_naive, Param = "mu") 
-ess_mu_active <- BASiCS_DiagPlot(chain_active, Param = "mu")
+ess_mu_naive <- BASiCS_DiagPlot(chain_naive, Param = "mu") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+ess_mu_active <- BASiCS_DiagPlot(chain_active, Param = "mu") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
 multiplot(ess_mu_naive, ess_mu_active, cols = 2)
 ```
 
-<!--- CAV: sentence removed as trend is not clear after additional gene filter
 
-Furthermore, Figure \@ref(fig:geweke-diag-ess) demonstrates 
-that the Geweke diagnostic criterion is closely related to effective sample 
-size, such that parameters with large Z-scores often have very low effective 
-sample sizes.
---->
-
-<!---
 ## Global scaling normalisation using BASiCS
 
 Global scaling normalisation techniques for scRNA-seq data can be used to infer
@@ -913,16 +907,34 @@ For example, when spike-in genes are used to assist data normalisation,
 associated to these sources of variability: $\phi_j$ and $\nu_j$, respectively.  
 Posterior estimates for these parameters ($\hat{\phi}_j$, $\hat{\nu}_j$) can be 
 used to normalise the input data via the `BASiCS_DenoisedCounts` function. 
-The latter returns normalised expression values defined as
+This function returns normalised expression values defined as
 $$
   x^*_{ij} = \frac{ x_{ij} } {\hat{\phi}_j \hat{\nu}_j},
 $$
 where $x_{ij}$ denotes the observed expression count for gene $i$ in cell $j$.
 
 ```{r normalisation-naive}
-norm_basics_naive <- BASiCS_DenoisedCounts(Data = sce_naive, Chain = chain_naive)
-norm_basics_active <- BASiCS_DenoisedCounts(Data = sce_active, Chain = chain_active)
+## First remove global differences in scale for normalisation factors
+offset_corrected <- BASiCS_CorrectOffset(chain_active, chain_naive)
+norm_basics_naive <- BASiCS_DenoisedCounts(
+  Data = sce_naive,
+  Chain = chain_naive
+)
+norm_basics_active <- BASiCS_DenoisedCounts(
+  Data = sce_active,
+  Chain = offset_corrected$Chain
+)
 ```
+
+
+As shown in Figure \@ref(fig:normalisation-vs-scran), the capture efficiency and 
+scaling factors ($\nu_j$ and $\phi_j$ respectively) inferred by 
+`r Biocpkg("BASiCS")` are highly correlated with the global scaling 
+normalisation factors inferred using the method of @Lun2016.
+An advantage of jointly inferring normalisation and gene-specific expression
+parameters, rather than using pre-computed
+normalisation factors, is that in the former case, statistical uncertainty is 
+propagated from normalisation to all downstream analyses.
 
 ```{r normalisation-vs-scran, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
 # BASiCS scaling factors within each group of samples
@@ -943,97 +955,236 @@ g1 <- ggplot() +
   geom_point() +
   ggtitle("Naive cells") +
   labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
-  annotate(x=14, y=0.4, 
-         label=paste("Pearson's r = ", 
-                     round(cor(basics_sf_naive, scran_sf_naive),2)), 
-         geom="text", size=4)
+  annotate(
+    x = 14,
+    y = 0.4, 
+    label = paste(
+      "Pearson's r = ", 
+      round(
+        cor(basics_sf_naive, scran_sf_naive),
+        digits = 2
+      )
+    ), 
+    geom = "text",
+    size = 4
+  )
 g2 <- ggplot() +
   aes(basics_sf_active, scran_sf_active) +
   geom_point() +
   ggtitle("Activated cells") +
   labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
-  annotate(x=12, y=0.6, 
-         label=paste("Pearson's r = ", 
-                     round(cor(basics_sf_active, scran_sf_active),2)), 
-         geom="text", size=4)
+  annotate(
+    x = 12,
+    y = 0.6, 
+    label = paste(
+      "Pearson's r = ", 
+      round(
+        cor(basics_sf_active, scran_sf_active), 
+        digits = 2
+      )
+    ), 
+    geom = "text",
+    size = 4
+  )
 multiplot(g1, g2, cols = 2)
 ```
 
 
-As shown in Figure \@ref(fig:normalisation-vs-scran), the capture efficiency and 
-scaling factors ($\nu_j$ and $\phi_j$ respectively) inferred by 
-`r Biocpkg("BASiCS")` are highly correlated with the global scaling 
-normalisation factors inferred using the method of @Lun2016.
-An advantage of jointly inferring normalisation and gene-specific expression
-parameters, rather than using pre-computed
-normalisation factors, is that in the former case, statistical uncertainty is 
-propagated from normalisation to all downstream analyses.
-
---->
-
 ## Quantifying transcriptional variability using BASiCS
 
-`r Biocpkg("BASiCS")` uses gene-specific over-dispersion parameters $\delta_i$ 
-as a proxy for transcriptional variability within a population of cells. 
+Widely used measures of expression variability include the variance 
+[@Shalek2014] and the squared coefficient of variation (CV^2^)
+(CV, variance divided by squared mean expression) 
+[@Buettner2015;@Brennecke2013].
+In contrast, `r Biocpkg("BASiCS")` uses gene-specific over-dispersion 
+parameters $\delta_i$ as a proxy for transcriptional variability within a
+population of cells. 
 Figure \@ref(fig:dispersion-vs-mean) displays posterior estimates for 
 over-dispersion parameters inferred for the naive and activated CD4^+^ T cells 
-and how these relate to mean expression estimates.  
-Following [@Eling2018], we also derive posterior estimates for residual
-over-dispersion parameters $\epsilon_i$, a measure of variability that is not
-confounded by mean expression (see Figure \@ref(fig:residual-vs-mean)). 
-As seen in Figure \@ref(fig:residual-vs-mean) [TEXT IS WIP]
+and how these relate to mean expression estimates. To generate this plot,
+we can use the `BASiCS_ShowFit` function. This plots the gene-specific 
+over-dispersion parameters (delta) versus mean expression parameters (mu).
 
-Similarly, Kolodziejczyk _et al._ used the distance to a rolling median (DM) 
-along the mean-variability trend to correct for this confounding factor 
-[@Kolodziejczyk2015cell].
-Here, we highlight how to obtain the residual variability estimates using 
-`r Biocpkg("BASiCS")` and `r Biocpkg("scran")`.
+```{r dispersion-vs-mean, fig.cap="Over-dispersion is plotted against mean expression for naive and active cells on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density; a curve represents the inferred trend of over-dispersion against mean, while the shaded area represents the corresponding 95\\% high density interval."}
+fit_plot_naive <- BASiCS_ShowFit(chain_naive) +
+  theme_bw() +
+  ggtitle("Naive cells")
+fit_plot_active <- BASiCS_ShowFit(chain_active) +
+  theme_bw() +
+  ggtitle("Active cells")
+multiplot(fit_plot_naive, fit_plot_active, cols = 2)
+```
 
-Widely used measures of expression variability include the variance 
-[@Shalek2014], the Fano factor (variance divided by mean expression) 
-[@Wills2013;@Grun2014;@Arriaga2009] and 
-the coefficient of variation (CV, variance divided by squared mean expression) 
-[@Buettner2015;@Brennecke2013].
-Here, we highlight the mean-variance relationship for each variability 
+Recently [@Eling2018], we extended `r Biocpkg("BASiCS")` to explicitly model 
+the mean-variability relationship by performing an internal regression between 
+the over-dispersion and mean expression parameters, as visualised in Figure 
+\@ref(fig:dispersion-vs-mean). This results in the $\epsilon$ parameter, a measure of variability that is not confounded by mean expression. This *residual* 
+over-dispersion parameter quantifies the level of variability above or below 
+that expected based on the overall mean-variance relationship.
+Similarly, Kolodziejczyk _et al._ used the distance to a rolling 
+median (DM) along the mean-variability trend to correct for this confounding 
+factor [@Kolodziejczyk2015cell]. Here, we highlight how to obtain the residual
+variability estimates using `r Biocpkg("BASiCS")` and `r Biocpkg("scran")`.
+Further, we illustrate the mean-variance relationship for each variability 
 measures. For this analysis, we exclude genes that are not expressed in at 
-least 2 cells.
-These genes have missing (`NA`) values for the residual over-dispersion 
-parameter, $\epsilon$. These values can be obtained using the function
-`displayChainBASiCS`.
-We will use `r CRANpkg("ggpointdensity")` to visualise the local density of
-genes along the axes of mean and variability.
+least 2 cells. These genes have missing (`NA`) values for the residual 
+over-dispersion parameter, $\epsilon$. These values can be obtained using the
+function `displayChainBASiCS`. We will use `r CRANpkg("ggpointdensity")` 
+to visualise the local density of genes along the axes of mean and variability.
 
-Figures \@ref(fig:variability-measures), \@ref(fig:fano-fig),
-and \@ref(fig:cv-fig) demonstrate that these measures each correlate strongly
-with mean expression. Again, for this comparison,
+```{r residual-vs-mean, fig.cap="Residual over-dispersion estimates obtained by BASiCS are plotted against mean expression (log-scale). Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
+library("ggpointdensity")
+library("viridis")
+
+## normalise counts using scran size factors
+sce_naive <- logNormCounts(sce_naive, log = FALSE)
+sce_active <- logNormCounts(sce_active, log = FALSE)
+
+## Obtain point estimates within each group of cells
+summary_naive <- Summary(chain_naive)
+summary_active <- Summary(chain_active)
+parameter_df <- data.frame(
+  mu_naive = displaySummaryBASiCS(summary_naive, Param = "mu")[, 1],
+  mu_active = displaySummaryBASiCS(summary_active, Param = "mu")[, 1],
+  delta_naive = displaySummaryBASiCS(summary_naive, Param = "delta")[, 1],
+  delta_active = displaySummaryBASiCS(summary_active, Param = "delta")[, 1],
+  eps_naive = displaySummaryBASiCS(summary_naive, Param = "epsilon")[, 1],
+  eps_active = displaySummaryBASiCS(summary_active, Param = "epsilon")[, 1],
+  ## mean and variance of scran-normalised counts
+  mean_scran_naive = rowMeans(assay(sce_naive, "normcounts")),
+  mean_scran_active = rowMeans(assay(sce_active, "normcounts")),
+  var_scran_naive = rowVars(assay(sce_naive, "normcounts")),
+  var_scran_active = rowVars(assay(sce_active, "normcounts"))
+)
+## Use scran mean and variance to calculate cv2 and DM
+parameter_df$cv2_scran_naive <- parameter_df$var_scran_naive /
+  parameter_df$mean_scran_naive^2
+parameter_df$cv2_scran_active <- parameter_df$var_scran_active /
+  parameter_df$mean_scran_active^2
+
+parameter_df$DM_naive <- DM(
+  mean = parameter_df$mean_scran_naive,
+  cv2 = parameter_df$cv2_scran_naive
+)
+parameter_df$DM_active <- DM(
+  mean = parameter_df$mean_scran_active,
+  cv2 = parameter_df$cv2_scran_active
+)
+
+## Remove genes without counts in > 2 cells
+ind_not_na <- !(is.na(parameter_df$eps_naive) | is.na(parameter_df$eps_active))
+
+p_eps_naive <- ggplot(parameter_df[ind_not_na, ]) +
+  geom_pointdensity(aes(log(mu_naive), eps_naive)) +
+  scale_colour_viridis() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)
+  ) +
+  labs(
+    x = "Mean expression",
+    y = "Residual over-dispersion",
+    title = "Naive cells"
+  )
+p_eps_active <- ggplot(parameter_df[ind_not_na, ]) +
+  geom_pointdensity(aes(log(mu_active), eps_active)) +
+  scale_colour_viridis() + 
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)
+  ) +
+  labs(
+    x = "Mean expression",
+    y = "Residual over-dispersion",
+    title = "Activated cells"
+  ) +
+  ggtitle("Activated cells")
+multiplot(p_eps_naive, p_eps_active, cols = 2)
+```
+
+
+Figures \@ref(fig:delta-var) and \@ref(fig:delta-cv2) show that variance and
+CV^2^ are both highly correlated with the over-dispersion estimates from 
+`r Biocpkg("BASiCS")`. Again, for this comparison,
 we exclude genes that are not observed to be expressed in at least 2 cells,
 given that variability cannot meaningfully be quantified given a single 
-observation.
-
-The over-dispersion parameters estimated using `r Biocpkg("BASiCS")`
-show strong correlation with CV^2^, as seen in Figure \@ref(fig:cv-basics).
-Furthermore, Figure \@ref(fig:CV-comparison-BASiCS) shows that the 
+observation. Furthermore, Figure \@ref(fig:dispersion-vs-mean) shows that the 
 over-dispersion parameters estimated by `r Biocpkg("BASiCS")` are strongly
 correlated with mean expression. 
-Recently, we extended `r Biocpkg("BASiCS")` to explicitly model this 
-mean-variability relationship by performing an internal regression between the 
-over-dispersion and mean expression parameters, as visualised in Figure 
-\@ref(fig:naive-fit). This results in the $\epsilon$ parameter, a measure
-of variability above or below that expected based on the overall mean-variance
-relationship.
-Similarly, Kolodziejczyk _et al._ used the distance to a rolling median (DM) 
-along the mean-variability trend to correct for this confounding factor 
-[@Kolodziejczyk2015cell].
-Here, we highlight how to obtain the residual variability estimates using 
-`r Biocpkg("BASiCS")` and `r Biocpkg("scran")`.
+
+
+```{r delta-var, fig.cap="Over-dispersion estimates obtained by BASiCS are plotted against variance of scran-normalised counts (log-scale). Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
+p_delta_var_naive <- ggplot(parameter_df[ind_not_na, ]) +
+  geom_pointdensity(aes(log(delta_naive), log(var_scran_naive))) +
+  scale_colour_viridis() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)
+  ) +
+  labs(
+    x = "Over-dispersion",
+    y = "Variance",
+    title = "Naive cells"
+  )
+p_delta_var_active <- ggplot(parameter_df[ind_not_na, ]) +
+  geom_pointdensity(aes(log(delta_active), log(var_scran_active))) +
+  scale_colour_viridis() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)
+  ) +
+  labs(
+    x = "Over-dispersion",
+    y = "Variance",
+    title = "Activated cells"
+  )
+
+multiplot(
+  p_delta_var_naive, p_delta_var_active,
+  cols = 2
+)
+```
+
+
+```{r delta-cv2, fig.cap="b"}
+p_delta_cv2_naive <- ggplot(parameter_df[ind_not_na, ]) +
+  geom_pointdensity(aes(log(delta_naive), log(cv2_scran_naive))) +
+  scale_colour_viridis() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)
+  ) +
+  labs(
+    x = "Over-dispersion",
+    y = "CV^2",
+    title = "Naive cells"
+  )
+p_delta_cv2_active <- ggplot(parameter_df[ind_not_na, ]) +
+  geom_pointdensity(aes(log(delta_active), log(cv2_scran_active))) +
+  scale_colour_viridis() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)
+  ) +
+  labs(
+    x = "Over-dispersion",
+    y = "CV^2",
+    title = "Activated cells"
+  )
+
+multiplot(
+  p_delta_cv2_naive, p_delta_cv2_active,
+  cols = 2
+)
+```
 
 Neither the DM nor the residual over-dispersion estimates show association 
-with mean expression, as shown in Figures \@ref(fig:mean-dispersion-basics) 
-and \@ref(fig:mean-dispersion-dm).
+with mean expression, as shown in Figures \@ref(fig:residual-vs-mean) 
+and \@ref(fig:mean-dm).
 Furthermore, these mean-independent variability measures are highly correlated,
-as seen in Figure \@ref(fig:epsilon-dm).
+as seen in Figure \@ref(fig:eps-dm).
 These measures can be used to associate genomic features 
-[@Morgan2018;@Faure2017] or transcriptional dynamics [@Antolovic2017] to 
+[@Morgan2018;@Faure2017] or transcriptional dynamics [@Antolovic2017] with 
 gene expression variability.
 While the DM is calculated as a point estimate, `r Biocpkg("BASiCS")` stores 
 each posterior sample within the `BASiCS_Chain` object.
@@ -1046,150 +1197,63 @@ samples.
 displayChainBASiCS(chain_naive, Param = "epsilon")[1:10, 1:10]
 ```
 
-<!-- **TODO: Not sure if we need this** why not? doesn't hurt imo -->
-By testing a certain association for each MCMC sample, for example between 
-CpG island length and variability [@Morgan2018], one can generate a
-posterior distribution of the test statistic. 
 
-```{r dispersion-vs-mean, fig.cap="Over-dispersion estimates obtained by BASiCS are plotted against mean expression for all genes on a log-log scale. Colour represents local density, with lighter colours representing higher density."}
-
-library("ggpointdensity")
-library("viridis")
-
-# Obtain point estimates within each group of cells
-summary_naive <- Summary(chain_naive)
-summary_active <- Summary(chain_active)
-DF <- data.frame(
-  "mu_naive" = displaySummaryBASiCS(summary_naive, Param = "mu")[,1],
-  "mu_active" = displaySummaryBASiCS(summary_active, Param = "mu")[,1],
-  "delta_naive" = displaySummaryBASiCS(summary_naive, Param = "delta")[,1],
-  "delta_active" = displaySummaryBASiCS(summary_active, Param = "delta")[,1],
-  "eps_naive" = displaySummaryBASiCS(summary_naive, Param = "epsilon")[,1],
-  "eps_active" = displaySummaryBASiCS(summary_active, Param = "epsilon")[,1]
+```{r mean-dm, fig.cap="DM estimates obtained using scran are plotted against mean expression (log-scale). Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
+p_dm_naive <- ggplot(parameter_df[ind_not_na, ]) +
+  geom_pointdensity(aes(log(mean_scran_naive), DM_naive)) +
+  scale_colour_viridis() +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Mean expression",
+    y = "DM",
+    title = "Naive cells"
   )
-
-# Over-dispersion versus mean expression
-p_delta_naive <- ggplot(DF) +
-  geom_pointdensity(aes(log(mu_naive), log(delta_naive))) +
-  scale_colour_viridis() +
-  labs(x = "Mean expression estimates",
-       y = "Over-dispersion estimates") +
-  ggtitle("Naive cells")
-p_delta_active <- ggplot(DF) +
-  geom_pointdensity(aes(log(mu_active), log(delta_active))) +
+p_dm_active <- ggplot(parameter_df[ind_not_na, ]) +
+  geom_pointdensity(aes(log(mean_scran_active), DM_active)) +
   scale_colour_viridis() + 
-  labs(x = "Mean expression estimates",
-       y = "Over-dispersion estimates") +
-  ggtitle("Activated cells")
-multiplot(p_delta_naive, p_delta_active, cols = 2)
-```
-
-
-```{r residual-vs-mean, fig.cap="Residual over-dispersion estimates obtained by BASiCS are plotted against mean expression (log-scale). Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
-
-p_eps_naive <- ggplot(DF[!is.na(DF$eps_naive),]) +
-  geom_pointdensity(aes(log(mu_naive), eps_naive)) +
-  scale_colour_viridis() +
-  labs(x = "Mean expression estimates",
-       y = "Residual over-dispersion estimates") +
-  ggtitle("Naive cells")
-p_eps_active <- ggplot(DF[!is.na(DF$eps_active),]) +
-  geom_pointdensity(aes(log(mu_active), eps_active)) +
-  scale_colour_viridis() + 
-  labs(x = "Mean expression estimates",
-       y = "Residual over-dispersion estimates") +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Mean expression",
+    y = "DM",
+    title = "Activated cells"
+  ) +
   ggtitle("Activated cells")
 multiplot(p_eps_naive, p_eps_active, cols = 2)
 ```
 
-```{r compare-variability, fig.cap="Residual over-dispersion estimates obtained by BASiCS are plotted against mean expression (log-scale). Colour represents local density, with lighter colours representing higher density. Genes that are not observed to be expressed in at least 2 cells within each group are excluded."}
-
-p_eps_naive <- ggplot(DF[!is.na(DF$eps_naive),]) +
-  geom_pointdensity(aes(log(mu_naive), eps_naive)) +
-  scale_colour_viridis() +
-  labs(x = "Mean expression estimates",
-       y = "Residual over-dispersion estimates") +
-  ggtitle("Naive cells")
-p_eps_active <- ggplot(DF[!is.na(DF$eps_active),]) +
-  geom_pointdensity(aes(log(mu_active), eps_active)) +
-  scale_colour_viridis() + 
-  labs(x = "Mean expression estimates",
-       y = "Residual over-dispersion estimates") +
-  ggtitle("Activated cells")
-multiplot(p_eps_naive, p_eps_active, cols = 2)
-```
-
-```{r}
-sce_naive <- logNormCounts(sce_naive, log = FALSE)
-sce_active <- logNormCounts(sce_active, log = FALSE)
-DF$mean_scran_naive <- rowMeans(assay(sce_naive, "normcounts"))
-DF$mean_scran_active <- rowMeans(assay(sce_active, "normcounts"))
-DF$var_scran_naive <- rowVars(assay(sce_naive, "normcounts"))
-DF$var_scran_active <- rowVars(assay(sce_active, "normcounts"))
-DF$cv2_scran_naive <- DF$var_scran_naive / DF$mean_scran_naive^2
-DF$cv2_scran_active <- DF$var_scran_active / DF$mean_scran_active^2
-DF$DM_naive <- DM(mean = DF$mean_scran_naive, cv2 = DF$cv2_scran_naive)
-DF$DM_active <- DM(mean = DF$mean_scran_active, cv2 = DF$cv2_scran_active)
-
-p_delta_cv2_naive <- ggplot(DF[!is.na(DF$eps_naive),]) +
-  geom_pointdensity(aes(log(delta_naive), log(cv2_scran_naive))) +
-  scale_colour_viridis() +
-  labs(x = "Over-dispersion estimates",
-       y = "CV^2") +
-  ggtitle("Naive cells")
-p_delta_cv2_active <- ggplot(DF[!is.na(DF$eps_active),]) +
-  geom_pointdensity(aes(log(delta_active), log(cv2_scran_active))) +
-  scale_colour_viridis() +
-  labs(x = "Over-dispersion estimates",
-       y = "CV^2") +
-  ggtitle("Activated cells")
-
-p_eps_DM_naive <- ggplot(DF[!is.na(DF$eps_naive),]) +
+```{r eps-dm, fig.cap = "c"}
+p_eps_DM_naive <- ggplot(parameter_df[ind_not_na, ]) +
   geom_pointdensity(aes(eps_naive, DM_naive)) +
   scale_colour_viridis() +
-  labs(x = "Residual over-dispersion estimates",
-       y = "DM estimates") +
-  ggtitle("Naive cells")
-p_eps_DM_active <- ggplot(DF[!is.na(DF$eps_active),]) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)
+  ) +
+  labs(
+    x = "Residual over-dispersion",
+    y = "DM",
+    title = "Naive cells"
+  )
+p_eps_DM_active <- ggplot(parameter_df[ind_not_na, ]) +
   geom_pointdensity(aes(eps_active, DM_active)) +
   scale_colour_viridis() +
-  labs(x = "Residual over-dispersion estimates",
-       y = "DM estimates") +
-  ggtitle("Activated cells")
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(hjust = 1, angle = 45)
+  ) +
+  labs(
+    x = "Residual over-dispersion",
+    y = "DM",
+    title = "Activated cells"
+  )
 
-multiplot(p_delta_cv2_naive, p_delta_cv2_active,
-          p_eps_DM_naive, p_eps_DM_active,
-          cols = 2)
+multiplot(
+  p_eps_DM_naive, p_eps_DM_active,
+  cols = 2
+)
 ```
 
 ## HVG/LVG detection using BASiCS
-
-<!--- CAV: some of the text below is redundant --->
-
-Numerous studies have highlighted the relationship between gene-specific 
-variability measures (e.g., squared coefficient of variation) and mean 
-abundance [@Ritchie2015;@Grun2014;@Love2014;@McCarthy2012].
-`r Biocpkg("BASiCS")` provides the `BASiCS_ShowFit` function that plots the
-gene-specific 
-over-dispersion parameters (delta) versus mean expression parameters (mu). 
-
-```{r naive-fit, fig.cap="Over-dispersion is plotted against mean expression for naive cells on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density; a curve represents the inferred trend of over-dispersion against mean, while the shaded area represents the corresponding 95\\% high density interval."}
-BASiCS_ShowFit(chain_naive)
-```
-
-Here, we observe that the over-dispersion estimates are inversely correlated
-with mean expression.
-However, by performing a regression between over-dispersion and mean 
-expression, we can correct for this trend and obtain variability measures that 
-show no correlation with mean expression [@Eling2018]. This is performed jointly
-while estimating mean and over-dispersion for each gene, and incorporating
-this information can help to stabilise inference, in particular for genes
-with very low average counts. The purple points in the plot indicate genes that 
-are not expressed in at least 2 cells.
-`r Biocpkg("BASiCS")` automatically excludes these genes when assessing gene 
-variability,
-given that it is not possible to quantify variability or changes in variability
-for genes that are only expressed in one cell.
 
 `r Biocpkg("BASiCS")` offers the functions `BASiCS_DetectHVG` and 
 `BASiCS_DetectLVG` to select genes with large or small 
@@ -1286,11 +1350,6 @@ ggplot(plot_data) +
 of the *`r nrow(hvg_out)`* HVGs of scran are among the
 *`r sum(HVG_table$HVG)`* HVGs identified by `r Biocpkg("BASiCS")`.
 
-<!-- 
-We can now compare these gene-specific variability measures (over-dispersion and 
-residual over-dispersion) to previously used measures to quantify cell-to-cell 
-expression variability [@Brennecke2013,@Kolodziejczyk2015cell].
--->
 
 ## Differential mean expression testing using BASiCS
 

@@ -27,3 +27,4 @@ figure*/*
 !figure/Overview.png
 !figure/Overview.svg
 *.Rds
+*.tex
