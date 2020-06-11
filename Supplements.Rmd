@@ -24,6 +24,7 @@ author:
     - The Alan Turing Institute, British Library, 96 Euston Road, London, 
       NW1 2DB, UK
     email: catalina.vallejos@igmm.ed.ac.uk
+bibliography: Workflow.bib
 output:
   BiocWorkflowTools::f1000_article:
     fig_width: 8
@@ -48,7 +49,7 @@ library(knitr)
 #fig.width <- ifelse(on.bioc, 7, 6)
 knitr::opts_chunk$set(
   message = FALSE, error = FALSE, warning = FALSE,
-  cache = FALSE, cache.path = "cache_supp/",
+  cache = 2, cache.path = "cache_supp/",
   fig.path = "figure_supp/"
 )
 ```
@@ -214,6 +215,84 @@ plot(MCMC_naive_nospikes, Param = "s", Cell = 50)
 
 
 
+## Global scaling normalisation using BASiCS
+
+Global scaling normalisation techniques for scRNA-seq data can be used to infer
+cell-specific scaling factors that capture systematic differences in the scale
+of the expression counts across cells. 
+Generally, these scaling factors capture both biological (e.g. mRNA content) and technical (e.g. sequencing depth) factors, but spike-in genes can be used to
+disentangle these effects [@Vallejos2017]. 
+For example, when spike-in genes are used to assist data normalisation, 
+`r Biocpkg("BASiCS")` infers two separate sets of cell-specific parameters 
+associated to these sources of variability: $\phi_j$ and $\nu_j$, respectively.  
+Posterior estimates for these parameters ($\hat{\phi}_j$, $\hat{\nu}_j$) can be 
+used to normalise the input data via the `BASiCS_DenoisedCounts` function. 
+This function returns normalised expression values defined as
+$$
+  x^*_{ij} = \frac{ x_{ij} } {\hat{\phi}_j \hat{\nu}_j},
+$$
+where $x_{ij}$ denotes the observed expression count for gene $i$ in cell $j$.
+
+```{r normalisation-naive}
+## First remove global differences in scale for normalisation factors
+offset_corrected <- BASiCS_CorrectOffset(chain_active, chain_naive)
+norm_basics_naive <- BASiCS_DenoisedCounts(
+  Data = sce_naive,
+  Chain = chain_naive
+)
+norm_basics_active <- BASiCS_DenoisedCounts(
+  Data = sce_active,
+  Chain = offset_corrected$Chain
+)
+```
+
+
+As shown in Figure \@ref(fig:normalisation-vs-scran), the capture efficiency and 
+scaling factors ($\nu_j$ and $\phi_j$ respectively) inferred by 
+`r Biocpkg("BASiCS")` are highly correlated with the global scaling 
+normalisation factors inferred using the method of @Lun2016.
+An advantage of jointly inferring normalisation and gene-specific expression
+parameters, rather than using pre-computed
+normalisation factors, is that in the former case, statistical uncertainty is 
+propagated from normalisation to all downstream analyses.
+
+```{r normalisation-vs-scran, fig.width=4, fig.height=5, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
+sce_naive <- readRDS("rds/sce_naive.rds")
+sce_active <- readRDS("rds/sce_active.rds")
+
+# BASiCS scaling factors within each group of samples
+basics_sf_naive <- colMedians(
+  displayChainBASiCS(chain_naive, "phi")
+  * displayChainBASiCS(chain_naive, "nu")
+)
+basics_sf_active <- colMedians(
+  displayChainBASiCS(chain_active, "phi")
+  * displayChainBASiCS(chain_active, "nu")
+)
+# scran scaling factors within each group of samples
+scran_sf_naive <- calculateSumFactors(sce_naive)
+scran_sf_active <- calculateSumFactors(sce_active)
+
+ggplot() +
+  aes(basics_sf_naive, scran_sf_naive) +
+  geom_point() +
+  labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
+  annotate(
+    x = 14,
+    y = 0.4, 
+    label = paste(
+      "Pearson's r = ", 
+      round(
+        cor(basics_sf_naive, scran_sf_naive),
+        digits = 2
+      )
+    ), 
+    geom = "text",
+    size = 4
+  )
+```
+
+
 # Differential testing using droplet-based differentiating cells {#droplet-data}
 
 The development of droplet-based scRNA-seq [@Klein2015;@Macosko2015] 
@@ -311,7 +390,7 @@ colData(droplet_sce) <- DataFrame(
 
 For further processing steps, we remove lowly expressed genes.
 
-```{r filter_drop}
+```{r filter-drop}
 ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
 droplet_sce <- droplet_sce[ind_expressed, ]
 ```
@@ -319,7 +398,7 @@ droplet_sce <- droplet_sce[ind_expressed, ]
 To visualise possible sub-structure in the data, we normalise both cell 
 populations using the `scran` package.
 
-```{r norm_drop}
+```{r norm-drop}
 library("scran")
 library("scater")
 droplet_sce <- computeSumFactors(droplet_sce,
@@ -330,13 +409,13 @@ droplet_sce <- logNormCounts(droplet_sce)
 
 Next, we compute a PCA using the `scater` package. 
 
-```{r droplet_pca}
+```{r droplet-pca}
 droplet_sce <- runPCA(droplet_sce)
 ```
 
 We can now visualise the different factors stored in the `colData` slot.
 
-```{r drop_pca_plot, fig.cap="Principal component plot of pre-somitic and somitic mesoderm cells. Colour indicates cell type."}
+```{r drop-pca-plot, fig.cap="Principal component plot of pre-somitic and somitic mesoderm cells. Colour indicates cell type."}
 # Cell types identified by clustering
 plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
   scale_fill_manual(name = "cellType", values = c("coral4", "steelblue", "limegreen"))
@@ -347,7 +426,7 @@ outlying cells.
 We will remove these outliers and the intermediate cell population from 
 down-stream analysis.
 
-```{r drop_filt}
+```{r drop-filt}
 ind_retain <- reducedDims(droplet_sce)$PCA[, 2] > -5 &
   colData(droplet_sce)$subCellType != "presomiticMesoderm.b"
 droplet_sce <- droplet_sce[, ind_retain]
@@ -474,11 +553,14 @@ correctly, we plot posterior estimates for over-dispersion paramters $\delta_i$
 against posterior estimates of mean expression parameters $\mu_i$.
 For this, the `BASiCS_ShowFit` function can be used.
 
-```{r droplet-regression-trend-psm, fig.cap="Over-dispersion is plotted against mean expression for all genes in pre-somitic mesoderm cells, on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95\\% credible interval."}
-BASiCS_ShowFit(PSM_MCMC)
+```{r droplet-regression-trend-psm, fig.cap="Over-dispersion is plotted against mean expression for all genes in pre-somitic mesoderm cells (A) and somitic mesoderm cells (B), on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95\\% credible interval."}
+library("cowplot")
+a <- BASiCS_ShowFit(PSM_MCMC)
+b <- BASiCS_ShowFit(SM_MCMC)
+plot_grid(a, b, labels = LETTERS[1:2])
 ```
+
 ```{r droplet-regression-trend-sm, fig.cap="Over-dispersion is plotted against mean expression for all genes in somitic mesoderm cells, on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95\\% credible interval."}
-BASiCS_ShowFit(SM_MCMC)
 ```
 
 Both trends display similar behaviour which allows us to compare residual 
@@ -543,43 +625,11 @@ Droplet_Test <- BASiCS_TestDE(
 
 BASiCS_PlotDE(Droplet_Test, Parameter = "Mean", Plot = "MA")
 Droplet_TableMean <- format(Droplet_Test, Which = "Mean", Filter = FALSE)
-
-# colour_map_sm <- c(
-#   "PSM+" = "dark blue",
-#   "SM+" = "dark red",
-#   "NoDiff" = "black",
-#   "ExcludedLowESS" = "grey60",
-#   "ExcludedByUser" = "grey80"
-# )
-# # Differential expression
-# ggplot(Droplet_TableMean) +
-#   geom_point(
-#     aes(log(MeanOverall), MeanLog2FC, colour = ResultDiffMean),
-#     shape = 16,
-#     alpha = 0.5
-#   ) +
-#   scale_colour_manual(
-#     name = "Differential\nexpression",
-#     values = colour_map_sm
-#   ) +
-#   ylab(expression(mu[PSM] / mu[SM])) + xlab(expression(log(mu)))
 ```
 
 ```{r droplet-gene-specific-testing-resdisp, fig.cap="Differences in residual over-dispersion parameters in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher residual over-dispersion in either group."}
 Droplet_TableResDisp <- format(Droplet_Test, Which = "ResDisp", Filter = FALSE)
 BASiCS_PlotDE(Droplet_Test, Parameter = "ResDisp", Plot = "MA")
-# Differential variability
-# ggplot(Droplet_TableResDisp) +
-#   geom_point(
-#     aes(log(MeanOverall), ResDispDistance, colour = ResultDiffResDisp),
-#     shape = 16,
-#     alpha = 0.5
-#   ) +
-#   scale_colour_manual(
-#     name = "Differential\nvariability",
-#     values = colour_map_sm
-#   ) +
-#   ylab(expression(epsilon[PSM] - epsilon[SM])) + xlab(expression(log(mu)))
 ```
 
 ### Differential mean expression
