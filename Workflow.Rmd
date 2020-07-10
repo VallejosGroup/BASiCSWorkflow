@@ -173,7 +173,7 @@ the Markov Chain Monte Carlo (MCMC) algorithm that is used to infer model
 parameters as well as recommendations to interpret and post-process the model 
 outputs. 
 Finally, through a case study in the context of immune cells, we illustrate
-how `r Biocpkg("BASiCS")` can be used to identify highly and lowly variable
+how `r Biocpkg("BASiCS")` can identify highly and lowly variable
 genes within a cell population, as well as to compare expression profiles
 between experimental conditions or cell types. 
 
@@ -243,7 +243,7 @@ across cells (e.g. due to sequencing depth and PCR amplification)
 [@Lun2016pooling]. 
 Moreover, `r Biocpkg("scran")` enables exploratory analyses of transcriptional
 variability. 
-For example, it can be used to infer an overall trend between mean expression 
+For example, it can infer an overall trend between mean expression 
 and the squared coefficent of variation (CV^2^) for each gene. 
 To derive variability estimates that are not confounded by this overall trend, 
 `r Biocpkg("scran")` also defines gene-specific DM (distance to the mean) 
@@ -293,7 +293,7 @@ captures the relationship between mean and over-dispersion values.
 The trend is subsequently used to derive gene-specific *residual over-dispersion* 
 parameters $\epsilon_i$ that are not confounded by mean expression. 
 Similar to DM values implemented in `r Biocpkg("scran")`, these are defined as 
-deviations with respect to an overall regression trend .
+deviations with respect to an overall regression trend.
 
 Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
 observed variability in expression measurements into technical and biological 
@@ -703,10 +703,10 @@ algorithm (`PrintProgress`).
 Here, we run the MCMC sampler separately for naive and activated cells.
 We use 40,000 iterations, discarding the initial 20,000 iterations.
 We recommend this setting as a default choice, as we have observed it to 
-ensure good convergence for the algorithm across multiple datasets.
-However, for large datasets and less sparse datasets, a lower number of 
+ensure good convergence across multiple datasets.
+However, for large and less sparse datasets, a lower number of 
 iterations may be sufficient. 
-Practical guidance about the diagnostics criteria required to assess the 
+Practical guidance about the diagnostic criteria required to assess the 
 performance of the MCMC algorithn is provided in the next section.
 
 ```{r MCMC-run, eval = FALSE}
@@ -774,13 +774,14 @@ displayChainBASiCS(chain_naive, Param = "mu")[1:2, 1:3]
 
 ## MCMC diagnostics
 
-Before interpreting the parameter estimates obtained by `r Biocpkg("BASiCS")`, 
+Before interpreting the estimates obtained by `r Biocpkg("BASiCS")`, 
 it is critical to assess the convergence of the MCMC algorithm, i.e. whether
 the MCMC reached its stationary distribution.
 If convergence has been achieved, each parameter should not (on average) evolve
 significantly over time, and draws are expected to be stochastic fluctuations 
 around a horizontal trend.
-Generally, it is not possible to prove convergence but multiple graphical and
+Generally, it is not possible to definitively prove convergence,
+but multiple graphical and
 quantitative convergence diagnostics have been proposed to assess the lack
 of convergence (e.g. [@CowlesCarlin1996; @BrooksGelman1998]). 
 Some advocate the use of multiple MCMC chains using different starting values in
@@ -803,7 +804,8 @@ Users should expect these to follow a unimodal distribution.
 Failure to satisfy these graphical diagnostics suggest that `N` and `Burn` must 
 be increased. 
 Alternatively, more stringent quality control could be applied to the input 
-data, as genes with very low counts often suffer from slow convergence and poor sampling efficiency.
+data, as we have observed that genes with very low counts often suffer from 
+slow convergence.
 
 ```{r convergence-naive, fig.cap="Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
 plot(chain_naive, Param = "mu", Gene = 1)
@@ -818,7 +820,7 @@ which compares the average draws obtained during the initial (10\% after burn
 in, by default) and the final part of the chain (50\% by default).
 Large absolute Z-scores suggest that the algorithm has not converged. 
 For the naive and activatived CD4^+^ T datasets most Z-scores associated to mean
-expression parameters $\mu_i$ were small in aboslute value (see Figure \@ref(fig:geweke-diag)).
+expression parameters $\mu_i$ were small in absolute value (see Figure \@ref(fig:geweke-diag)), suggesting that the algorithm has largely converged
 
 <!--- CAV: I removed the next sentence, trend is not that clear
 after applying the additional gene filter. 
@@ -865,7 +867,7 @@ multiplot(p_geweke_naive, p_geweke_active, cols = 2)
 As well as assessing the convergence of the MCMC algorithm, it is important
 to ensure that the MCMC algorithm has efficiently explored the parameter space. 
 For example, the autocorrelation function (e.g. Figure 
-\@ref(fig:convergence-naive), right panel) can be used to quantify the 
+\@ref(fig:convergence-naive), right panel) quantifies the 
 correlation between the chain and its lagged versions. 
 Strong autocorrelation indicates that neighbouring MCMC samples are highly 
 dependent and suggest poor sampling efficiency. 
@@ -882,7 +884,7 @@ $$
   \mbox{ESS} = \frac{N_{tot}}{1 + 2\sum_{k=1}^\infty \rho(k)},
 $$
 where $N_{tot}$ represents the total number of MCMC draws (after burn-in and
-thining) and $\rho(k)$ $\rho(k)$ is the autocorrelation at lag $k$.
+thining) and $\rho(k)$ is the autocorrelation at lag $k$.
 ESS estimates associated to mean expression parameters for the naive and 
 activated CD4^+^ T cells are displayed in Figure \@ref(fig:ess-diag).
 Whilst ESS is around 1,000 for most genes, we observe low ESS values for a
