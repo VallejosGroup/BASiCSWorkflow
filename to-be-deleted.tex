@@ -946,6 +946,322 @@ expression parameters \(\mu_i\) associated to the first 3 genes.
 ## [2,]           14.97279           1.625154          0.8400265
 \end{verbatim}
 
+\hypertarget{mcmc-diagnostics}{%
+\subsection{MCMC diagnostics}\label{mcmc-diagnostics}}
+
+Before interpreting the parameter estimates obtained by \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}},
+it is critical to assess the convergence of the MCMC algorithm, i.e.~whether
+the MCMC reached its stationary distribution.
+If convergence has been achieved, each parameter should not (on average) evolve
+significantly across iterations, and MCMC draws are expected to be stochastic
+fluctuations around a horizontal trend.
+Generally, it is not possible to prove convergence but multiple graphical and
+quantitative convergence diagnostics have been proposed to assess the lack
+of convergence (e.g. \citep{CowlesCarlin1996, BrooksGelman1998}).
+Some advocate the use of multiple MCMC chains using different starting values in
+order to ensure that the algorithm consistently converges to the same
+distribution.
+For \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}, we have observed that using informed starting values
+(e.g.~based on \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} normalisation) and a sufficiently large
+value for \texttt{N} and \texttt{Burn} generally leads to consistent across multiple MCMC runs.
+Hence, the focus of this section is to evaluate quantitative measures of
+convergence (e.g. \citep{Geweke1995}) based on a single MCMC chain.
+
+Traceplots can be used to visually assess the history of MCMC iterations
+for a specific parameter (e.g.~Figure \ref{fig:convergence-naive}).
+As mentioned above, significan departures from a horizontal trend suggest a
+lack of convergence.
+As illustrated in Figure \ref{fig:convergence-naive}, histograms can also be
+used to display the marginal distribution for each parameter.
+Users should expect these to follow a unimodal distribution.
+Failure to satisfy these graphical diagnostics suggest that \texttt{N} and \texttt{Burn} must
+be increased.
+Alternatively, more stringent quality control could be applied to the input
+data, as genes with very low counts often suffer from slow convergence and poor sampling efficiency.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{plot}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{, }\DataTypeTok{Gene =} \DecValTok{1}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/convergence-naive-1} 
+
+}
+
+\caption{Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one.}\label{fig:convergence-naive}
+\end{figure}
+
+As \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} infers thousands of parameters, it is
+impractical to assess these graphical diagnostics for each parameter.
+Thus, it is helpful to use numerical diagnostics that can be applied to multiple
+parameters simultaneously.
+Here, we focus on the diagnostic criterion proposed by Geweke \citep{Geweke1995}
+which compares the average draws obtained during the initial (10\% after burn
+in, by default) and the final part of the chain (50\% by default).
+Large absolute Z-scores suggest that the algorithm has not converged.
+For the naive and activatived CD4\textsuperscript{+} T datasets most Z-scores associated to mean
+expression parameters \(\mu_i\) were small in aboslute value (see
+Figure \ref{fig:geweke-diag}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(}\StringTok{"coda"}\NormalTok{)}
+\KeywordTok{library}\NormalTok{(}\StringTok{"ggplot2"}\NormalTok{)}
+\KeywordTok{library}\NormalTok{(}\StringTok{"viridis"}\NormalTok{)}
+
+\CommentTok{# Calculate and plot Geweke Z scores }
+\NormalTok{gew_mu_naive <-}\StringTok{ }\KeywordTok{geweke.diag}\NormalTok{(}\KeywordTok{mcmc}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)))}\OperatorTok{$}\NormalTok{z}
+\NormalTok{gew_mu_active <-}\StringTok{ }\KeywordTok{geweke.diag}\NormalTok{(}\KeywordTok{mcmc}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)))}\OperatorTok{$}\NormalTok{z}
+
+\NormalTok{myplot_params <-}\StringTok{ }\KeywordTok{list}\NormalTok{(}
+  \KeywordTok{geom_hex}\NormalTok{(),}
+  \KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{),}
+  \KeywordTok{scale_fill_viridis}\NormalTok{(),}
+  \KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"log(mu)"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Geweke Z-score"}\NormalTok{))}
+
+\NormalTok{p_geweke_naive <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{aes}\NormalTok{(}
+    \KeywordTok{log10}\NormalTok{(}\KeywordTok{colMedians}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{))),}
+\NormalTok{    gew_mu_naive}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Naive cells"}\NormalTok{)}
+\NormalTok{p_geweke_active <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{aes}\NormalTok{(}
+    \KeywordTok{log10}\NormalTok{(}\KeywordTok{colMedians}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{))),}
+\NormalTok{    gew_mu_active}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params}\OperatorTok{+}
+\StringTok{  }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Activated cells"}\NormalTok{)}
+
+\KeywordTok{plot_grid}\NormalTok{(p_geweke_naive, p_geweke_active, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+As well as assessing MCMC convergence, it is important to ensure that the MCMC
+algorithm has efficiently explored the parameter space.
+For example, the autocorrelation function (e.g.~Figure
+\ref{fig:convergence-naive}, right panel) can be used to quantify the
+correlation between the chain and its lagged versions.
+Strong autocorrelation indicates that neighbouring MCMC samples are highly
+dependent and suggest poor sampling efficiency.
+Low sampling efficiency may indicate that the MCMC draws do not contain
+sufficient information to produce accurate posterior estimates.
+In other words, highly correlated MCMC samplers require more samples to produce
+the same level of Monte Carlo error for an estimate
+(defined as the variance of a Monte Carlo estimate across repetitions \citep{Koehler2009}).
+
+The effective sample size (ESS) is a related measure which represents a proxy
+for the number of independent draws generated by the MCMC sampler \citep{Gelman2014}.
+The latter is defined as:
+\[
+  \mbox{ESS} = \frac{N_{tot}}{1 + 2\sum_{k=1}^\infty \rho(k)},
+\]
+where \(N_{tot}\) represents the total number of MCMC draws (after burn-in and
+thining) and \(\rho(k)\) \(\rho(k)\) is the autocorrelation at lag \(k\).
+ESS estimates associated to mean expression parameters for the naive and
+activated CD4\textsuperscript{+} T cells are displayed in Figure \ref{fig:ess-diag}.
+Whilst ESS is around 1,000 (\(N_{tot}\) in this case) for most genes, we observe
+low ESS values for a small proportion of genes (primarily lowly expressed genes
+whose expression was only captured in a small number of cells).
+As described later in this manuscript, \texttt{BASiCS\_TestDE} automatically excludes
+genes with low ESS when performing differential expression testing.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ess_mu_naive <-}\StringTok{ }\KeywordTok{BASiCS_DiagPlot}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
+\NormalTok{ess_mu_active <-}\StringTok{ }\KeywordTok{BASiCS_DiagPlot}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
+\KeywordTok{plot_grid}\NormalTok{(ess_mu_naive, ess_mu_active, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{quantifying-transcriptional-variability-using-basics}{%
+\subsection{Quantifying transcriptional variability using BASiCS}\label{quantifying-transcriptional-variability-using-basics}}
+
+In \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, the squared coefficient of variation (CV\textsuperscript{2}) is used
+as a proxy for transcriptional variability within a population of cells
+Instead, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses gene-specific over-dispersion
+parameters \(\delta_i\) for this purpose.
+As seen in Fig .. these estimates are highly correlated.
+Both variability measures are confounded by differences in mean expression,
+e.g.~highly expressed genes tend to exhibit lower variability according to these
+metrics. For example, Figure \ref{fig:dispersion-vs-mean}A displays
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} posterior estimates for over-dispersion parameters
+inferred for the naive CD4\textsuperscript{+} T cells and how these relate to mean expression
+estimates (the \texttt{BASiCS\_ShowFit} function can be used to generate such a plot,
+but we will generate it manually to demonstrate how users can extract this
+information from a \texttt{BASiCS\_MCMC} object.
+A similar behaviour is observed for \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} estimates (see Figure \ref{fig:dispersion-vs-mean}B).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(}\StringTok{"ggpointdensity"}\NormalTok{)}
+\KeywordTok{library}\NormalTok{(}\StringTok{"viridis"}\NormalTok{)}
+
+\CommentTok{# Get BASiCS posterior estimates for mean and variability - naive cells}
+\NormalTok{summary_naive <-}\StringTok{ }\KeywordTok{Summary}\NormalTok{(chain_naive)}
+\NormalTok{parameter_df <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
+  \DataTypeTok{mu =} \KeywordTok{displaySummaryBASiCS}\NormalTok{(summary_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)[, }\DecValTok{1}\NormalTok{],}
+  \DataTypeTok{delta =} \KeywordTok{displaySummaryBASiCS}\NormalTok{(summary_naive, }\DataTypeTok{Param =} \StringTok{"delta"}\NormalTok{)[, }\DecValTok{1}\NormalTok{],}
+  \DataTypeTok{epsilon =} \KeywordTok{displaySummaryBASiCS}\NormalTok{(summary_naive, }\DataTypeTok{Param =} \StringTok{"epsilon"}\NormalTok{)[, }\DecValTok{1}\NormalTok{]}
+\NormalTok{)}
+
+\CommentTok{# Get scran estimates for mean and variability - naive cells}
+\NormalTok{sce_naive <-}\StringTok{ }\KeywordTok{logNormCounts}\NormalTok{(sce_naive, }\DataTypeTok{log =} \OtherTok{FALSE}\NormalTok{)}
+\NormalTok{parameter_df}\OperatorTok{$}\NormalTok{mean_scran <-}\StringTok{ }\KeywordTok{rowMeans}\NormalTok{(}\KeywordTok{assay}\NormalTok{(sce_naive, }\StringTok{"normcounts"}\NormalTok{))}
+\NormalTok{parameter_df}\OperatorTok{$}\NormalTok{cv2_scran <-}\StringTok{ }\KeywordTok{rowVars}\NormalTok{(}\KeywordTok{assay}\NormalTok{(sce_naive, }\StringTok{"normcounts"}\NormalTok{)) }\OperatorTok{/}
+\StringTok{  }\NormalTok{parameter_df}\OperatorTok{$}\NormalTok{mean_scran}\OperatorTok{^}\DecValTok{2}
+\NormalTok{parameter_df}\OperatorTok{$}\NormalTok{DM <-}\StringTok{ }\KeywordTok{DM}\NormalTok{(}
+  \DataTypeTok{mean =}\NormalTok{ parameter_df}\OperatorTok{$}\NormalTok{mean_scran,}
+  \DataTypeTok{cv2 =}\NormalTok{ parameter_df}\OperatorTok{$}\NormalTok{cv2_scran}
+\NormalTok{)}
+
+\CommentTok{# Remove genes without counts in > 2 cells - BASiCS estimates not provided}
+\NormalTok{ind_not_na <-}\StringTok{ }\OperatorTok{!}\NormalTok{(}\KeywordTok{is.na}\NormalTok{(parameter_df}\OperatorTok{$}\NormalTok{epsilon))}
+
+\CommentTok{# Mean vs variability - BASiCS}
+\NormalTok{g1 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mu), }\KeywordTok{log}\NormalTok{(delta))) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}
+    \DataTypeTok{x =} \StringTok{"BASiCS means"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"BASiCS}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
+\NormalTok{  )}
+\CommentTok{# Mean vs variability - scran}
+\NormalTok{g2 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mean_scran), }\KeywordTok{log}\NormalTok{(cv2_scran))) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}
+    \DataTypeTok{x =} \StringTok{"scran means"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"scran CV^2"}
+\NormalTok{  )}
+\CommentTok{# Variability - BASiCS and scran}
+\NormalTok{g3 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(cv2_scran), }\KeywordTok{log}\NormalTok{(delta))) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}
+    \DataTypeTok{x =} \StringTok{"scran CV^2"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"BASiCS}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
+\NormalTok{  )}
+
+\CommentTok{# Mean vs residual variability - BASiCS}
+\NormalTok{g4 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mu), epsilon)) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}
+    \DataTypeTok{x =} \StringTok{"BASiCS means"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
+\NormalTok{  )}
+
+\CommentTok{# Mean vs residual variability - scran}
+\NormalTok{g5 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mean_scran), DM)) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}
+    \DataTypeTok{x =} \StringTok{"scran means"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"scran DM"}
+\NormalTok{  )}
+
+\CommentTok{# Residual variability - BASiCS and scran}
+\NormalTok{g6 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(DM, epsilon)) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme}\NormalTok{(}
+    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}
+    \DataTypeTok{x =} \StringTok{"scran DM"}\NormalTok{,}
+    \DataTypeTok{y =} \StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
+\NormalTok{  )}
+
+\KeywordTok{plot_grid}\NormalTok{(}
+\NormalTok{  g3, g1, g2, }
+\NormalTok{  g6, g4, g5, }
+  \DataTypeTok{labels =}\NormalTok{ LETTERS[}\DecValTok{1}\OperatorTok{:}\DecValTok{6}\NormalTok{],}
+  \DataTypeTok{ncol =} \DecValTok{3}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/dispersion-vs-mean-1} 
+
+}
+
+\caption{Comparison of variability estimates and mean expression estimates using either BASiCS or using counts normalised with scaling normalisation factors estimated using scran. A: over-dispersion and mean expression estimates from BASiCS; B: residual over-dispersion and mean expression estimates from BASiCS; C: variance estimated using normalised counts using scran size factors against over-dispersion estimates from BASiCS; D: CV2 estimates and over-dispersion estimates from BASiCS; E: DM estimates and mean expression of normalised counts from scran; F: DM estimates from scran and residual over-dispersion estimates from BASiCS.}\label{fig:dispersion-vs-mean}
+\end{figure}
+
+Recently \citep{Eling2018}, we extended \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} to explicitly model
+the mean-variability relationship by performing an internal regression between
+the over-dispersion and mean expression parameters, as visualised in Figure
+\ref{fig:dispersion-vs-mean}. This results in the \(\epsilon\) parameter, a measure of variability that is not confounded by mean expression. This \emph{residual}
+over-dispersion parameter quantifies the level of variability above or below
+that expected based on the overall mean-variance relationship.
+Similarly, Kolodziejczyk \emph{et al.} used the distance to a rolling
+median (DM) along the mean-variability trend to correct for this confounding
+factor \citep{Kolodziejczyk2015cell}. Here, we highlight how to obtain the residual
+variability estimates using \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} and \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}.
+Further, we illustrate the mean-variance relationship for each variability
+measures. For this analysis, we exclude genes that are not expressed in at
+least 2 cells. These genes have missing (\texttt{NA}) values for the residual
+over-dispersion parameter, \(\epsilon\). These values can be obtained using the
+function \texttt{displayChainBASiCS}. We will use \emph{\href{https://CRAN.R-project.org/package=ggpointdensity}{ggpointdensity}}
+to visualise the local density of genes along the axes of mean and variability.
+Here, we focus on naive cells, but a similar analysis for active cells would
+show very similar results.
+
+Figures \ref{fig:dispersion-vs-mean}C and \ref{fig:dispersion-vs-mean}D
+show that variance and CV\textsuperscript{2} are both highly correlated with the
+over-dispersion estimates from
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}. Again, for this comparison,
+we exclude genes that are not observed to be expressed in at least 2 cells,
+given that variability cannot meaningfully be quantified given a single
+observation. Furthermore, Figure \ref{fig:dispersion-vs-mean}A shows that the
+over-dispersion parameters estimated by \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} are strongly
+correlated with mean expression.
+
+Neither the DM nor the residual over-dispersion estimates show association
+with mean expression, as shown in Figures \ref{fig:dispersion-vs-mean}B
+and \ref{fig:dispersion-vs-mean}E.
+Furthermore, these mean-independent variability measures are highly correlated,
+as seen in Figure \ref{fig:dispersion-vs-mean}F.
+These measures can be used to associate genomic features
+\citep{Morgan2018, Faure2017} or transcriptional dynamics \citep{Antolovic2017} with
+gene expression variability.
+While the DM is calculated as a point estimate, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} stores
+each posterior sample within the \texttt{BASiCS\_Chain} object.
+They can be accessed using the \texttt{displayChain} function. This function
+extracts cell- or gene-specific samples in the form of a matrix, wherein each
+column contains cell- or gene-specific parameters, and rows contain the MCMC
+samples.
+
 {\small\bibliography{Workflow.bib}}
 
 \end{document}
