@@ -191,7 +191,7 @@ sources of noise, both technical and biological. In particular, we
 encourage the use of UMIs when performing a scRNAseq study.
 It is well-established that scRNAseq data is distributed
 according to a negative binomial distribution when UMIs are used in the
-sequencing protocol \citep{Svennson2020, Townes2020, Townes2019}. Thus, the
+sequencing protocol \citep{Svensson2020, Townes2020, Townes2019}. Thus, the
 distributional assumptions of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} are more likely to be valid
 for datasets wherein UMIs have been used. Furthermore,
 \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} leverages spike-in molecules to aid in normalisation when
@@ -290,22 +290,24 @@ QC metrics for each cell (e.g.~total read-count) and gene (e.g.~percentage of
 zeroes across all cells), respectively.
 Moreover, we use the visualisation tools implemented in \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} to
 explore the input dataset and its associated QC diagnostic metrics.
-For further data exploration we use the \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} package \citep{Lun2016}.
-\emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} can perform \emph{global scaling} normalisation, calculating
+For further exploratory data analysis we use the \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} package
+\citep{Lun2016}.
+The latter can perform \emph{global scaling} normalisation, calculating
 cell-specific scaling factors that capture global differences in read-counts
 across cells (e.g.~due to sequencing depth and PCR amplification)
 \citep{Lun2016pooling}.
-Moreover, \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} enables exploratory analyses of transcriptional
-variability.
-For example, it can be used to infer an overall trend between mean expression
-and the squared coefficent of variation (CV\textsuperscript{2}) for each gene.
+To quantify transcriptional variability, \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} can be used to
+infer an overall trend between mean expression and the squared coefficent of
+variation (CV\textsuperscript{2}) for each gene.
 To derive variability estimates that are not confounded by this overall trend,
 \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} also defines gene-specific DM (distance to the mean)
 estimates as the distance between CV\(^2\) and a rolling median along the range
 of mean expression values \citep{Kolodziejczyk2015cell}.
-DM estimates enable exploratory analyses of cell-to-cell heterogeneity, but a
-measure of uncertainty is not readily available. As such, gene-specific
-downstream inference (e.g.~differential variability testing) is precluded.
+DM estimates enable exploratory analyses of cell-to-cell gene expression
+variability, but a measure of statistical uncertainty is not readily available
+for these estimates.
+As such, gene-specific downstream inference (such as differential variability
+testing) is precluded.
 
 \hypertarget{basics---bayesian-analysis-of-single-cell-sequencing-data}{%
 \subsection{BASiCS - Bayesian Analysis of Single Cell Sequencing data}\label{basics---bayesian-analysis-of-single-cell-sequencing-data}}
@@ -333,23 +335,24 @@ spike-ins are not available \citep{Eling2018}.
 \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} summarises the expression pattern for each gene through
 gene-specific \emph{mean} and \emph{over-dispersion} parameters.
 Mean parameters \(\mu_i\) quantify the overall expression for each gene \(i\)
-across the population of cells under study.
+across the cell population under study.
 In contrast, \(\delta_i\) captures the excess of variability that is observed with
-respect to what would be expected in a homogeneous cell population, after
-taking into account technical noise.
-This is used as a proxy to quantify transcriptional variability.
+respect to what would be expected in a homogeneous cell population, beyond
+technical noise.
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} uses \(\delta_i\) as a proxy to quantify transcriptional
+variability.
 To account for the strong relationship that is typically observed
 between gene-specific mean expression and over-dispersion estimates,
-Eling \emph{et al.} \citep{Eling2018} recently introduced a joint prior specification for
+Eling \emph{et al.} \citep{Eling2018} introduced a joint prior specification for
 these parameters.
 This joint prior formulation has been observed to improve posterior inference
 when the data is less informative (e.g.~small sample size, lowly expressed
 genes), borroring information across all genes to infer an overall trend that
-captures the relationship between mean and over-dispersion values.
-The trend is subsequently used to derive gene-specific \emph{residual over-dispersion}
+captures the relationship between mean and over-dispersion.
+The trend is then used to derive gene-specific \emph{residual over-dispersion}
 parameters \(\epsilon_i\) that are not confounded by mean expression.
 Similar to DM values implemented in \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}}, these are defined as
-deviations with respect to an overall regression trend .
+deviations with respect to the overall trend.
 
 Within a population of cells, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} decomposes the total
 observed variability in expression measurements into technical and biological
@@ -462,7 +465,7 @@ Here, we convert the data and metadata described above into a
 For this purpose, we first separate the input matrix of expression counts into
 two matrices associated to intrinsic genes and external spike-ins, respectively.
 Within the \texttt{SingleCellExperiment} object, the latter is stored separately
-as an alternative experiment (see \texttt{?altExp}).
+as an \emph{alternative experiment} (see \texttt{?altExp}).
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -546,7 +549,9 @@ spike-in counts and a low fraction of endogeneous counts
 \StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Total spike-in reads per cell"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{, }\DataTypeTok{angle =} \DecValTok{45}\NormalTok{))}
-\KeywordTok{multiplot}\NormalTok{(p_cellQC1, p_cellQC2, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+
+\KeywordTok{library}\NormalTok{(cowplot)}
+\KeywordTok{plot_grid}\NormalTok{(p_cellQC1, p_cellQC2, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -570,23 +575,27 @@ that cells were collected from
 \NormalTok{    sce_naive_active,}
     \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{,}
     \DataTypeTok{y =} \StringTok{"detected"}\NormalTok{, }
-    \DataTypeTok{colour_by =} \StringTok{"Stimulus"}\NormalTok{) }\OperatorTok{+}
+    \DataTypeTok{colour_by =} \StringTok{"Stimulus"}
+\NormalTok{  ) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}
     \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{))}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  )}
 \NormalTok{p_batch <-}\StringTok{ }\KeywordTok{plotColData}\NormalTok{(}
 \NormalTok{    sce_naive_active,}
     \DataTypeTok{x =} \StringTok{"sum"}\NormalTok{,}
     \DataTypeTok{y =} \StringTok{"detected"}\NormalTok{, }
-    \DataTypeTok{colour_by =} \StringTok{"Individuals"}\NormalTok{) }\OperatorTok{+}
+    \DataTypeTok{colour_by =} \StringTok{"Individuals"}
+\NormalTok{  ) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Total engogenous reads per cell"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Number of detected genes per cell"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}
     \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{))}
-\KeywordTok{multiplot}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  )}
+\KeywordTok{plot_grid}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -621,7 +630,7 @@ removing the need for log normalisation .
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
 \NormalTok{p_batch <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"Individuals"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
-\KeywordTok{multiplot}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
+\KeywordTok{plot_grid}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -668,7 +677,8 @@ Figure \ref{fig:gene-selection}.
 \StringTok{  }\KeywordTok{scale_y_log10}\NormalTok{() }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}
     \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)) }\OperatorTok{+}
+    \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
+\NormalTok{  ) }\OperatorTok{+}
 \KeywordTok{geom_vline}\NormalTok{(}\DataTypeTok{xintercept =} \DecValTok{5}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{) }\OperatorTok{+}
 \KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{1}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{, }\DataTypeTok{col =} \StringTok{"grey60"}\NormalTok{)}
 \end{Highlighting}
@@ -844,8 +854,8 @@ The primary inputs for \texttt{BASiCS\_MCMC} correspond to:
 \end{itemize}
 
 As a default, we recommend to use \texttt{Regression\ =\ TRUE} as we have observed that
-the joint prior introduced by Eling \emph{et al.} leads to improved inference for
-small sample sizes and lowly expressed genes.
+the joint prior introduced by Eling \emph{et al.} leads to more stable, particularly
+for small sample sizes and lowly expressed genes.
 Moreover, the joint prior formulation enables users to obtain a measure of
 transcriptional variability that is not confounded by mean expression.
 Additional optional parameters can be used to store the generated output
@@ -935,141 +945,6 @@ expression parameters \(\mu_i\) associated to the first 3 genes.
 ## [1,]           11.90910           1.854180          0.9695263
 ## [2,]           14.97279           1.625154          0.8400265
 \end{verbatim}
-
-\hypertarget{mcmc-diagnostics}{%
-\subsection{MCMC diagnostics}\label{mcmc-diagnostics}}
-
-Before interpreting the parameter estimates obtained by \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}},
-it is critical to assess the convergence of the MCMC algorithm, i.e.~whether
-the MCMC reached its stationary distribution.
-If convergence has been achieved, each parameter should not (on average) evolve
-significantly over time, and draws are expected to be stochastic fluctuations
-around a horizontal trend.
-Generally, it is not possible to prove convergence but multiple graphical and
-quantitative convergence diagnostics have been proposed to assess the lack
-of convergence (e.g. \citep{CowlesCarlin1996, BrooksGelman1998}).
-Some advocate the use of multiple MCMC chains using different starting values in
-order to ensure that the algorithm consistently converges to the same
-distribution.
-For \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}, we have observed that using informed starting values
-(e.g.~based on \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} normalisation) and a sufficiently large
-value for \texttt{N} and \texttt{Burn} generally leads to consistent across multiple MCMC runs.
-Hence, the focus of this section is to evaluate quantitative measures of
-convergence (e.g. \citep{Geweke1995}) based on a single MCMC chain.
-
-Traceplots can be used to visually assess the history of posterior draws
-generated by the algorithm for a specific parameter (e.g.~Figure
-\ref{fig:convergence-naive}).
-As mentioned above, significan departures from a horizontal trend suggest a
-lack of convergence.
-As illustrated in Figure \ref{fig:convergence-naive}, histograms can also be
-used to display the marginal distribution for each parameter.
-Users should expect these to follow a unimodal distribution.
-Failure to satisfy these graphical diagnostics suggest that \texttt{N} and \texttt{Burn} must
-be increased.
-Alternatively, more stringent quality control could be applied to the input
-data, as genes with very low counts often suffer from slow convergence and poor sampling efficiency.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{plot}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{, }\DataTypeTok{Gene =} \DecValTok{1}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{figure}
-
-{\centering \includegraphics{figure/convergence-naive-1} 
-
-}
-
-\caption{Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior well, without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one.}\label{fig:convergence-naive}
-\end{figure}
-
-As \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} infers thousands of parameters, it is
-impractical to assess these graphical diagnostics for each parameter.
-Thus, it is helpful to use numerical diagnostics that can be applied to multiple
-parameters simultaneously to judge whether the algorithm has failed to converge.
-Here, we focus on the diagnostic criterion proposed by Geweke \citep{Geweke1995}
-which compares the average draws obtained during the initial (10\% after burn
-in, by default) and the final part of the chain (50\% by default).
-Large absolute Z-scores suggest that the algorithm has not converged.
-For the naive and activatived CD4\textsuperscript{+} T datasets most Z-scores associated to mean
-expression parameters \(\mu_i\) were small in aboslute value (see Figure \ref{fig:geweke-diag}).
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{library}\NormalTok{(}\StringTok{"coda"}\NormalTok{)}
-\KeywordTok{library}\NormalTok{(}\StringTok{"ggplot2"}\NormalTok{)}
-\KeywordTok{library}\NormalTok{(}\StringTok{"viridis"}\NormalTok{)}
-
-\CommentTok{# Calculate and plot Geweke Z scores }
-\NormalTok{gew_mu_naive <-}\StringTok{ }\KeywordTok{geweke.diag}\NormalTok{(}\KeywordTok{mcmc}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)))}\OperatorTok{$}\NormalTok{z}
-\NormalTok{gew_mu_active <-}\StringTok{ }\KeywordTok{geweke.diag}\NormalTok{(}\KeywordTok{mcmc}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)))}\OperatorTok{$}\NormalTok{z}
-
-\NormalTok{myplot_params <-}\StringTok{ }\KeywordTok{list}\NormalTok{(}
-  \KeywordTok{geom_hex}\NormalTok{(),}
-  \KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \KeywordTok{c}\NormalTok{(}\OperatorTok{-}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{), }\DataTypeTok{col =} \StringTok{"firebrick"}\NormalTok{, }\DataTypeTok{linetype =} \StringTok{"dashed"}\NormalTok{),}
-  \KeywordTok{scale_fill_viridis}\NormalTok{(),}
-  \KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \StringTok{"log(mu)"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"Geweke Z-score"}\NormalTok{))}
-
-\NormalTok{p_geweke_naive <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{aes}\NormalTok{(}
-    \KeywordTok{log10}\NormalTok{(}\KeywordTok{colMedians}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{))),}
-\NormalTok{    gew_mu_naive}
-\NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
-\StringTok{  }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Naive cells"}\NormalTok{)}
-\NormalTok{p_geweke_active <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{aes}\NormalTok{(}
-    \KeywordTok{log10}\NormalTok{(}\KeywordTok{colMedians}\NormalTok{(}\KeywordTok{displayChainBASiCS}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{))),}
-\NormalTok{    gew_mu_active}
-\NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\NormalTok{myplot_params}\OperatorTok{+}
-\StringTok{  }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Activated cells"}\NormalTok{)}
-
-\KeywordTok{multiplot}\NormalTok{(p_geweke_naive, p_geweke_active, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-As well as assessing the convergence of the MCMC algorithm, it is important
-to ensure that the MCMC algorithm has efficiently explored the parameter space.
-For example, the autocorrelation function (e.g.~Figure
-\ref{fig:convergence-naive}, right panel) can be used to quantify the
-correlation between the chain and its lagged versions.
-Strong autocorrelation indicates that neighbouring MCMC samples are highly
-dependent and suggest poor sampling efficiency.
-Low sampling efficiency may indicate that the MCMC draws do not contain
-sufficient information to produce accurate posterior estimates.
-In other words, highly correlated MCMC samplers require more samples to produce
-the same level of Monte Carlo error for an estimate
-(defined as the variance of a Monte Carlo estimate across repetitions \citep{Koehler2009}).
-
-The effective sample size (ESS) is a related measure which represents a proxy
-for the number of independent draws generated by the MCMC sampler \citep{Gelman2014}.
-The latter is defined as:
-\[
-  \mbox{ESS} = \frac{N_{tot}}{1 + 2\sum_{k=1}^\infty \rho(k)},
-\]
-where \(N_{tot}\) represents the total number of MCMC draws (after burn-in and
-thining) and \(\rho(k)\) \(\rho(k)\) is the autocorrelation at lag \(k\).
-ESS estimates associated to mean expression parameters for the naive and
-activated CD4\textsuperscript{+} T cells are displayed in Figure \ref{fig:ess-diag}.
-Whilst ESS is around 1,000 for most genes, we observe low ESS values for a
-small proportion of genes (primarily lowly expressed genes whose expression
-was only captured in a small number of cells).
-As described later in this manuscript, \texttt{BASiCS\_TestDE} automatically excludes
-genes with low ESS when performing differential expression testing.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{ess_mu_naive <-}\StringTok{ }\KeywordTok{BASiCS_DiagPlot}\NormalTok{(chain_naive, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{) }
-\NormalTok{ess_mu_active <-}\StringTok{ }\KeywordTok{BASiCS_DiagPlot}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{)}
-\KeywordTok{multiplot}\NormalTok{(ess_mu_naive, ess_mu_active, }\DataTypeTok{cols =} \DecValTok{2}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\hypertarget{quantification-of-variability-using-basics}{%
-\subsection{Quantification of variability using BASiCS}\label{quantification-of-variability-using-basics}}
 
 {\small\bibliography{Workflow.bib}}
 

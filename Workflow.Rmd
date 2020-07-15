@@ -236,22 +236,24 @@ QC metrics for each cell (e.g. total read-count) and gene (e.g. percentage of
 zeroes across all cells), respectively. 
 Moreover, we use the visualisation tools implemented in `r Biocpkg("scater")` to 
 explore the input dataset and its associated QC diagnostic metrics. 
-For further data exploration we use the `r Biocpkg("scran")` package [@Lun2016].
-`r Biocpkg("scran")` can perform *global scaling* normalisation, calculating 
+For further exploratory data analysis we use the `r Biocpkg("scran")` package 
+[@Lun2016].
+The latter can perform *global scaling* normalisation, calculating 
 cell-specific scaling factors that capture global differences in read-counts 
 across cells (e.g. due to sequencing depth and PCR amplification) 
 [@Lun2016pooling]. 
-Moreover, `r Biocpkg("scran")` enables exploratory analyses of transcriptional
-variability. 
-For example, it can be used to infer an overall trend between mean expression 
-and the squared coefficent of variation (CV^2^) for each gene. 
+To quantify transcriptional variability, `r Biocpkg("scran")` can be used to 
+infer an overall trend between mean expression and the squared coefficent of 
+variation (CV^2^) for each gene. 
 To derive variability estimates that are not confounded by this overall trend, 
 `r Biocpkg("scran")` also defines gene-specific DM (distance to the mean) 
 estimates as the distance between CV$^2$ and a rolling median along the range 
 of mean expression values [@Kolodziejczyk2015cell].
-DM estimates enable exploratory analyses of cell-to-cell heterogeneity, but a
-measure of uncertainty is not readily available. As such, gene-specific 
-downstream inference (e.g. differential variability testing) is precluded.
+DM estimates enable exploratory analyses of cell-to-cell gene expression 
+variability, but a measure of statistical uncertainty is not readily available 
+for these estimates. 
+As such, gene-specific downstream inference (such as differential variability 
+testing) is precluded.
 
 
 ## BASiCS - Bayesian Analysis of Single Cell Sequencing data
@@ -277,23 +279,24 @@ spike-ins are not available [@Eling2018].
 `r Biocpkg("BASiCS")` summarises the expression pattern for each gene through 
 gene-specific *mean* and *over-dispersion* parameters. 
 Mean parameters $\mu_i$ quantify the overall expression for each gene $i$
-across the population of cells under study.
+across the cell population under study.
 In contrast, $\delta_i$ captures the excess of variability that is observed with 
-respect to what would be expected in a homogeneous cell population, after 
-taking into account technical noise. 
-This is used as a proxy to quantify transcriptional variability.
+respect to what would be expected in a homogeneous cell population, beyond 
+technical noise. 
+`r Biocpkg("BASiCS")` uses $\delta_i$ as a proxy to quantify transcriptional 
+variability.
 To account for the strong relationship that is typically observed 
 between gene-specific mean expression and over-dispersion estimates, 
-Eling *et al.*  [@Eling2018] recently introduced a joint prior specification for 
+Eling *et al.*  [@Eling2018] introduced a joint prior specification for 
 these parameters. 
 This joint prior formulation has been observed to improve posterior inference
 when the data is less informative (e.g. small sample size, lowly expressed 
 genes), borroring information across all genes to infer an overall trend that
-captures the relationship between mean and over-dispersion values.
-The trend is subsequently used to derive gene-specific *residual over-dispersion* 
+captures the relationship between mean and over-dispersion.
+The trend is then used to derive gene-specific *residual over-dispersion* 
 parameters $\epsilon_i$ that are not confounded by mean expression. 
 Similar to DM values implemented in `r Biocpkg("scran")`, these are defined as 
-deviations with respect to an overall regression trend .
+deviations with respect to the overall trend.
 
 Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
 observed variability in expression measurements into technical and biological 
@@ -400,7 +403,7 @@ Here, we convert the data and metadata described above into a
 For this purpose, we first separate the input matrix of expression counts into
 two matrices associated to intrinsic genes and external spike-ins, respectively. 
 Within the `SingleCellExperiment` object, the latter is stored separately
-as an alternative experiment (see `?altExp`).
+as an *alternative experiment* (see `?altExp`).
 
 ```{r CD4-SCE-object}
 # Separate intrinsic from ERCC counts
@@ -464,7 +467,9 @@ p_cellQC2 <- plotColData(
   xlab("Total engogenous reads per cell") +
   ylab("Total spike-in reads per cell") +
   theme(axis.text.x = element_text(hjust = 1, angle = 45))
-multiplot(p_cellQC1, p_cellQC2, cols = 2)
+
+library(cowplot)
+plot_grid(p_cellQC1, p_cellQC2, ncol = 2)
 ```
 
 We can also visualise these metrics with respect to cell-level metadata, such
@@ -497,7 +502,7 @@ p_batch <- plotColData(
     legend.position = "bottom",
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
-multiplot(p_stimulus, p_batch, cols = 2)
+plot_grid(p_stimulus, p_batch, ncol = 2)
 ```
 
 To further explore the underlying structure of the data, we compute global
@@ -521,7 +526,7 @@ p_stimulus <- plotPCA(sce_naive_active, colour_by = "Stimulus") +
   theme(legend.position = "bottom")
 p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
   theme(legend.position = "bottom")
-multiplot(p_stimulus, p_batch, cols = 2)
+plot_grid(p_stimulus, p_batch, ncol = 2)
 ```
 
 In addition to cell-specific QC, we also recommend the use of a gene filtering 
@@ -690,10 +695,12 @@ The primary inputs for `BASiCS_MCMC` correspond to:
   $\delta_i$ [@Vallejos2016]. 
 - `WithSpikes`: if `TRUE` information from spike-in molecules is used to aid
   data normalisation and to quantify technical noise. 
+  
+<!--- CV: It may be worth to introduce the EB related parameter here too ---> 
 
 As a default, we recommend to use `Regression = TRUE` as we have observed that
-the joint prior introduced by Eling *et al.* leads to improved inference for
-small sample sizes and lowly expressed genes. 
+the joint prior introduced by Eling *et al.* leads to more stable, particularly 
+for small sample sizes and lowly expressed genes. 
 Moreover, the joint prior formulation enables users to obtain a measure of
 transcriptional variability that is not confounded by mean expression. 
 Additional optional parameters can be used to store the generated output 
@@ -778,8 +785,8 @@ Before interpreting the parameter estimates obtained by `r Biocpkg("BASiCS")`,
 it is critical to assess the convergence of the MCMC algorithm, i.e. whether
 the MCMC reached its stationary distribution.
 If convergence has been achieved, each parameter should not (on average) evolve
-significantly over time, and draws are expected to be stochastic fluctuations 
-around a horizontal trend.
+significantly across iterations, and MCMC draws are expected to be stochastic 
+fluctuations around a horizontal trend.
 Generally, it is not possible to prove convergence but multiple graphical and
 quantitative convergence diagnostics have been proposed to assess the lack
 of convergence (e.g. [@CowlesCarlin1996; @BrooksGelman1998]). 
@@ -792,9 +799,8 @@ value for `N` and `Burn` generally leads to consistent across multiple MCMC runs
 Hence, the focus of this section is to evaluate quantitative measures of 
 convergence (e.g. [@Geweke1995]) based on a single MCMC chain.
 
-Traceplots can be used to visually assess the history of posterior draws 
-generated by the algorithm for a specific parameter (e.g. Figure
-\@ref(fig:convergence-naive)). 
+Traceplots can be used to visually assess the history of MCMC iterations 
+for a specific parameter (e.g. Figure \@ref(fig:convergence-naive)). 
 As mentioned above, significan departures from a horizontal trend suggest a
 lack of convergence.
 As illustrated in Figure \@ref(fig:convergence-naive), histograms can also be 
@@ -812,13 +818,14 @@ plot(chain_naive, Param = "mu", Gene = 1)
 As `r Biocpkg("BASiCS")` infers thousands of parameters, it is 
 impractical to assess these graphical diagnostics for each parameter. 
 Thus, it is helpful to use numerical diagnostics that can be applied to multiple
-parameters simultaneously to judge whether the algorithm has failed to converge.
+parameters simultaneously.
 Here, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995]
 which compares the average draws obtained during the initial (10\% after burn 
 in, by default) and the final part of the chain (50\% by default).
 Large absolute Z-scores suggest that the algorithm has not converged. 
 For the naive and activatived CD4^+^ T datasets most Z-scores associated to mean
-expression parameters $\mu_i$ were small in aboslute value (see Figure \@ref(fig:geweke-diag)).
+expression parameters $\mu_i$ were small in aboslute value (see 
+Figure \@ref(fig:geweke-diag)).
 
 <!--- CAV: I removed the next sentence, trend is not that clear
 after applying the additional gene filter. 
@@ -859,11 +866,11 @@ p_geweke_active <- ggplot() +
   myplot_params+
   ggtitle("Activated cells")
 
-multiplot(p_geweke_naive, p_geweke_active, cols = 2)
+plot_grid(p_geweke_naive, p_geweke_active, ncol = 2)
 ```
 
-As well as assessing the convergence of the MCMC algorithm, it is important
-to ensure that the MCMC algorithm has efficiently explored the parameter space. 
+As well as assessing MCMC convergence, it is important to ensure that the MCMC 
+algorithm has efficiently explored the parameter space. 
 For example, the autocorrelation function (e.g. Figure 
 \@ref(fig:convergence-naive), right panel) can be used to quantify the 
 correlation between the chain and its lagged versions. 
@@ -885,9 +892,9 @@ where $N_{tot}$ represents the total number of MCMC draws (after burn-in and
 thining) and $\rho(k)$ $\rho(k)$ is the autocorrelation at lag $k$.
 ESS estimates associated to mean expression parameters for the naive and 
 activated CD4^+^ T cells are displayed in Figure \@ref(fig:ess-diag).
-Whilst ESS is around 1,000 for most genes, we observe low ESS values for a
-small proportion of genes (primarily lowly expressed genes whose expression
-was only captured in a small number of cells).
+Whilst ESS is around 1,000 ($N_{tot}$ in this case) for most genes, we observe 
+low ESS values for a small proportion of genes (primarily lowly expressed genes 
+whose expression was only captured in a small number of cells).
 As described later in this manuscript, `BASiCS_TestDE` automatically excludes 
 genes with low ESS when performing differential expression testing.
 
@@ -896,9 +903,8 @@ ess_mu_naive <- BASiCS_DiagPlot(chain_naive, Param = "mu") +
   theme(legend.position = "bottom")
 ess_mu_active <- BASiCS_DiagPlot(chain_active, Param = "mu") +
   theme(legend.position = "bottom")
-multiplot(ess_mu_naive, ess_mu_active, cols = 2)
+plot_grid(ess_mu_naive, ess_mu_active, ncol = 2)
 ```
-
 
 ## Quantifying transcriptional variability using BASiCS
 
