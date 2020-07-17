@@ -816,13 +816,13 @@ plot(chain_naive, Param = "mu", Gene = 1)
 ```
 
 As `r Biocpkg("BASiCS")` infers thousands of parameters, it is 
-impractical to assess these graphical diagnostics for each parameter. 
-Thus, it is helpful to use numerical diagnostics that can be applied to multiple
+impractical to assess these diagnostics for each parameter. 
+Thus, it is helpful to use numerical diagnostics, applied to multiple
 parameters simultaneously.
 Here, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995]
 which compares the average draws obtained during the initial (10\% after burn 
 in, by default) and the final part of the chain (50\% by default).
-Large absolute Z-scores suggest that the algorithm has not converged. 
+Large absolute $Z$-scores suggest that the algorithm has not converged. 
 For the naive and activatived CD4^+^ T datasets most Z-scores associated to mean
 expression parameters $\mu_i$ were small in aboslute value (see 
 Figure \@ref(fig:geweke-diag)).
@@ -876,7 +876,7 @@ For example, the autocorrelation function (e.g. Figure
 correlation between the chain and its lagged versions. 
 Strong autocorrelation indicates that neighbouring MCMC samples are highly 
 dependent and suggest poor sampling efficiency. 
-Low sampling efficiency may indicate that the MCMC draws do not contain 
+The latter may indicate that the MCMC draws do not contain 
 sufficient information to produce accurate posterior estimates.
 In other words, highly correlated MCMC samplers require more samples to produce
 the same level of Monte Carlo error for an estimate 
