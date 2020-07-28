@@ -970,81 +970,62 @@ parameter_df$DM <- DM(
 # Remove genes without counts in > 2 cells - BASiCS estimates not provided
 ind_not_na <- !(is.na(parameter_df$epsilon))
 
+myplot_params <- list(geom_pointdensity(),
+                      scale_colour_viridis(),
+                      theme(
+                        text = element_text(size=rel(3)),
+                        legend.position = "bottom",
+                        legend.text = element_text(angle = 45, size = 8),
+                        legend.key.size =  unit(0.8, "cm")))
 # Mean vs variability - BASiCS
-g1 <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(mu), log(delta))) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(angle = 45, hjust = 1)
-  ) +
+g1 <- ggplot(parameter_df[ind_not_na, ], aes(log(mu), log(delta))) +
+  myplot_params +
   labs(
     x = "BASiCS means",
     y = "BASiCS\nover-dispersion"
   )
 # Mean vs variability - scran
-g2 <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(mean_scran), log(cv2_scran))) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(angle = 45, hjust = 1)
-  ) +
+g2 <- ggplot(parameter_df[ind_not_na, ], aes(log(mean_scran), log(cv2_scran))) +
+  myplot_params +
   labs(
     x = "scran means",
     y = "scran CV^2"
   )
 # Variability - BASiCS and scran
-g3 <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(cv2_scran), log(delta))) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(angle = 45, hjust = 1)
-  ) +
+g3 <- ggplot(parameter_df[ind_not_na, ], aes(log(cv2_scran), log(delta))) +
+  myplot_params +
   labs(
     x = "scran CV^2",
     y = "BASiCS\nover-dispersion"
-  )
+  ) +
+  geom_abline(slope = 1, intercept = 0, col = "red")
 
 # Mean vs residual variability - BASiCS
-g4 <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(mu), epsilon)) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(angle = 45, hjust = 1)
-  ) +
+g4 <- ggplot(parameter_df[ind_not_na, ], aes(log(mu), epsilon)) +
+  myplot_params +
   labs(
     x = "BASiCS means",
     y = "BASiCS residual\nover-dispersion"
-  )
+  ) +
+  geom_hline(yintercept = 0, col = "red")
 
 # Mean vs residual variability - scran
-g5 <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(log(mean_scran), DM)) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(angle = 45, hjust = 1)
-  ) +
+g5 <- ggplot(parameter_df[ind_not_na, ], aes(log(mean_scran), DM)) +
+  myplot_params +
   labs(
     x = "scran means",
     y = "scran DM"
-  )
+  ) +
+  geom_hline(yintercept = 0, col = "red")
 
 # Residual variability - BASiCS and scran
-g6 <- ggplot(parameter_df[ind_not_na, ]) +
-  geom_pointdensity(aes(DM, epsilon)) +
-  scale_colour_viridis() +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(angle = 45, hjust = 1)
-  ) +
+g6 <- ggplot(parameter_df[ind_not_na, ], aes(DM, epsilon)) +
+  myplot_params +
   labs(
     x = "scran DM",
     y = "BASiCS residual\nover-dispersion"
-  )
+  ) +
+  geom_abline(slope = 1, intercept = 0, col = "red")
 
 plot_grid(
   g1, g2, g3, 

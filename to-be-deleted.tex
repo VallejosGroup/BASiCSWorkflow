@@ -1001,7 +1001,7 @@ parameters simultaneously.
 Here, we focus on the diagnostic criterion proposed by Geweke \citep{Geweke1995}
 which compares the average draws obtained during the initial (10\% after burn
 in, by default) and the final part of the chain (50\% by default).
-Large absolute Z-scores suggest that the algorithm has not converged.
+Large absolute \(Z\)-scores suggest that the algorithm has not converged.
 For the naive and activatived CD4\textsuperscript{+} T datasets most Z-scores associated to mean
 expression parameters \(\mu_i\) were small in aboslute value (see
 Figure \ref{fig:geweke-diag}).
@@ -1234,6 +1234,131 @@ downstream inference such as differential variability analyses.
 
 \caption{Comparison of variability estimates and mean expression estimates using either BASiCS or using counts normalised with scaling normalisation factors estimated using scran. A: over-dispersion and mean expression estimates from BASiCS; B: residual over-dispersion and mean expression estimates from BASiCS; C: variance estimated using normalised counts using scran size factors against over-dispersion estimates from BASiCS; D: CV2 estimates and over-dispersion estimates from BASiCS; E: DM estimates and mean expression of normalised counts from scran; F: DM estimates from scran and residual over-dispersion estimates from BASiCS.}\label{fig:dispersion-vs-mean}
 \end{figure}
+
+\hypertarget{hvglvg-detection-using-basics}{%
+\subsection{HVG/LVG detection using BASiCS}\label{hvglvg-detection-using-basics}}
+
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} offers the functions \texttt{BASiCS\_DetectHVG} and
+\texttt{BASiCS\_DetectLVG} to select genes with substiantilly large or small
+transcriptional variability within a population of cells (see \emph{Methods}).
+If the \texttt{BASiCS\_MCMC} sampler was run with \texttt{Regression\ =\ TRUE},
+these functions take the \texttt{BASiCS\_Chain} object and a quantile threshold.
+Using the residual over-disperison parameters, genes are ranked by their
+variability and the \texttt{BASiCS\_DetectHVG} function selects (for example) the
+10\% most highly variable genes (\texttt{PercentileThreshold\ =\ 0.9}).
+Similarly, when detecting lowly variable genes, the \texttt{BASiCS\_DetectLVG} selects
+the 10\% most lowly variable genes (\texttt{PercentileThreshold\ =\ 0.1}).
+The probability threshold for a gene showing higher variability than the
+percentile threshold is found by controlling the expected false discovery
+rate (EFDR) to 10\% (by default) \citep{Newton2004}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Highly variable genes}
+\NormalTok{HVG <-}\StringTok{ }\KeywordTok{BASiCS_DetectVG}\NormalTok{(chain_naive, }\DataTypeTok{Task =} \StringTok{"HVG"}\NormalTok{, }\DataTypeTok{PercentileThreshold =} \FloatTok{0.9}\NormalTok{)}
+\CommentTok{# Lowly variable genes}
+\NormalTok{LVG <-}\StringTok{ }\KeywordTok{BASiCS_DetectVG}\NormalTok{(chain_naive, }\DataTypeTok{Task =} \StringTok{"LVG"}\NormalTok{, }\DataTypeTok{PercentileThreshold =} \FloatTok{0.1}\NormalTok{)}
+\NormalTok{HVG_table <-}\StringTok{ }\NormalTok{HVG}\OperatorTok{@}\NormalTok{Table}
+\NormalTok{LVG_table <-}\StringTok{ }\NormalTok{LVG}\OperatorTok{@}\NormalTok{Table}
+\end{Highlighting}
+\end{Shaded}
+
+This analysis results in the detection of \emph{247}
+highly variable genes and \emph{733}
+lowly variable genes.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{DC_naive <-}\StringTok{ }\KeywordTok{BASiCS_DenoisedCounts}\NormalTok{(sce_naive, chain_naive)}
+
+\CommentTok{# Filter out lowly expressed genes}
+\NormalTok{HVG_table <-}\StringTok{ }\NormalTok{HVG_table[HVG_table}\OperatorTok{$}\NormalTok{Mu }\OperatorTok{>}\StringTok{ }\DecValTok{1}\NormalTok{,]}
+\NormalTok{LVG_table <-}\StringTok{ }\NormalTok{LVG_table[LVG_table}\OperatorTok{$}\NormalTok{Mu }\OperatorTok{>}\StringTok{ }\DecValTok{1}\NormalTok{,]}
+
+\KeywordTok{library}\NormalTok{(reshape2)}
+\NormalTok{topHVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC_naive[HVG_table}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
+\NormalTok{topLVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC_naive[LVG_table}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
+
+\NormalTok{plot_hvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topHVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{geom_violin}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{coord_flip}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.01}\NormalTok{,}\FloatTok{3.2}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{))}
+\NormalTok{plot_lvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topLVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{geom_violin}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{coord_flip}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.01}\NormalTok{,}\FloatTok{3.2}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{))}
+\KeywordTok{plot_grid}\NormalTok{(plot_hvg, plot_lvg)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\includegraphics{figure/Denoised_naive-1} \end{center}
+
+Here, we define HVGs as those genes with a CV\textsuperscript{2} more than double that
+predicted based on mean expression using the fitted trend,
+while controlling the FDR to 5\%.
+As described by \emph{\href{https://bioconductor.org/packages/3.11/SimpleSingleCell}{SimpleSingleCell}} and by
+\href{https://osca.bioconductor.org/}{\emph{OSCA}}, different methods
+can be used to identify depending on the intended downstream analysis,
+and thresholds should be adjusted based on the characteristics
+\citep{Lun2016, Amezquita2019}
+We can then compare the the overlap of the HVG identified by
+\emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} and by \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} (shown in Figure
+\ref{fig:scran-HVG}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{is_hvg <-}\StringTok{ }\NormalTok{var_out}\OperatorTok{$}\NormalTok{ratio }\OperatorTok{>}\StringTok{ }\DecValTok{2} \OperatorTok{&}\StringTok{ }\NormalTok{var_out}\OperatorTok{$}\NormalTok{FDR }\OperatorTok{<}\StringTok{ }\FloatTok{0.05}
+\NormalTok{ind_hvg <-}\StringTok{ }\KeywordTok{which}\NormalTok{(is_hvg)}
+\NormalTok{hvg_out <-}\StringTok{ }\NormalTok{var_out[ind_hvg, ]}
+\NormalTok{hvg_out <-}\StringTok{ }\NormalTok{hvg_out[}\KeywordTok{order}\NormalTok{(hvg_out}\OperatorTok{$}\NormalTok{FDR), ]}
+\KeywordTok{nrow}\NormalTok{(hvg_out)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 1134
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Compare BASiCS and scran results}
+\NormalTok{plot_data <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
+  \DataTypeTok{Mu =}\NormalTok{ HVG_table}\OperatorTok{$}\NormalTok{Mu,}
+  \DataTypeTok{Epsilon =}\NormalTok{ HVG_table}\OperatorTok{$}\NormalTok{Epsilon,}
+  \DataTypeTok{BASiCS_HVG =}\NormalTok{ HVG_table}\OperatorTok{$}\NormalTok{HVG,}
+  \DataTypeTok{scran_HVG =}\NormalTok{ is_hvg}
+\NormalTok{)}
+\NormalTok{plot_data <-}\StringTok{ }\NormalTok{plot_data[}\KeywordTok{complete.cases}\NormalTok{(plot_data), ]}
+\NormalTok{plot_data <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(plot_data, }
+  \DataTypeTok{BASiCS =} \KeywordTok{ifelse}\NormalTok{(plot_data}\OperatorTok{$}\NormalTok{BASiCS_HVG, }\StringTok{"HVG"}\NormalTok{, }\StringTok{"Not HVG"}\NormalTok{),}
+  \DataTypeTok{scran =} \KeywordTok{ifelse}\NormalTok{(plot_data}\OperatorTok{$}\NormalTok{scran_HVG, }\StringTok{"HVG"}\NormalTok{, }\StringTok{"Not HVG"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{ord <-}\StringTok{ }\KeywordTok{order}\NormalTok{(plot_data}\OperatorTok{$}\NormalTok{scran, plot_data}\OperatorTok{$}\NormalTok{BASiCS, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{)}
+\NormalTok{plot_data <-}\StringTok{ }\NormalTok{plot_data[ord, ]}
+\NormalTok{plot_data}\OperatorTok{$}\NormalTok{Status <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}
+  \StringTok{"BASiCS: "}\NormalTok{, plot_data}\OperatorTok{$}\NormalTok{BASiCS, }\StringTok{"}\CharTok{\textbackslash{}n}\StringTok{"}\NormalTok{,}
+  \StringTok{"scran: "}\NormalTok{, plot_data}\OperatorTok{$}\NormalTok{scran, }\StringTok{"}\CharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
+\KeywordTok{ggplot}\NormalTok{(plot_data) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_point}\NormalTok{(}
+    \KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(Mu), Epsilon, }\DataTypeTok{colour =}\NormalTok{ Status),}
+    \DataTypeTok{alpha =} \FloatTok{0.5}\NormalTok{,}
+    \DataTypeTok{shape =} \DecValTok{16}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_brewer}\NormalTok{(}\DataTypeTok{palette =} \StringTok{"Paired"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/scran-HVG-1} 
+
+}
+
+\caption{Epsilon (residual over-dispersion) is plotted against log(mu) (log mean expression). Colour indicates the results of scran and BASiCS HVG tests.}\label{fig:scran-HVG}
+\end{figure}
+
+\emph{39}
+of the \emph{1134} HVGs of scran are among the
+\emph{222} HVGs identified by \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
 
 {\small\bibliography{Workflow.bib}}
 
