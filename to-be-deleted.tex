@@ -202,7 +202,7 @@ population, while accounting for the overall mean-variance relationship in
 an scRNAseq dataset \citep{Eling2018}.
 
 This article complements existing scRNA-seq workflows based on the Bioconductor
-ecosystem (e.g. \citep{Lun2016, Kim2019}), providing a detailed framework for
+ecosystem (e.g.~\citep{Lun2016, Kim2019}), providing a detailed framework for
 transcriptional variability analyses.
 Firstly, we describe a step-by-step workflow that uses
 \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} \citep{McCarthy2017} and \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} \citep{Lun2016}
@@ -370,7 +370,7 @@ of new data normalisation or integration strategies \citep{Lin2019}.
 perform differential expression analyses between two (or more) pre-specified
 groups of cells \citep{Vallejos2016, Eling2018}.
 While several differential expression tools have been proposed for scRNA-seq
-data (e.g. \citep{Kharchenko2014, Finak2015}), some evidence suggests that
+data (e.g.~\citep{Kharchenko2014, Finak2015}), some evidence suggests that
 these do not generally outperform popular bulk RNA-seq tools \citep{Soneson2018}.
 Moreover, most of these methods are only designed to uncover changes in overall
 expression, ignoring the more complex patterns that can arise at the single cell
@@ -550,8 +550,8 @@ spike-in counts and a low fraction of endogeneous counts
 \StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"Total spike-in reads per cell"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{, }\DataTypeTok{angle =} \DecValTok{45}\NormalTok{))}
 
-\KeywordTok{library}\NormalTok{(cowplot)}
-\KeywordTok{plot_grid}\NormalTok{(p_cellQC1, p_cellQC2, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
+\KeywordTok{library}\NormalTok{(patchwork)}
+\NormalTok{p_cellQC1 }\OperatorTok{+}\StringTok{ }\NormalTok{p_cellQC2}
 \end{Highlighting}
 \end{Shaded}
 
@@ -595,7 +595,7 @@ that cells were collected from
     \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
     \DataTypeTok{axis.text.x =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
 \NormalTok{  )}
-\KeywordTok{plot_grid}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
+\NormalTok{p_stimulus }\OperatorTok{+}\StringTok{ }\NormalTok{p_batch}
 \end{Highlighting}
 \end{Shaded}
 
@@ -617,7 +617,7 @@ suggests the absence of strong batch effects.
 It should be noted that \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} normalisation
 is not strictly necessary in the \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} workflow and we only
 use it here as part of the exploratory data analysis.
-Moreover, count-based models for dimensionality reduction (e.g. \citep{Townes2019, Lopez2018}) could be used as an alternative to PCA,
+Moreover, count-based models for dimensionality reduction (e.g.~\citep{Townes2019, Lopez2018}) could be used as an alternative to PCA,
 removing the need for log normalisation .
 
 \begin{Shaded}
@@ -630,7 +630,7 @@ removing the need for log normalisation .
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
 \NormalTok{p_batch <-}\StringTok{ }\KeywordTok{plotPCA}\NormalTok{(sce_naive_active, }\DataTypeTok{colour_by =} \StringTok{"Individuals"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
-\KeywordTok{plot_grid}\NormalTok{(p_stimulus, p_batch, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
+\NormalTok{p_stimulus }\OperatorTok{+}\StringTok{ }\NormalTok{p_batch}
 \end{Highlighting}
 \end{Shaded}
 
@@ -957,7 +957,7 @@ significantly across iterations, and MCMC draws are expected to be stochastic
 fluctuations around a horizontal trend.
 Generally, it is not possible to prove convergence but multiple graphical and
 quantitative convergence diagnostics have been proposed to assess the lack
-of convergence (e.g. \citep{CowlesCarlin1996, BrooksGelman1998}).
+of convergence (e.g.~\citep{CowlesCarlin1996, BrooksGelman1998}).
 Some advocate the use of multiple MCMC chains using different starting values in
 order to ensure that the algorithm consistently converges to the same
 distribution.
@@ -965,7 +965,7 @@ For \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}, we have
 (e.g.~based on \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} normalisation) and a sufficiently large
 value for \texttt{N} and \texttt{Burn} generally leads to consistent across multiple MCMC runs.
 Hence, the focus of this section is to evaluate quantitative measures of
-convergence (e.g. \citep{Geweke1995}) based on a single MCMC chain.
+convergence (e.g.~\citep{Geweke1995}) based on a single MCMC chain.
 
 Traceplots can be used to visually assess the history of MCMC iterations
 for a specific parameter (e.g.~Figure \ref{fig:convergence-naive}).
@@ -1037,7 +1037,7 @@ Figure \ref{fig:geweke-diag}).
 \StringTok{  }\NormalTok{myplot_params}\OperatorTok{+}
 \StringTok{  }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Activated cells"}\NormalTok{)}
 
-\KeywordTok{plot_grid}\NormalTok{(p_geweke_naive, p_geweke_active, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
+\NormalTok{p_geweke_naive }\OperatorTok{+}\StringTok{ }\NormalTok{p_geweke_active}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1076,7 +1076,7 @@ genes with low ESS when performing differential expression testing.
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
 \NormalTok{ess_mu_active <-}\StringTok{ }\KeywordTok{BASiCS_DiagPlot}\NormalTok{(chain_active, }\DataTypeTok{Param =} \StringTok{"mu"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{)}
-\KeywordTok{plot_grid}\NormalTok{(ess_mu_naive, ess_mu_active, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{)}
+\NormalTok{ess_mu_naive }\OperatorTok{+}\StringTok{ }\NormalTok{ess_mu_active}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1141,88 +1141,65 @@ downstream inference such as differential variability analyses.
 \CommentTok{# Remove genes without counts in > 2 cells - BASiCS estimates not provided}
 \NormalTok{ind_not_na <-}\StringTok{ }\OperatorTok{!}\NormalTok{(}\KeywordTok{is.na}\NormalTok{(parameter_df}\OperatorTok{$}\NormalTok{epsilon))}
 
+\NormalTok{myplot_params <-}\StringTok{ }\KeywordTok{list}\NormalTok{(}\KeywordTok{geom_pointdensity}\NormalTok{(),}
+                      \KeywordTok{scale_colour_viridis}\NormalTok{(),}
+                      \KeywordTok{theme}\NormalTok{(}
+                        \DataTypeTok{text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\KeywordTok{rel}\NormalTok{(}\DecValTok{3}\NormalTok{)),}
+                        \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
+                        \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{size =} \DecValTok{8}\NormalTok{),}
+                        \DataTypeTok{legend.key.size =}  \KeywordTok{unit}\NormalTok{(}\FloatTok{0.8}\NormalTok{, }\StringTok{"cm"}\NormalTok{)))}
 \CommentTok{# Mean vs variability - BASiCS}
-\NormalTok{g1 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mu), }\KeywordTok{log}\NormalTok{(delta))) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}
-    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
-\NormalTok{  ) }\OperatorTok{+}
+\NormalTok{g1 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mu), }\KeywordTok{log}\NormalTok{(delta))) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
 \StringTok{  }\KeywordTok{labs}\NormalTok{(}
     \DataTypeTok{x =} \StringTok{"BASiCS means"}\NormalTok{,}
     \DataTypeTok{y =} \StringTok{"BASiCS}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
 \NormalTok{  )}
 \CommentTok{# Mean vs variability - scran}
-\NormalTok{g2 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mean_scran), }\KeywordTok{log}\NormalTok{(cv2_scran))) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}
-    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
-\NormalTok{  ) }\OperatorTok{+}
+\NormalTok{g2 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mean_scran), }\KeywordTok{log}\NormalTok{(cv2_scran))) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
 \StringTok{  }\KeywordTok{labs}\NormalTok{(}
     \DataTypeTok{x =} \StringTok{"scran means"}\NormalTok{,}
     \DataTypeTok{y =} \StringTok{"scran CV^2"}
 \NormalTok{  )}
 \CommentTok{# Variability - BASiCS and scran}
-\NormalTok{g3 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(cv2_scran), }\KeywordTok{log}\NormalTok{(delta))) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}
-    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
-\NormalTok{  ) }\OperatorTok{+}
+\NormalTok{g3 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(cv2_scran), }\KeywordTok{log}\NormalTok{(delta))) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
 \StringTok{  }\KeywordTok{labs}\NormalTok{(}
     \DataTypeTok{x =} \StringTok{"scran CV^2"}\NormalTok{,}
     \DataTypeTok{y =} \StringTok{"BASiCS}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
-\NormalTok{  )}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_abline}\NormalTok{(}\DataTypeTok{slope =} \DecValTok{1}\NormalTok{, }\DataTypeTok{intercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
 
 \CommentTok{# Mean vs residual variability - BASiCS}
-\NormalTok{g4 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mu), epsilon)) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}
-    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
-\NormalTok{  ) }\OperatorTok{+}
+\NormalTok{g4 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mu), epsilon)) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
 \StringTok{  }\KeywordTok{labs}\NormalTok{(}
     \DataTypeTok{x =} \StringTok{"BASiCS means"}\NormalTok{,}
     \DataTypeTok{y =} \StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
-\NormalTok{  )}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
 
 \CommentTok{# Mean vs residual variability - scran}
-\NormalTok{g5 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mean_scran), DM)) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}
-    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
-\NormalTok{  ) }\OperatorTok{+}
+\NormalTok{g5 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mean_scran), DM)) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
 \StringTok{  }\KeywordTok{labs}\NormalTok{(}
     \DataTypeTok{x =} \StringTok{"scran means"}\NormalTok{,}
     \DataTypeTok{y =} \StringTok{"scran DM"}
-\NormalTok{  )}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
 
 \CommentTok{# Residual variability - BASiCS and scran}
-\NormalTok{g6 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ]) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_pointdensity}\NormalTok{(}\KeywordTok{aes}\NormalTok{(DM, epsilon)) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_colour_viridis}\NormalTok{() }\OperatorTok{+}
-\StringTok{  }\KeywordTok{theme}\NormalTok{(}
-    \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
-    \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{hjust =} \DecValTok{1}\NormalTok{)}
-\NormalTok{  ) }\OperatorTok{+}
+\NormalTok{g6 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(DM, epsilon)) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
 \StringTok{  }\KeywordTok{labs}\NormalTok{(}
     \DataTypeTok{x =} \StringTok{"scran DM"}\NormalTok{,}
     \DataTypeTok{y =} \StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
-\NormalTok{  )}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_abline}\NormalTok{(}\DataTypeTok{slope =} \DecValTok{1}\NormalTok{, }\DataTypeTok{intercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
 
-\KeywordTok{plot_grid}\NormalTok{(}
-\NormalTok{  g1, g2, g3, }
-\NormalTok{  g4, g5, g6, }
-  \DataTypeTok{labels =}\NormalTok{ LETTERS[}\DecValTok{1}\OperatorTok{:}\DecValTok{6}\NormalTok{],}
-  \DataTypeTok{ncol =} \DecValTok{3}
-\NormalTok{)}
+\NormalTok{(g1 }\OperatorTok{+}\StringTok{ }\NormalTok{g2 }\OperatorTok{+}\StringTok{ }\NormalTok{g3) }\OperatorTok{/}\StringTok{ }\NormalTok{(g4 }\OperatorTok{+}\StringTok{ }\NormalTok{g5 }\OperatorTok{+}\StringTok{ }\NormalTok{g6) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{plot_annotation}\NormalTok{(}\DataTypeTok{tag_levels =} \StringTok{"A"}\NormalTok{) }\OperatorTok{&}\StringTok{ }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{plot.tag =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size =} \DecValTok{15}\NormalTok{))}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1238,127 +1215,127 @@ downstream inference such as differential variability analyses.
 \hypertarget{hvglvg-detection-using-basics}{%
 \subsection{HVG/LVG detection using BASiCS}\label{hvglvg-detection-using-basics}}
 
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} offers the functions \texttt{BASiCS\_DetectHVG} and
-\texttt{BASiCS\_DetectLVG} to select genes with substiantilly large or small
-transcriptional variability within a population of cells (see \emph{Methods}).
-If the \texttt{BASiCS\_MCMC} sampler was run with \texttt{Regression\ =\ TRUE},
-these functions take the \texttt{BASiCS\_Chain} object and a quantile threshold.
-Using the residual over-disperison parameters, genes are ranked by their
-variability and the \texttt{BASiCS\_DetectHVG} function selects (for example) the
-10\% most highly variable genes (\texttt{PercentileThreshold\ =\ 0.9}).
-Similarly, when detecting lowly variable genes, the \texttt{BASiCS\_DetectLVG} selects
-the 10\% most lowly variable genes (\texttt{PercentileThreshold\ =\ 0.1}).
-The probability threshold for a gene showing higher variability than the
-percentile threshold is found by controlling the expected false discovery
-rate (EFDR) to 10\% (by default) \citep{Newton2004}.
+In \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}, the functions \texttt{BASiCS\_DetectHVG} and
+\texttt{BASiCS\_DetectLVG} can be used to identify genes with substantially high (HVG)
+or low (LVG) transcriptional variability within a population of cells.
+If the input \texttt{BASiCS\_Chain} object was generated by \texttt{BASiCS\_MCMC} with
+\texttt{Regression\ =\ TRUE} (recommended setting), this analysis is based on the
+posterior distribution obtained for gene-specific residual over-dispersion
+parameters \(\epsilon_i\) (alternatively, the approach introduced by
+\citep{Vallejos2015} can be used).
+HVGs are marked as those for which \(\epsilon_i\) exceeds a pre-defined threshold
+with high probability, where the probability cut-off is chosen to match a given
+expected false discovery rate (EFDR; default EFDR = 10\%) \citep{Newton2004}.
+A similar approach is implemented for LVG detection, but based on whether
+\(\epsilon_i\) is below a pre-specified threshold.
+In principle, a threshold for \(\epsilon_i\) could be directly specified by the
+user.
+For example, if the threshold for \(\epsilon_i\) is equal to \(\log(2)\), HVGs would
+be those genes for which the over-dispersion is estimated to be at least \(2\)
+times higher than would be expected given the inferred mean expression level.
+In practice, however, it may be of interest to rank genes and to select the
+those with the highest or the lowest residual over-dispersion.
+For this purpose, the \texttt{PercentileThreshold} parameter can be used to define the
+threshold based on the empirical distribution of posterior estimates for
+residual over-dispersion parameters \(\epsilon_i\).
+For example, if \texttt{PercentileThreshold\ =\ 0.9}, the \texttt{BASiCS\_DetectHVG} function
+defines the threshold as the 90\% percentile of the above distribution.
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \CommentTok{# Highly variable genes}
-\NormalTok{HVG <-}\StringTok{ }\KeywordTok{BASiCS_DetectVG}\NormalTok{(chain_naive, }\DataTypeTok{Task =} \StringTok{"HVG"}\NormalTok{, }\DataTypeTok{PercentileThreshold =} \FloatTok{0.9}\NormalTok{)}
+\NormalTok{HVG <-}\StringTok{ }\KeywordTok{BASiCS_DetectHVG}\NormalTok{(chain_naive, }\DataTypeTok{PercentileThreshold =} \FloatTok{0.9}\NormalTok{)}
 \CommentTok{# Lowly variable genes}
-\NormalTok{LVG <-}\StringTok{ }\KeywordTok{BASiCS_DetectVG}\NormalTok{(chain_naive, }\DataTypeTok{Task =} \StringTok{"LVG"}\NormalTok{, }\DataTypeTok{PercentileThreshold =} \FloatTok{0.1}\NormalTok{)}
-\NormalTok{HVG_table <-}\StringTok{ }\NormalTok{HVG}\OperatorTok{@}\NormalTok{Table}
-\NormalTok{LVG_table <-}\StringTok{ }\NormalTok{LVG}\OperatorTok{@}\NormalTok{Table}
-\end{Highlighting}
-\end{Shaded}
+\NormalTok{LVG <-}\StringTok{ }\KeywordTok{BASiCS_DetectLVG}\NormalTok{(chain_naive, }\DataTypeTok{PercentileThreshold =} \FloatTok{0.1}\NormalTok{)}
+\CommentTok{# Remove lowly expressed genes without valid epsilon estimates}
+\NormalTok{HVG_Table <-}\StringTok{ }\NormalTok{HVG}\OperatorTok{@}\NormalTok{Table[}\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(HVG}\OperatorTok{@}\NormalTok{Table}\OperatorTok{$}\NormalTok{Epsilon),]}
+\NormalTok{LVG_Table <-}\StringTok{ }\NormalTok{LVG}\OperatorTok{@}\NormalTok{Table[}\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(LVG}\OperatorTok{@}\NormalTok{Table}\OperatorTok{$}\NormalTok{Epsilon),]}
 
-This analysis results in the detection of \emph{247}
-highly variable genes and \emph{733}
-lowly variable genes.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{DC_naive <-}\StringTok{ }\KeywordTok{BASiCS_DenoisedCounts}\NormalTok{(sce_naive, chain_naive)}
-
-\CommentTok{# Filter out lowly expressed genes}
-\NormalTok{HVG_table <-}\StringTok{ }\NormalTok{HVG_table[HVG_table}\OperatorTok{$}\NormalTok{Mu }\OperatorTok{>}\StringTok{ }\DecValTok{1}\NormalTok{,]}
-\NormalTok{LVG_table <-}\StringTok{ }\NormalTok{LVG_table[LVG_table}\OperatorTok{$}\NormalTok{Mu }\OperatorTok{>}\StringTok{ }\DecValTok{1}\NormalTok{,]}
-
-\KeywordTok{library}\NormalTok{(reshape2)}
-\NormalTok{topHVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC_naive[HVG_table}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
-\NormalTok{topLVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC_naive[LVG_table}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
-
-\NormalTok{plot_hvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topHVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
-\StringTok{  }\KeywordTok{geom_violin}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{coord_flip}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.01}\NormalTok{,}\FloatTok{3.2}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{))}
-\NormalTok{plot_lvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topLVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
-\StringTok{  }\KeywordTok{geom_violin}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{coord_flip}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.01}\NormalTok{,}\FloatTok{3.2}\NormalTok{) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{))}
-\KeywordTok{plot_grid}\NormalTok{(plot_hvg, plot_lvg)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{center}\includegraphics{figure/Denoised_naive-1} \end{center}
-
-Here, we define HVGs as those genes with a CV\textsuperscript{2} more than double that
-predicted based on mean expression using the fitted trend,
-while controlling the FDR to 5\%.
-As described by \emph{\href{https://bioconductor.org/packages/3.11/SimpleSingleCell}{SimpleSingleCell}} and by
-\href{https://osca.bioconductor.org/}{\emph{OSCA}}, different methods
-can be used to identify depending on the intended downstream analysis,
-and thresholds should be adjusted based on the characteristics
-\citep{Lun2016, Amezquita2019}
-We can then compare the the overlap of the HVG identified by
-\emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} and by \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} (shown in Figure
-\ref{fig:scran-HVG}).
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{is_hvg <-}\StringTok{ }\NormalTok{var_out}\OperatorTok{$}\NormalTok{ratio }\OperatorTok{>}\StringTok{ }\DecValTok{2} \OperatorTok{&}\StringTok{ }\NormalTok{var_out}\OperatorTok{$}\NormalTok{FDR }\OperatorTok{<}\StringTok{ }\FloatTok{0.05}
-\NormalTok{ind_hvg <-}\StringTok{ }\KeywordTok{which}\NormalTok{(is_hvg)}
-\NormalTok{hvg_out <-}\StringTok{ }\NormalTok{var_out[ind_hvg, ]}
-\NormalTok{hvg_out <-}\StringTok{ }\NormalTok{hvg_out[}\KeywordTok{order}\NormalTok{(hvg_out}\OperatorTok{$}\NormalTok{FDR), ]}
-\KeywordTok{nrow}\NormalTok{(hvg_out)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## [1] 1134
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{# Compare BASiCS and scran results}
-\NormalTok{plot_data <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
-  \DataTypeTok{Mu =}\NormalTok{ HVG_table}\OperatorTok{$}\NormalTok{Mu,}
-  \DataTypeTok{Epsilon =}\NormalTok{ HVG_table}\OperatorTok{$}\NormalTok{Epsilon,}
-  \DataTypeTok{BASiCS_HVG =}\NormalTok{ HVG_table}\OperatorTok{$}\NormalTok{HVG,}
-  \DataTypeTok{scran_HVG =}\NormalTok{ is_hvg}
-\NormalTok{)}
-\NormalTok{plot_data <-}\StringTok{ }\NormalTok{plot_data[}\KeywordTok{complete.cases}\NormalTok{(plot_data), ]}
-\NormalTok{plot_data <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(plot_data, }
-  \DataTypeTok{BASiCS =} \KeywordTok{ifelse}\NormalTok{(plot_data}\OperatorTok{$}\NormalTok{BASiCS_HVG, }\StringTok{"HVG"}\NormalTok{, }\StringTok{"Not HVG"}\NormalTok{),}
-  \DataTypeTok{scran =} \KeywordTok{ifelse}\NormalTok{(plot_data}\OperatorTok{$}\NormalTok{scran_HVG, }\StringTok{"HVG"}\NormalTok{, }\StringTok{"Not HVG"}\NormalTok{)}
-\NormalTok{)}
-
-\NormalTok{ord <-}\StringTok{ }\KeywordTok{order}\NormalTok{(plot_data}\OperatorTok{$}\NormalTok{scran, plot_data}\OperatorTok{$}\NormalTok{BASiCS, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{)}
-\NormalTok{plot_data <-}\StringTok{ }\NormalTok{plot_data[ord, ]}
-\NormalTok{plot_data}\OperatorTok{$}\NormalTok{Status <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}
-  \StringTok{"BASiCS: "}\NormalTok{, plot_data}\OperatorTok{$}\NormalTok{BASiCS, }\StringTok{"}\CharTok{\textbackslash{}n}\StringTok{"}\NormalTok{,}
-  \StringTok{"scran: "}\NormalTok{, plot_data}\OperatorTok{$}\NormalTok{scran, }\StringTok{"}\CharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
-\KeywordTok{ggplot}\NormalTok{(plot_data) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_point}\NormalTok{(}
-    \KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(Mu), Epsilon, }\DataTypeTok{colour =}\NormalTok{ Status),}
-    \DataTypeTok{alpha =} \FloatTok{0.5}\NormalTok{,}
-    \DataTypeTok{shape =} \DecValTok{16}
-\NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{scale_colour_brewer}\NormalTok{(}\DataTypeTok{palette =} \StringTok{"Paired"}\NormalTok{)}
+\KeywordTok{ggplot}\NormalTok{(HVG_Table) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_point}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(Mu), Epsilon), }\DataTypeTok{colour =} \StringTok{"gray"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"BASiCS means (log10)"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{lty =} \DecValTok{2}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_point}\NormalTok{(}\DataTypeTok{data =}\NormalTok{ HVG_Table[HVG_Table}\OperatorTok{$}\NormalTok{HVG }\OperatorTok{==}\StringTok{ }\OtherTok{TRUE}\NormalTok{, ],}
+             \KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(Mu), Epsilon), }\DataTypeTok{colour =} \StringTok{"red"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_point}\NormalTok{(}\DataTypeTok{data =}\NormalTok{ LVG_Table[LVG_Table}\OperatorTok{$}\NormalTok{LVG }\OperatorTok{==}\StringTok{ }\OtherTok{TRUE}\NormalTok{, ],}
+             \KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(Mu), Epsilon), }\DataTypeTok{colour =} \StringTok{"blue"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}
 
-{\centering \includegraphics{figure/scran-HVG-1} 
+{\centering \includegraphics{figure/plot-vg-naive-1} 
 
 }
 
-\caption{Epsilon (residual over-dispersion) is plotted against log(mu) (log mean expression). Colour indicates the results of scran and BASiCS HVG tests.}\label{fig:scran-HVG}
+\caption{TBC}\label{fig:plot-vg-naive}
 \end{figure}
 
-\emph{39}
-of the \emph{1134} HVGs of scran are among the
-\emph{222} HVGs identified by \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
+For the naive CD4\(^+\)T data, we obtained \emph{247}
+HVG and \emph{690} LVG.
+As shown in Figure \ref{fig:plot-vg-naive}, these genes are distributed across
+a wide range of mean expression values.
+As an illustration, Figure \ref{fig:plot-example-vg-naive} shows the
+distribution of normalised expression values for selected HVG and LVG, focusing
+on examples with similar mean expression levels (Figure
+\ref{fig:plot-example-vg-naive}A).
+As expected HVG tend to exhibit a wider distribution and potentially bimodal
+distribution (Figure \ref{fig:plot-example-vg-naive}B).
+Instead, LVG tend to have more narrow and unimodal distributions
+(Figure \ref{fig:plot-example-vg-naive}C).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(reshape2)}
+
+\CommentTok{# Obtain normalised expression values}
+\NormalTok{DC_naive <-}\StringTok{ }\KeywordTok{BASiCS_DenoisedCounts}\NormalTok{(sce_naive, chain_naive)}
+
+\NormalTok{my_plot_vg <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(DC, HVG_Table, LVG_Table, low.exp, up.exp) \{}
+  
+  \CommentTok{# Mean vs residual over-dispersion plot for all genes}
+\NormalTok{  vg_plot <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(HVG_Table) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{geom_point}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(Mu), Epsilon), }\DataTypeTok{colour =} \StringTok{"gray"}\NormalTok{) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{xlab}\NormalTok{(}\StringTok{"BASiCS means (log10)"}\NormalTok{) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{ylab}\NormalTok{(}\StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}\NormalTok{) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{lty =} \DecValTok{2}\NormalTok{) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{geom_vline}\NormalTok{(}\DataTypeTok{xintercept =} \KeywordTok{c}\NormalTok{(low.exp, up.exp), }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
+    
+  \CommentTok{# Select genes with similar mean expression values}
+\NormalTok{  HVG1 <-}\StringTok{ }\NormalTok{HVG_Table[}\KeywordTok{log10}\NormalTok{(HVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{>}\StringTok{ }\NormalTok{low.exp }\OperatorTok{&}\StringTok{ }\KeywordTok{log10}\NormalTok{(HVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{<}\StringTok{ }\NormalTok{up.exp,]}
+\NormalTok{  LVG1 <-}\StringTok{ }\NormalTok{LVG_Table[}\KeywordTok{log10}\NormalTok{(LVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{>}\StringTok{ }\NormalTok{low.exp }\OperatorTok{&}\StringTok{ }\KeywordTok{log10}\NormalTok{(LVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{<}\StringTok{ }\NormalTok{up.exp,]  }
+  
+  \CommentTok{# Select top 3 HVG and LVG within the genes selected above}
+\NormalTok{  topHVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC[HVG1}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
+\NormalTok{  topLVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC[LVG1}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
+  
+\NormalTok{  plot_hvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topHVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
+\StringTok{    }\KeywordTok{geom_violin}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{coord_flip}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.05}\NormalTok{, }\KeywordTok{max}\NormalTok{(}\KeywordTok{log10}\NormalTok{(DC}\OperatorTok{+}\DecValTok{1}\NormalTok{))) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{)) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Example HVG"}\NormalTok{) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{ylab}\NormalTok{(}\StringTok{"log10(norm count + 1)"}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Gene"}\NormalTok{)}
+\NormalTok{  plot_lvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topLVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
+\StringTok{    }\KeywordTok{geom_violin}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{coord_flip}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.05}\NormalTok{, }\KeywordTok{max}\NormalTok{(}\KeywordTok{log10}\NormalTok{(DC}\OperatorTok{+}\DecValTok{1}\NormalTok{))) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{)) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Example LVG"}\NormalTok{) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{ylab}\NormalTok{(}\StringTok{"log10(norm count + 1)"}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Gene"}\NormalTok{)}
+  
+\NormalTok{  vg_plot }\OperatorTok{+}\StringTok{ }\NormalTok{plot_hvg }\OperatorTok{+}\StringTok{ }\NormalTok{plot_lvg }\OperatorTok{+}\StringTok{ }\KeywordTok{plot_annotation}\NormalTok{(}\DataTypeTok{tag_levels =} \StringTok{"A"}\NormalTok{)}
+\NormalTok{\}}
+
+\KeywordTok{my_plot_vg}\NormalTok{(DC_naive, HVG_Table, LVG_Table, }\DataTypeTok{low.exp =} \DecValTok{2}\NormalTok{, }\DataTypeTok{up.exp =} \FloatTok{2.2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/plot-example-vg-naive-1} 
+
+}
+
+\caption{TBC}\label{fig:plot-example-vg-naive}
+\end{figure}
 
 {\small\bibliography{Workflow.bib}}
 

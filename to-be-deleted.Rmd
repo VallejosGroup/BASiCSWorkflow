@@ -1053,16 +1053,16 @@ For example, if the threshold for $\epsilon_i$ is equal to $\log(2)$, HVGs would
 be those genes for which the over-dispersion is estimated to be at least $2$ 
 times higher than would be expected given the inferred mean expression level. 
 In practice, however, it may be of interest to rank genes and to select the
-those with the highest or the lowest variability. 
+those with the highest or the lowest residual over-dispersion. 
 <!--- CV: LIKELY TO BE EDITED TO USE THE APPROACH ABOVE --->
-The `PercentileThreshold` parameter can be used to define the threshold based
-on the empirical distribution of posterior estimates for $\epsilon_i$. 
+For this purpose, the `PercentileThreshold` parameter can be used to define the 
+threshold based on the empirical distribution of posterior estimates for 
+residual over-dispersion parameters $\epsilon_i$. 
 For example, if `PercentileThreshold = 0.9`, the `BASiCS_DetectHVG` function 
 defines the threshold as the 90\% percentile of the above distribution.
-The results of this analysis in the context of naive CD4$^+$T cells is
-displayed below. 
 
-```{r plot_vg_naive}
+
+```{r plot-vg-naive, fig.cap="TBC"}
 # Highly variable genes
 HVG <- BASiCS_DetectHVG(chain_naive, PercentileThreshold = 0.9)
 # Lowly variable genes
@@ -1082,21 +1082,24 @@ ggplot(HVG_Table) +
              aes(log10(Mu), Epsilon), colour = "blue")
 ```
 
-This analysis results in the detection of *`r sum(HVG_table$HVG, na.rm=TRUE)`*
-HVG and *`r sum(LVG_table$LVG, na.rm=TRUE)`* LVG.
-As an illustration, Figure \@ref(fig:plot_example_vg_naive) shows the 
+For the naive CD4$^+$T data, we obtained *`r sum(HVG_Table$HVG, na.rm=TRUE)`* 
+HVG and *`r sum(LVG_Table$LVG, na.rm=TRUE)`* LVG.
+As shown in Figure \@ref(fig:plot-vg-naive), these genes are distributed across 
+a wide range of mean expression values. 
+As an illustration, Figure \@ref(fig:plot-example-vg-naive) shows the 
 distribution of normalised expression values for selected HVG and LVG, focusing 
 on examples with similar mean expression levels (Figure 
-\@ref(fig:plot_example_vg_naive)A). 
+\@ref(fig:plot-example-vg-naive)A). 
 As expected HVG tend to exhibit a wider distribution and potentially bimodal
-distribution (Figure \@ref(fig:plot_example_vg_naive)B).
+distribution (Figure \@ref(fig:plot-example-vg-naive)B).
 Instead, LVG tend to have more narrow and unimodal distributions 
-(Figure \@ref(fig:plot_example_vg_naive)C).
+(Figure \@ref(fig:plot-example-vg-naive)C).
 
 <!--- CV: FUNCTION IS LIKELY AN OVERKILL, BUT HELPFUL TO EXPLORE EXAMPLES ---> 
-<!--- CV: EDIT FIGURE CAPTION ---> 
+<!--- CV: EDIT FIGURE CAPTION + SIZE ---> 
 
-```{r plot_example_vg_naive}
+```{r plot-example-vg-naive, fig.cap = "TBC"}
+
 library(reshape2)
 
 # Obtain normalised expression values
@@ -1134,7 +1137,7 @@ my_plot_vg <- function(DC, HVG_Table, LVG_Table, low.exp, up.exp) {
   vg_plot + plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
 }
 
-my_plot_vg(DC_naive, HVG, LVG, low.exp = 2, up.exp = 2.2)
+my_plot_vg(DC_naive, HVG_Table, LVG_Table, low.exp = 2, up.exp = 2.2)
 ```
 
 
