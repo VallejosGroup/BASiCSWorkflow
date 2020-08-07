@@ -433,6 +433,59 @@ sce_naive_active <- sce_CD4_all[, ind_select]
 sce_naive_active
 ```
 
+## Annotation
+
+Input read counts were annotated using Ensembl gene identifiers. 
+In order to facilitate the visualisation and interpretation of results, it is 
+often useful to generate a mapping from Ensembl gene IDs to gene symbols using 
+the BioMart software suite ([http://www.biomart.org](http://www.biomart.org)) 
+via the Bioconductor package, `r Biocpkg("biomaRt")` [@Durinck2009].
+These packages can also be used to obtain gene-pathways mappings and other
+information such as gene length, useful for performing functional analysis
+of the gene sets identified in downstream analyses. 
+
+```{r obtain-gene-symbols}
+if(!file.exists("rds/"))
+  dir.create("rds", showWarnings = FALSE)
+
+library(biomaRt)
+
+if (!file.exists("rds/genenames.rds")) {
+  # Initialize mart and dataset
+  ensembl <- useMart(
+    biomart = "ensembl",
+    dataset = "mmusculus_gene_ensembl"
+  )
+  
+  # Select gene ID and gene name
+  genenames <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name"),
+    mart = ensembl
+  )
+
+  rownames(genenames) <- genenames$ensembl_gene_id
+  saveRDS(genenames, "rds/genenames.rds")
+} else {
+  genenames <- readRDS("rds/genenames.rds")
+}
+```
+
+We add this information as `rowData` within the `SingleCellExperiment` 
+object created above. 
+
+```{r}
+# Merge biomaRt annotation
+my.rowdata <- data.frame(ensembl_gene_id = rownames(sce_naive_active))
+my.rowdata <- merge(my.rowdata, genenames, by = "ensembl_gene_id", all.x = TRUE)
+rownames(my.rowdata) <- rownames(sce_naive_active)
+# Check to see that the order is correct after merge
+# Sum must be equal to zero
+sum(my.rowdata$ensembl_gene_id != rownames(my.rowdata))
+# Add to the SingleCellExperiment object
+rowData(sce_naive_active) <- my.rowdata
+```
+
+
 ## QC and exploratory data analysis
 
 The data available at 
@@ -1070,23 +1123,20 @@ defines the threshold as the 90\% percentile of the above distribution.
 HVG <- BASiCS_DetectHVG(chain_naive, PercentileThreshold = 0.9)
 # Lowly variable genes
 LVG <- BASiCS_DetectLVG(chain_naive, PercentileThreshold = 0.1)
-# Remove lowly expressed genes without valid epsilon estimates
-HVG_Table <- HVG@Table[!is.na(HVG@Table$Epsilon),]
-LVG_Table <- LVG@Table[!is.na(LVG@Table$Epsilon),]
 
-ggplot(HVG_Table) +
-  geom_point(aes(log10(Mu), Epsilon), colour = "gray") +
+ggplot(HVG@Table) +
+  geom_point(aes(log10(Mu), Epsilon), na.rm = TRUE, colour = "gray") +
   xlab("BASiCS means (log10)") +
   ylab("BASiCS residual\nover-dispersion") +
   geom_hline(yintercept = 0, lty = 2) +
-  geom_point(data = HVG_Table[HVG_Table$HVG == TRUE, ],
-             aes(log10(Mu), Epsilon), colour = "red") +
-  geom_point(data = LVG_Table[LVG_Table$LVG == TRUE, ],
-             aes(log10(Mu), Epsilon), colour = "blue")
+  geom_point(data = HVG@Table[HVG@Table$HVG == TRUE, ],
+             aes(log10(Mu), Epsilon), na.rm = TRUE, colour = "red") +
+  geom_point(data = LVG@Table[LVG@Table$LVG == TRUE, ],
+             aes(log10(Mu), Epsilon), na.rm = TRUE, colour = "blue")
 ```
 
-For the naive CD4$^+$T data, we obtained *`r sum(HVG_Table$HVG, na.rm=TRUE)`* 
-HVG and *`r sum(LVG_Table$LVG, na.rm=TRUE)`* LVG.
+For the naive CD4$^+$T data, we obtained *`r sum(HVG@Table$HVG, na.rm=TRUE)`* 
+HVG and *`r sum(LVG@Table$LVG, na.rm=TRUE)`* LVG.
 As shown in Figure \@ref(fig:plot-vg-naive), these genes are distributed across 
 a wide range of mean expression values. 
 As an illustration, Figure \@ref(fig:plot-example-vg-naive) shows the 
@@ -1108,31 +1158,46 @@ library(reshape2)
 # Obtain normalised expression values
 DC_naive <- BASiCS_DenoisedCounts(sce_naive, chain_naive)
 
-my_plot_vg <- function(DC, HVG_Table, LVG_Table, low.exp, up.exp) {
+my_plot_vg <- function(DC, HVG, LVG, low.exp, up.exp, genenames) {
+  
+  HVG_Table <- merge(HVG@Table, genenames, 
+                     by.x = "GeneName", by.y = "ensembl_gene_id", 
+                     all.x = TRUE, sort = FALSE)
+  LVG_Table <- merge(LVG@Table, genenames, 
+                     by.x = "GeneName", by.y = "ensembl_gene_id", 
+                     all.x = TRUE, sort = FALSE)
   
   # Mean vs residual over-dispersion plot for all genes
-  vg_plot <- ggplot(HVG_Table) +
-    geom_point(aes(log10(Mu), Epsilon), colour = "gray") +
+  vg_plot <- ggplot(data.frame(HVG_Table)) +
+    geom_point(aes(log10(Mu), Epsilon), na.rm = TRUE, colour = "gray") +
     xlab("BASiCS means (log10)") +
     ylab("BASiCS residual\nover-dispersion") +
     geom_hline(yintercept = 0, lty = 2) +
     geom_vline(xintercept = c(low.exp, up.exp), col = "red")
     
-  # Select genes with similar mean expression values
-  HVG1 <- HVG_Table[log10(HVG_Table$Mu) > low.exp & log10(HVG_Table$Mu) < up.exp,]
-  LVG1 <- LVG_Table[log10(LVG_Table$Mu) > low.exp & log10(LVG_Table$Mu) < up.exp,]  
+  # Select HVG/LVG genes with similar mean expression values
+  
+  HVG1 <- HVG_Table[HVG_Table$HVG == TRUE &
+                      log10(HVG_Table$Mu) > low.exp & 
+                      log10(HVG_Table$Mu) < up.exp,]
+  LVG1 <- LVG_Table[LVG_Table$LVG == TRUE &
+                      log10(LVG_Table$Mu) > low.exp & 
+                      log10(LVG_Table$Mu) < up.exp,]  
   
   # Select top 3 HVG and LVG within the genes selected above
   topHVG <- log10(t(DC[HVG1$GeneName[1:3], ]) + 1)
   topLVG <- log10(t(DC[LVG1$GeneName[1:3], ]) + 1)
+  # Add genenames
+  colnames(topHVG) <- HVG1$external_gene_name[1:3]
+  colnames(topLVG) <- LVG1$external_gene_name[1:3]
   
   plot_hvg <- ggplot(melt(topHVG), aes(x = Var2, y = value)) + 
-    geom_violin() + coord_flip() + ylim(-0.05, max(log10(DC+1))) +
+    geom_violin(na.rm = TRUE) + coord_flip() + ylim(-0.05, max(log10(DC+1))) +
     geom_jitter(position=position_jitter(0.3)) +
     ggtitle("Example HVG") +
     ylab("log10(norm count + 1)") + xlab("Gene")
   plot_lvg <- ggplot(melt(topLVG), aes(x = Var2, y = value)) + 
-    geom_violin() + coord_flip() + ylim(-0.05, max(log10(DC+1))) +
+    geom_violin(na.rm = TRUE) + coord_flip() + ylim(-0.05, max(log10(DC+1))) +
     geom_jitter(position=position_jitter(0.3)) +
     ggtitle("Example LVG") +
     ylab("log10(norm count + 1)") + xlab("Gene")
@@ -1140,7 +1205,7 @@ my_plot_vg <- function(DC, HVG_Table, LVG_Table, low.exp, up.exp) {
   vg_plot + plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
 }
 
-my_plot_vg(DC_naive, HVG_Table, LVG_Table, low.exp = 2, up.exp = 2.2)
+my_plot_vg(DC_naive, HVG, LVG, low.exp = 2, up.exp = 2.2, genenames)
 ```
 
 ## Differential mean expression testing using BASiCS
@@ -1253,40 +1318,6 @@ We do not perform this here, as it is outside of the scope of
 `r Biocpkg("BASiCS")`. However, a workflow for this process 
 is detailed in Supplementary section TODO.
 
-The molecule counts used in this workflow are annotated using Ensembl gene
-identifiers. In order to facilitate the visualisation and interpretation
-of results, it is often useful
-to generate a mapping from Ensembl gene IDs to 
-gene symbols using the BioMart software suite 
-([http://www.biomart.org](http://www.biomart.org)) using 
-the Bioconductor package, `r Biocpkg("biomaRt")` [@Durinck2009].
-These packages can also be used to obtain gene-pathways mappings and
-information such as gene length, useful for performing functional analysis
-of the gene sets identified.
-
-```{r obtain-gene-symbols}
-dir.create("rds", showWarnings = FALSE)
-dir.create("downloads", showWarnings = FALSE)
-
-if (!file.exists("rds/genenames.rds")) {
-  # Initialize mart and dataset
-  ensembl <- useMart(
-    biomart = "ensembl",
-    dataset = "mmusculus_gene_ensembl"
-  )
-
-  # Select gene ID and gene name
-  genenames <- getBM(
-    attributes = c("ensembl_gene_id", "external_gene_name"),
-    mart = ensembl
-  )
-
-  rownames(genenames) <- genenames$ensembl_gene_id
-  saveRDS(genenames, "rds/genenames.rds")
-} else {
-  genenames <- readRDS("rds/genenames.rds")
-}
-```
 
 It is useful to visualise differentially expressed genes to ensure that
 the identified genes are the result of biologically meaningful shifts in 

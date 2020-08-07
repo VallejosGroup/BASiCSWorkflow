@@ -348,6 +348,8 @@ In the matrix, column names contain library identifiers and row names
 display gene Ensembl identifiers. 
 
 ```{r naive-data}
+if (!file.exists("downloads/"))
+  dir.create("downloads", showWarnings = FALSE)
 if (!file.exists("downloads/raw_data.txt")) {
   website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
   file <- "E-MTAB-4888.processed.1.zip"
@@ -431,6 +433,58 @@ ind_select <- sce_CD4_all$Strain == "Mus musculus domesticus" &
   sce_CD4_all$Celltype == "MACS-purified Naive"
 sce_naive_active <- sce_CD4_all[, ind_select]
 sce_naive_active
+```
+
+## Annotation
+
+Input read counts were annotated using Ensembl gene identifiers. 
+In order to facilitate the visualisation and interpretation of results, it is 
+often useful to generate a mapping from Ensembl gene IDs to gene symbols using 
+the BioMart software suite ([http://www.biomart.org](http://www.biomart.org)) 
+via the Bioconductor package, `r Biocpkg("biomaRt")` [@Durinck2009].
+These packages can also be used to obtain gene-pathways mappings and other
+information such as gene length, useful for performing functional analysis
+of the gene sets identified in downstream analyses. 
+
+```{r obtain-gene-symbols}
+if(!file.exists("rds/"))
+  dir.create("rds", showWarnings = FALSE)
+
+library(biomaRt)
+
+if (!file.exists("rds/genenames.rds")) {
+  # Initialize mart and dataset
+  ensembl <- useMart(
+    biomart = "ensembl",
+    dataset = "mmusculus_gene_ensembl"
+  )
+  
+  # Select gene ID and gene name
+  genenames <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name"),
+    mart = ensembl
+  )
+
+  rownames(genenames) <- genenames$ensembl_gene_id
+  saveRDS(genenames, "rds/genenames.rds")
+} else {
+  genenames <- readRDS("rds/genenames.rds")
+}
+```
+
+We add this information as `rowData` within the `SingleCellExperiment` 
+object created above. 
+
+```{r}
+# Merge biomaRt annotation
+my.rowdata <- data.frame(ensembl_gene_id = rownames(sce_naive_active))
+my.rowdata <- merge(my.rowdata, genenames, by = "ensembl_gene_id", all.x = TRUE)
+rownames(my.rowdata) <- rownames(sce_naive_active)
+# Check to see that the order is correct after merge
+# Sum must be equal to zero
+sum(my.rowdata$ensembl_gene_id != rownames(my.rowdata))
+# Add to the SingleCellExperiment object
+rowData(sce_naive_active) <- my.rowdata
 ```
 
 ## QC and exploratory data analysis
@@ -1067,23 +1121,20 @@ defines the threshold as the 90\% percentile of the above distribution.
 HVG <- BASiCS_DetectHVG(chain_naive, PercentileThreshold = 0.9)
 # Lowly variable genes
 LVG <- BASiCS_DetectLVG(chain_naive, PercentileThreshold = 0.1)
-# Remove lowly expressed genes without valid epsilon estimates
-HVG_Table <- HVG@Table[!is.na(HVG@Table$Epsilon),]
-LVG_Table <- LVG@Table[!is.na(LVG@Table$Epsilon),]
 
-ggplot(HVG_Table) +
-  geom_point(aes(log10(Mu), Epsilon), colour = "gray") +
+ggplot(HVG@Table) +
+  geom_point(aes(log10(Mu), Epsilon), na.rm = TRUE, colour = "gray") +
   xlab("BASiCS means (log10)") +
   ylab("BASiCS residual\nover-dispersion") +
   geom_hline(yintercept = 0, lty = 2) +
-  geom_point(data = HVG_Table[HVG_Table$HVG == TRUE, ],
-             aes(log10(Mu), Epsilon), colour = "red") +
-  geom_point(data = LVG_Table[LVG_Table$LVG == TRUE, ],
-             aes(log10(Mu), Epsilon), colour = "blue")
+  geom_point(data = HVG@Table[HVG@Table$HVG == TRUE, ],
+             aes(log10(Mu), Epsilon), na.rm = TRUE, colour = "red") +
+  geom_point(data = LVG@Table[LVG@Table$LVG == TRUE, ],
+             aes(log10(Mu), Epsilon), na.rm = TRUE, colour = "blue")
 ```
 
-For the naive CD4$^+$T data, we obtained *`r sum(HVG_Table$HVG, na.rm=TRUE)`* 
-HVG and *`r sum(LVG_Table$LVG, na.rm=TRUE)`* LVG.
+For the naive CD4$^+$T data, we obtained *`r sum(HVG@Table$HVG, na.rm=TRUE)`* 
+HVG and *`r sum(LVG@Table$LVG, na.rm=TRUE)`* LVG.
 As shown in Figure \@ref(fig:plot-vg-naive), these genes are distributed across 
 a wide range of mean expression values. 
 As an illustration, Figure \@ref(fig:plot-example-vg-naive) shows the 
@@ -1105,31 +1156,46 @@ library(reshape2)
 # Obtain normalised expression values
 DC_naive <- BASiCS_DenoisedCounts(sce_naive, chain_naive)
 
-my_plot_vg <- function(DC, HVG_Table, LVG_Table, low.exp, up.exp) {
+my_plot_vg <- function(DC, HVG, LVG, low.exp, up.exp, genenames) {
+  
+  HVG_Table <- merge(HVG@Table, genenames, 
+                     by.x = "GeneName", by.y = "ensembl_gene_id", 
+                     all.x = TRUE, sort = FALSE)
+  LVG_Table <- merge(LVG@Table, genenames, 
+                     by.x = "GeneName", by.y = "ensembl_gene_id", 
+                     all.x = TRUE, sort = FALSE)
   
   # Mean vs residual over-dispersion plot for all genes
-  vg_plot <- ggplot(HVG_Table) +
-    geom_point(aes(log10(Mu), Epsilon), colour = "gray") +
+  vg_plot <- ggplot(data.frame(HVG_Table)) +
+    geom_point(aes(log10(Mu), Epsilon), na.rm = TRUE, colour = "gray") +
     xlab("BASiCS means (log10)") +
     ylab("BASiCS residual\nover-dispersion") +
     geom_hline(yintercept = 0, lty = 2) +
     geom_vline(xintercept = c(low.exp, up.exp), col = "red")
     
-  # Select genes with similar mean expression values
-  HVG1 <- HVG_Table[log10(HVG_Table$Mu) > low.exp & log10(HVG_Table$Mu) < up.exp,]
-  LVG1 <- LVG_Table[log10(LVG_Table$Mu) > low.exp & log10(LVG_Table$Mu) < up.exp,]  
+  # Select HVG/LVG genes with similar mean expression values
+  
+  HVG1 <- HVG_Table[HVG_Table$HVG == TRUE &
+                      log10(HVG_Table$Mu) > low.exp & 
+                      log10(HVG_Table$Mu) < up.exp,]
+  LVG1 <- LVG_Table[LVG_Table$LVG == TRUE &
+                      log10(LVG_Table$Mu) > low.exp & 
+                      log10(LVG_Table$Mu) < up.exp,]  
   
   # Select top 3 HVG and LVG within the genes selected above
   topHVG <- log10(t(DC[HVG1$GeneName[1:3], ]) + 1)
   topLVG <- log10(t(DC[LVG1$GeneName[1:3], ]) + 1)
+  # Add genenames
+  colnames(topHVG) <- HVG1$external_gene_name[1:3]
+  colnames(topLVG) <- LVG1$external_gene_name[1:3]
   
   plot_hvg <- ggplot(melt(topHVG), aes(x = Var2, y = value)) + 
-    geom_violin() + coord_flip() + ylim(-0.05, max(log10(DC+1))) +
+    geom_violin(na.rm = TRUE) + coord_flip() + ylim(-0.05, max(log10(DC+1))) +
     geom_jitter(position=position_jitter(0.3)) +
     ggtitle("Example HVG") +
     ylab("log10(norm count + 1)") + xlab("Gene")
   plot_lvg <- ggplot(melt(topLVG), aes(x = Var2, y = value)) + 
-    geom_violin() + coord_flip() + ylim(-0.05, max(log10(DC+1))) +
+    geom_violin(na.rm = TRUE) + coord_flip() + ylim(-0.05, max(log10(DC+1))) +
     geom_jitter(position=position_jitter(0.3)) +
     ggtitle("Example LVG") +
     ylab("log10(norm count + 1)") + xlab("Gene")
@@ -1137,8 +1203,242 @@ my_plot_vg <- function(DC, HVG_Table, LVG_Table, low.exp, up.exp) {
   vg_plot + plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
 }
 
-my_plot_vg(DC_naive, HVG_Table, LVG_Table, low.exp = 2, up.exp = 2.2)
+my_plot_vg(DC_naive, HVG, LVG, low.exp = 2, up.exp = 2.2, genenames)
 ```
+
+## Differential mean expression testing using BASiCS
+
+This section highlights the use of `r Biocpkg("BASiCS")` to perform differential 
+expression tests for mean and variability between different pre-specified 
+populations of cells and experimental conditions. 
+Here, we compare the naive CD4^+^ T cells, analysed in the previous section, to 
+activated CD4^+^ T cells obtained by the same authors [@Martinez-jimenez2017]. 
+Naive CD4^+^ T cells were activated for 3 hours 
+using plate-bound CD3e and CD28 antibodies.
+T cell activation is linked to strong transcriptional shifts and the
+up-regulation of lineage specific marker genes, such as Tbx21 and Gata1 
+[@Best2013;@Fu2012].
+To generate this data, the authors did not add cytokines, which are needed for 
+T cell differentiation [@Zhu2010]. Therefore, any heterogeneity in the activated
+cell population does not arise from cells residing in different lineage-specific 
+differentiation states. 
+
+To perform robust differential mean expression testing, `r Biocpkg("BASiCS")`
+removes genes with small effective sample size when calculating EFDR and 
+performing differential expression testing.
+As explained [above](#naive-convergence), `r Biocpkg("BASiCS")` automatically 
+excludes genes with an effective sample size less than 100.
+
+The default settings for differential mean expression testing are as follows:
+
+- `EpsilonM`: Log~2~ fold change (LFC) threshold for changes in mean expression.
+  Default value is $\log_2(1.5)\approx0.41$.
+  differential tests. Default value is 100.
+- `EFDR_M`: Expected false discovery rate: 10%
+- `MinESS`: Minimum effective sample size for genes to be included in 
+- `Plot`, `PlotOffset`: Boolean to control if results are plotted.
+  Default value is TRUE for both.
+
+```{r mean-expression-testing}
+# Perform differential testing
+Test_DE <- BASiCS_TestDE(
+  Chain1 = chain_naive,
+  Chain2 = chain_active,
+  EpsilonM = log2(1.5),
+  GroupLabel1 = "Naive",
+  GroupLabel2 = "Active",
+  Plot = FALSE,
+  PlotOffset = FALSE,
+  MinESS = 100
+)
+```
+
+After running the test, we can now visualise the results in form of a MA-plot 
+(log ratio _versus_ mean average; Figure \@ref(fig:visualise-MA-plot))
+and volcano plot (posterior probability _versus_ log ratio; Figure
+\@ref(fig:visualise-volcano-plot)).
+
+```{r visualise-MA-plot, fig.cap="Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
+BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "MA")
+```
+
+
+```{r visualise-volcano-plot, fig.cap="Posterior probability of differential expression is plotted again log fold change. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
+BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "Volcano")
+
+TableMean <- format(Test_DE, Which = "Mean", Filter = FALSE)
+```
+
+As we can see for the comparison of naive and activated CD4^+^ T cells, most 
+genes show strong differences in mean expression.
+In such cases, it can be beneficial to increase the LFC threshold or to 
+decrease the target EFDR.
+Here, we set the LFC threshold to $\log_2(2)=1$ to detect genes 
+with strong changes in mean expression. We also set `MinESS` to 100,
+causing genes with effective sample size less than 100 in either input chain
+to be excluded from EFDR calibration and differential expression testing.
+
+
+```{r mean-expression-testing-2}
+# Perform differential testing
+Test_DE <- BASiCS_TestDE(
+  Chain1 = chain_naive,
+  Chain2 = chain_active,
+  EpsilonM = log2(2),
+  GroupLabel1 = "Naive",
+  GroupLabel2 = "Active",
+  Plot = FALSE,
+  PlotOffset = FALSE,
+  MinESS = 100
+)
+TableMean <- format(Test_DE, Which = "Mean", Filter = FALSE)
+TableDisp <- format(Test_DE, Which = "Disp", Filter = FALSE)
+table(TableMean$ResultDiffMean)
+```
+
+<!---
+In this case, this results in 
+r  `sum(TableMean$ResultDiffMean=="ExcludedLowESS")` genes with low 
+effective sample size being excluded from differential mean expression tests.
+Similarly, r `sum(TableDisp$ResultDiffDisp=="ExcludedLowESS")`
+genes are excluded from tests of differential over-dispersion due to
+low effective sample size.
+--->
+
+When interpreting the results of differential expression tests, it is useful
+to visualise the differentially expressed genes in order to appraise the 
+significance of the results. It is also useful to
+perform functional enrichment analysis to identify biologically 
+meaningful patterns, for example using `r Biocpkg("goseq")` [@Young2010].
+We do not perform this here, as it is outside of the scope of 
+`r Biocpkg("BASiCS")`. However, a workflow for this process 
+is detailed in Supplementary section TODO.
+
+It is useful to visualise differentially expressed genes to ensure that
+the identified genes are the result of biologically meaningful shifts in 
+expression and not technical issues. As an example, we visualise the
+expression of Cd69, a known marker of T cell activation [@Ziegler1994],
+in Figures \@ref(fig:violin-plots) and \@ref(fig:pca-cd69).
+
+```{r violin-plots, fig.cap="Violin plot of Cd69 expression in naive and active cells."}
+# Expression of Cd69 in both conditions
+ind_cd <- genenames$external_gene_name == "Cd69"
+plotExpression(sce_naive_active,
+  features = genenames[ind_cd, 1],
+  x = "Stimulus"
+)
+```
+
+```{r pca-cd69, fig.cap="Principal component plot of naive and stimulated T cells. Colour indicates Cd69 expression level."}
+plotReducedDim(sce_naive_active,
+  dimred = "PCA",
+  colour_by = genenames[ind_cd, 1]
+) + scale_fill_viridis(name = "Cd69")
+```
+
+
+It may also useful to visualise many genes at once. This is useful in quality
+checking the results of a differential expression analysis, and may also
+aid in identifying systematic patterns among differentially expressed genes
+and guiding downstream analysis. Here we use `r Biocpkg("ComplexHeatmap")`
+to visualise genes that are up-regulated in each condition [@Gu2016],
+the output of which is shown in Figure \@ref(fig:heatmap-diffexp).
+
+```{r heatmap-diffexp, fig.width = 7, fig.height = 5, fig.cap="Heatmap of 30 differentially expressed genes in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the logged average expression for each gene in each population."}
+library("ComplexHeatmap")
+library("circlize")
+library("RColorBrewer")
+
+# Up-regulated in naive
+ind_n <- TableMean$ResultDiffMean == "Naive+"
+naive_mean <- TableMean[ind_n, ]
+naive_mean <- naive_mean[order(naive_mean$MeanLog2FC, decreasing = FALSE), ]
+naive_mean$Symbol <- genenames[naive_mean$GeneName, 2]
+
+# Up-regulated in active
+ind_a <- TableMean$ResultDiffMean == "Active+"
+active_mean <- TableMean[ind_a, ]
+active_mean <- active_mean[order(active_mean$MeanLog2FC, decreasing = TRUE), ]
+active_mean$Symbol <- genenames[active_mean$GeneName, 2]
+
+heatmap_ngenes <- 15
+heatmap_seq <- seq_len(heatmap_ngenes)
+
+## Select genes with largest probability of differential expression
+active_ind <- order(active_mean$ProbDiffMean, decreasing = TRUE)[heatmap_seq]
+active_mean <- active_mean[active_ind, ]
+## subset counts from each cell type to these genes
+act_counts_act <- counts(sce_active)[active_mean$GeneName, ]
+nai_counts_act <- counts(sce_naive)[active_mean$GeneName, ]
+
+## Select genes with largest probability of differential expression
+s_ind <- order(naive_mean$ProbDiffMean, decreasing = TRUE)[heatmap_seq]
+naive_mean <- naive_mean[s_ind, ]
+## subset counts from each cell type to these genes
+act_counts_nai <- counts(sce_active)[naive_mean$GeneName, ]
+nai_counts_nai <- counts(sce_naive)[naive_mean$GeneName, ]
+
+## Calculate max absolute value for min/max of colour scale
+all_mean <- c(
+  active_mean$Mean1, active_mean$Mean2,
+  naive_mean$Mean1, naive_mean$Mean2
+)
+max_range <- log(max(abs(all_mean)))
+## colour scale symmetric around zero
+colour <- colorRamp2(seq(-max_range, max_range, length.out = 9),
+  rev(brewer.pal(9, "RdBu")))
+
+## Combine count matrices by cell type
+counts_active <- rbind(act_counts_act, act_counts_nai)
+counts_naive <- rbind(nai_counts_act, nai_counts_nai)
+
+## split heatmaps by gene category
+split <- data.frame(
+  Upregulated = c(
+    rep("Up-regulated \nin active", nrow(act_counts_act)),
+    rep("Up-regulated \nin naive", nrow(act_counts_nai))
+  )
+)
+syms <- genenames[rownames(counts_active), 2]
+fontsize <- 7
+
+Heatmap(
+  log10(counts_naive + 1),
+  row_labels = syms,
+  row_names_gp = gpar(fontsize = fontsize),
+  name = "log10(count + 1)",
+  column_dend_height = unit(0.2, "npc"),
+  column_title_side = "bottom",
+  column_title = "Naive cells",
+  show_column_names = FALSE,
+  cluster_rows = FALSE,
+  split = split,
+  right_annotation = rowAnnotation(
+    log_mu = log(c(active_mean$Mean1, naive_mean$Mean1)),
+    col = list(log_mu = colour)
+  ),
+  col = viridis(100)) +
+Heatmap(
+  log10(counts_active + 1),
+  row_labels = syms,
+  column_dend_height = unit(0.2, "npc"),
+  row_names_gp = gpar(fontsize = fontsize),
+  column_title = "Active cells",
+  column_title_side = "bottom",
+  show_column_names = FALSE,
+  name = "log10(count + 1)",
+  split = split,
+  right_annotation = rowAnnotation(
+    log_mu = log(c(active_mean$Mean2, naive_mean$Mean2)),
+    col = list(log_mu = colour)
+  ),
+  cluster_rows = FALSE,
+  col = viridis(100))
+```
+
+While other computational tools exist to perform differential mean expression
+analysis, we next want to highlight the use of `r Biocpkg("BASiCS")` for 
+differential variability testing.
 
 
 
