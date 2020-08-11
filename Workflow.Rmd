@@ -1020,6 +1020,7 @@ parameter_df$DM <- DM(
   cv2 = parameter_df$cv2_scran
 )
 
+
 # Remove genes without counts in > 2 cells - BASiCS estimates not provided
 ind_not_na <- !(is.na(parameter_df$epsilon))
 

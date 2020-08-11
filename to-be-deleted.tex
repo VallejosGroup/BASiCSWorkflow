@@ -121,9 +121,7 @@ populations, whilst avoiding confounding effects related to differences in
 technical noise or in overall abundance. Using a publicly available
 dataset, we guide users through a complete pipeline that includes
 preliminary steps for quality control, as well as data exploration
-using the scater and scran Bioconductor packages. Data for the case
-study was generated using the Fluidigm@ C1 system, in which extrinsic
-spike-in RNA molecules were added as a control. The workflow is accompanied
+using the scater and scran Bioconductor packages. The workflow is accompanied
 by a Docker image that ensures the reproducibility of our results.
 \end{abstract}
 
@@ -186,36 +184,31 @@ removed unless sequencing to saturation \citep{Vallejos2017}).
 However, despite the benefits associated to the use of spike-ins and UMIs,
 these are not available for all scRNA-seq protocols \citep{Haque2017}.
 
-The Bioconductor package \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} aims to account for these
-sources of noise, both technical and biological. In particular, we
-encourage the use of UMIs when performing a scRNAseq study.
-It is well-established that scRNAseq data is distributed
-according to a negative binomial distribution when UMIs are used in the
-sequencing protocol \citep{Svensson2020, Townes2020, Townes2019}. Thus, the
-distributional assumptions of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} are more likely to be valid
-for datasets wherein UMIs have been used. Furthermore,
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} leverages spike-in molecules to aid in normalisation when
-available, though a recent extension of the model allows the application of
-the model in the absence of spike-in molecules \citep{Eling2018}. Moreover,
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} enables the quantification of variability within a
-population, while accounting for the overall mean-variance relationship in
-an scRNAseq dataset \citep{Eling2018}.
+The Bioconductor package \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} implements a Bayesian
+hierarchical framework that accounts for both technical and biological sources
+of noise in scRNA-seq datasets \citep{Vallejos2015, Vallejos2016, Eling2017}.
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} jointly performs data normalisation, technical noise
+quantification and downstream analyses, whilst propagating statistical
+uncertainty across these steps.
+These features are implemented within a probabilistic model that builds upon a
+negative binomial framework, a widely used distribution in the context of bulk
+and scRNA-seq experiments \citep{Svensson2020, Townes2020, Townes2019}.
+Critically, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} enables the quantification of transcriptional
+variability within a population of cells, while accounting for the overall
+mean-variance relationship that typically arises in scRNA-seq data \citep{Eling2018}.
+Furthermore, when available, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} can also leverage extrinsic
+spike-in molecules to aid data normalisation.
 
 This article complements existing scRNA-seq workflows based on the Bioconductor
 ecosystem (e.g.~\citep{Lun2016, Kim2019}), providing a detailed framework for
-transcriptional variability analyses.
-Firstly, we describe a step-by-step workflow that uses
-\emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}} \citep{McCarthy2017} and \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} \citep{Lun2016}
-to perform quality control (QC) as well as initial exploratory analyses.
-To robustly quantify transcriptional variability we use \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
-\citep{Vallejos2015, Vallejos2016, Eling2017} --- a Bayesian hierarchical framework
-that jointly performs data normalisation, technical noise quantification and
-downstream analyses, whilst propagating statistical uncertainty across these
-steps.
+transcriptional variability analyses using \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
+We describe a step-by-step workflow that uses \emph{\href{https://bioconductor.org/packages/3.11/scater}{scater}}
+\citep{McCarthy2017} and \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} \citep{Lun2016} to perform quality control
+(QC) as well as initial exploratory analyses.
 Our analysis pipeline includes practical guidance to assess the convergence of
 the Markov Chain Monte Carlo (MCMC) algorithm that is used to infer model
-parameters as well as recommendations to interpret and post-process the model
-outputs.
+parameters in \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}, as well as recommendations to interpret
+and post-process the model outputs.
 Finally, through a case study in the context of immune cells, we illustrate
 how \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} can be used to identify highly and lowly variable
 genes within a cell population, as well as to compare expression profiles
@@ -917,6 +910,11 @@ The primary inputs for \texttt{BASiCS\_MCMC} correspond to:
   Alternatively, independent log-normal priors are assigned to \(\mu_i\) and
   \(\delta_i\) \citep{Vallejos2016}.
 \item
+  \texttt{PriorMu}: If \texttt{"EmpiricalBayes"}, \(\mu_i\)'s are assigned a log-normal prior
+  with gene-specific location hyper-parameters defined via an empirical Bayes
+  framework. Alternatively, if \texttt{PriorMu\ =\ "default"}, location hyper-parameter are
+  set to be equal 0 for all genes.
+\item
   \texttt{WithSpikes}: if \texttt{TRUE} information from spike-in molecules is used to aid
   data normalisation and to quantify technical noise.
 \end{itemize}
@@ -926,6 +924,9 @@ the joint prior introduced by Eling \emph{et al.} leads to more stable, particul
 for small sample sizes and lowly expressed genes.
 Moreover, the joint prior formulation enables users to obtain a measure of
 transcriptional variability that is not confounded by mean expression.
+We also recommend to use \texttt{PriorMu\ =\ "EmpiricalBayes"} as we have observed
+that the empirical Bayes framework {[}REF{]} improves estimation performance for
+sparser datasets.
 Additional optional parameters can be used to store the generated output
 (\texttt{StoreChains}, \texttt{StoreDir}, \texttt{RunName}) and to monitor the progress of the
 algorithm (\texttt{PrintProgress}).
@@ -947,6 +948,7 @@ performance of the MCMC algorithn is provided in the next section.
   \DataTypeTok{Thin =} \DecValTok{20}\NormalTok{,}
   \DataTypeTok{Burn =} \DecValTok{20000}\NormalTok{,}
   \DataTypeTok{Regression =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{PriorMu =} \StringTok{"EmpiricalBayes"}\NormalTok{,}
   \DataTypeTok{WithSpikes =} \OtherTok{TRUE}\NormalTok{,}
   \DataTypeTok{StoreChains =} \OtherTok{TRUE}\NormalTok{,}
   \DataTypeTok{StoreDir =} \StringTok{"rds/"}\NormalTok{,}
@@ -959,6 +961,7 @@ performance of the MCMC algorithn is provided in the next section.
   \DataTypeTok{Thin =} \DecValTok{20}\NormalTok{,}
   \DataTypeTok{Burn =} \DecValTok{20000}\NormalTok{,}
   \DataTypeTok{Regression =} \OtherTok{TRUE}\NormalTok{,}
+  \DataTypeTok{PriorMu =} \StringTok{"EmpiricalBayes"}\NormalTok{,}
   \DataTypeTok{WithSpikes =} \OtherTok{TRUE}\NormalTok{,}
   \DataTypeTok{StoreChains =} \OtherTok{TRUE}\NormalTok{,}
   \DataTypeTok{StoreDir =} \StringTok{"rds/"}\NormalTok{,}
@@ -1010,8 +1013,8 @@ expression parameters \(\mu_i\) associated to the first 3 genes.
 
 \begin{verbatim}
 ##      ENSMUSG00000000001 ENSMUSG00000000056 ENSMUSG00000000085
-## [1,]           11.90910           1.854180          0.9695263
-## [2,]           14.97279           1.625154          0.8400265
+## [1,]           97.48793           38.17646           3.484543
+## [2,]          162.83523           18.13590           2.503296
 \end{verbatim}
 
 \hypertarget{mcmc-diagnostics}{%
@@ -1166,20 +1169,21 @@ analysis for active cells shows similar results).
 As seen in Figure \ref{fig:dispersion-vs-mean}A, CV\textsuperscript{2} and posterior estimates
 for \(\delta_i\) are highly correlated.
 Moreover, both variability metrics are confounded by differences in mean
-expression, e.g.~highly expressed genes tend to exhibit lower variability
+expression, i.e.~highly expressed genes tend to exhibit lower variability
 (Figures \ref{fig:dispersion-vs-mean}B-C).
 To remove this confounding, \emph{\href{https://bioconductor.org/packages/3.11/scran}{scran}} and \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
 derive \emph{residual variability} estimates as deviations with respect to an
 global mean-variability trend (see \emph{Methods}).
-These are derived using the DM apprach \citep{Kolodziejczyk2015cell} and the
+These are derived using the DM approach \citep{Kolodziejczyk2015cell} and the
 residual over-dispersion parameters \(\epsilon_i\) defined by \citep{Eling2018},
 respectively.
 For the naive CD4\textsuperscript{+} T data, both approaches led to strongly correlated
 estimates (Figure \ref{fig:dispersion-vs-mean}D) and, as expected, neither DM
-or posterior estimates for \(\epsilon_i\) are seen to be associated with
+values or posterior estimates for \(\epsilon_i\) are seen to be associated with
 mean expression (Figure \ref{fig:dispersion-vs-mean}E-F).
-However, unlike DM, the integrated approach implemented in \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
-provides a direct measure of statistical uncertainty for these estimates.
+However, unlike the DM method, the integrated approach implemented in
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} provides a direct measure of statistical uncertainty for
+these estimates.
 As illustrated in the following sections, this enables gene-specific
 downstream inference such as differential variability analyses.
 
@@ -1202,7 +1206,7 @@ downstream inference such as differential variability analyses.
 \NormalTok{parameter_df}\OperatorTok{$}\NormalTok{cv2_scran <-}\StringTok{ }\KeywordTok{rowVars}\NormalTok{(}\KeywordTok{assay}\NormalTok{(sce_naive, }\StringTok{"normcounts"}\NormalTok{)) }\OperatorTok{/}
 \StringTok{  }\NormalTok{parameter_df}\OperatorTok{$}\NormalTok{mean_scran}\OperatorTok{^}\DecValTok{2}
 \NormalTok{parameter_df}\OperatorTok{$}\NormalTok{DM <-}\StringTok{ }\KeywordTok{DM}\NormalTok{(}
-  \DataTypeTok{mean =}\NormalTok{ parameter_df}\OperatorTok{$}\NormalTok{mean_scran,}
+  \DataTypeTok{mean =}\NormalTok{ parameter_df}\OperatorTok{$}\NormalTok{mean_scran, }
   \DataTypeTok{cv2 =}\NormalTok{ parameter_df}\OperatorTok{$}\NormalTok{cv2_scran}
 \NormalTok{)}
 
@@ -1216,55 +1220,40 @@ downstream inference such as differential variability analyses.
                         \DataTypeTok{legend.position =} \StringTok{"bottom"}\NormalTok{,}
                         \DataTypeTok{legend.text =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{angle =} \DecValTok{45}\NormalTok{, }\DataTypeTok{size =} \DecValTok{8}\NormalTok{),}
                         \DataTypeTok{legend.key.size =}  \KeywordTok{unit}\NormalTok{(}\FloatTok{0.8}\NormalTok{, }\StringTok{"cm"}\NormalTok{)))}
-\CommentTok{# Mean vs variability - BASiCS}
-\NormalTok{g1 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mu), }\KeywordTok{log}\NormalTok{(delta))) }\OperatorTok{+}
+
+\NormalTok{g1 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(cv2_scran), }\KeywordTok{log10}\NormalTok{(delta))) }\OperatorTok{+}
 \StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}
-    \DataTypeTok{x =} \StringTok{"BASiCS means"}\NormalTok{,}
-    \DataTypeTok{y =} \StringTok{"BASiCS}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
-\NormalTok{  )}
-\CommentTok{# Mean vs variability - scran}
-\NormalTok{g2 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mean_scran), }\KeywordTok{log}\NormalTok{(cv2_scran))) }\OperatorTok{+}
-\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}
-    \DataTypeTok{x =} \StringTok{"scran means"}\NormalTok{,}
-    \DataTypeTok{y =} \StringTok{"scran CV^2"}
-\NormalTok{  )}
-\CommentTok{# Variability - BASiCS and scran}
-\NormalTok{g3 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(cv2_scran), }\KeywordTok{log}\NormalTok{(delta))) }\OperatorTok{+}
-\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}
-    \DataTypeTok{x =} \StringTok{"scran CV^2"}\NormalTok{,}
-    \DataTypeTok{y =} \StringTok{"BASiCS}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
-\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"scran CV^2 (log10)"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"BASiCS}\CharTok{\textbackslash{}n}\StringTok{over-dispersion (log10)"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{geom_abline}\NormalTok{(}\DataTypeTok{slope =} \DecValTok{1}\NormalTok{, }\DataTypeTok{intercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
 
-\CommentTok{# Mean vs residual variability - BASiCS}
-\NormalTok{g4 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mu), epsilon)) }\OperatorTok{+}
+\NormalTok{g2 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(mean_scran), }\KeywordTok{log10}\NormalTok{(cv2_scran))) }\OperatorTok{+}
 \StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}
-    \DataTypeTok{x =} \StringTok{"BASiCS means"}\NormalTok{,}
-    \DataTypeTok{y =} \StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
-\NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"scran means (log10)"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"scran CV^2 (log10)"}\NormalTok{)}
 
-\CommentTok{# Mean vs residual variability - scran}
-\NormalTok{g5 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log}\NormalTok{(mean_scran), DM)) }\OperatorTok{+}
+\NormalTok{g3 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(mu), }\KeywordTok{log10}\NormalTok{(delta))) }\OperatorTok{+}
 \StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}
-    \DataTypeTok{x =} \StringTok{"scran means"}\NormalTok{,}
-    \DataTypeTok{y =} \StringTok{"scran DM"}
-\NormalTok{  ) }\OperatorTok{+}
-\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"BASiCS means (log10)"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"BASiCS}\CharTok{\textbackslash{}n}\StringTok{over-dispersion (log10)"}\NormalTok{)}
 
-\CommentTok{# Residual variability - BASiCS and scran}
-\NormalTok{g6 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(DM, epsilon)) }\OperatorTok{+}
+\NormalTok{g4 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(DM, epsilon)) }\OperatorTok{+}
 \StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
-\StringTok{  }\KeywordTok{labs}\NormalTok{(}
-    \DataTypeTok{x =} \StringTok{"scran DM"}\NormalTok{,}
-    \DataTypeTok{y =} \StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}
-\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"scran DM"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}\NormalTok{) }\OperatorTok{+}
 \StringTok{  }\KeywordTok{geom_abline}\NormalTok{(}\DataTypeTok{slope =} \DecValTok{1}\NormalTok{, }\DataTypeTok{intercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
+
+\NormalTok{g5 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(mean_scran), DM)) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"scran means (log10)"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"scran DM"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
+
+\NormalTok{g6 <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(parameter_df[ind_not_na, ], }\KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(mu), epsilon)) }\OperatorTok{+}
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"BASiCS means (log10)"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
 
 \NormalTok{(g1 }\OperatorTok{+}\StringTok{ }\NormalTok{g2 }\OperatorTok{+}\StringTok{ }\NormalTok{g3) }\OperatorTok{/}\StringTok{ }\NormalTok{(g4 }\OperatorTok{+}\StringTok{ }\NormalTok{g5 }\OperatorTok{+}\StringTok{ }\NormalTok{g6) }\OperatorTok{+}\StringTok{ }
 \StringTok{  }\KeywordTok{plot_annotation}\NormalTok{(}\DataTypeTok{tag_levels =} \StringTok{"A"}\NormalTok{) }\OperatorTok{&}\StringTok{ }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{plot.tag =} \KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size =} \DecValTok{15}\NormalTok{))}
@@ -1277,7 +1266,7 @@ downstream inference such as differential variability analyses.
 
 }
 
-\caption{Comparison of variability estimates and mean expression estimates using either BASiCS or using counts normalised with scaling normalisation factors estimated using scran. A: over-dispersion and mean expression estimates from BASiCS; B: residual over-dispersion and mean expression estimates from BASiCS; C: variance estimated using normalised counts using scran size factors against over-dispersion estimates from BASiCS; D: CV2 estimates and over-dispersion estimates from BASiCS; E: DM estimates and mean expression of normalised counts from scran; F: DM estimates from scran and residual over-dispersion estimates from BASiCS.}\label{fig:dispersion-vs-mean}
+\caption{Comparison of gene-specific transcriptional variability estimates and mean expression estimates obtained for each gene using BASiCS and scran. For this analysis, we exclude genes that are not expressed in at least 2 cells. BASiCS estimates for each gene are defined by the posterior median of the associated parameter. scran estimates for each gene are derived after applying the pooling normalisation strategy proposed by Lun et al. Points are coloured according to the local density of genes along the x- and y- axis. A: scran squared CV estimates versus BASiCS estimates for over-dispersion parameters. B: scran estimates for mean expression and the squared CV. C: BASiCS estimates for mean expression and over-dispersion parameters. D: BASiCS estimates for residual over-dispersion parameters versus DM values estimated by scran. E: scran estimates for mean expression and DM values. F: BASiCS estimates for mean expression and residual over-dispersion parameters.}\label{fig:dispersion-vs-mean}
 \end{figure}
 
 \hypertarget{hvglvg-detection-using-basics}{%
@@ -1334,11 +1323,11 @@ defines the threshold as the 90\% percentile of the above distribution.
 
 }
 
-\caption{TBC}\label{fig:plot-vg-naive}
+\caption{HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded.}\label{fig:plot-vg-naive}
 \end{figure}
 
-For the naive CD4\(^+\)T data, we obtained \emph{247}
-HVG and \emph{690} LVG.
+For the naive CD4\textsuperscript{+} T data, we obtained \emph{343}
+HVG and \emph{716} LVG.
 As shown in Figure \ref{fig:plot-vg-naive}, these genes are distributed across
 a wide range of mean expression values.
 As an illustration, Figure \ref{fig:plot-example-vg-naive} shows the
@@ -1357,54 +1346,45 @@ Instead, LVG tend to have more narrow and unimodal distributions
 \CommentTok{# Obtain normalised expression values}
 \NormalTok{DC_naive <-}\StringTok{ }\KeywordTok{BASiCS_DenoisedCounts}\NormalTok{(sce_naive, chain_naive)}
 
-\NormalTok{my_plot_vg <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(DC, HVG, LVG, low.exp, up.exp, genenames) \{}
-  
-\NormalTok{  HVG_Table <-}\StringTok{ }\KeywordTok{merge}\NormalTok{(HVG}\OperatorTok{@}\NormalTok{Table, genenames, }
-                     \DataTypeTok{by.x =} \StringTok{"GeneName"}\NormalTok{, }\DataTypeTok{by.y =} \StringTok{"ensembl_gene_id"}\NormalTok{, }
-                     \DataTypeTok{all.x =} \OtherTok{TRUE}\NormalTok{, }\DataTypeTok{sort =} \OtherTok{FALSE}\NormalTok{)}
-\NormalTok{  LVG_Table <-}\StringTok{ }\KeywordTok{merge}\NormalTok{(LVG}\OperatorTok{@}\NormalTok{Table, genenames, }
-                     \DataTypeTok{by.x =} \StringTok{"GeneName"}\NormalTok{, }\DataTypeTok{by.y =} \StringTok{"ensembl_gene_id"}\NormalTok{, }
-                     \DataTypeTok{all.x =} \OtherTok{TRUE}\NormalTok{, }\DataTypeTok{sort =} \OtherTok{FALSE}\NormalTok{)}
-  
-  \CommentTok{# Mean vs residual over-dispersion plot for all genes}
-\NormalTok{  vg_plot <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{data.frame}\NormalTok{(HVG_Table)) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{geom_point}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\KeywordTok{log10}\NormalTok{(Mu), Epsilon), }\DataTypeTok{na.rm =} \OtherTok{TRUE}\NormalTok{, }\DataTypeTok{colour =} \StringTok{"gray"}\NormalTok{) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{xlab}\NormalTok{(}\StringTok{"BASiCS means (log10)"}\NormalTok{) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{ylab}\NormalTok{(}\StringTok{"BASiCS residual}\CharTok{\textbackslash{}n}\StringTok{over-dispersion"}\NormalTok{) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{geom_hline}\NormalTok{(}\DataTypeTok{yintercept =} \DecValTok{0}\NormalTok{, }\DataTypeTok{lty =} \DecValTok{2}\NormalTok{) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{geom_vline}\NormalTok{(}\DataTypeTok{xintercept =} \KeywordTok{c}\NormalTok{(low.exp, up.exp), }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{)}
-    
-  \CommentTok{# Select HVG/LVG genes with similar mean expression values}
-  
-\NormalTok{  HVG1 <-}\StringTok{ }\NormalTok{HVG_Table[HVG_Table}\OperatorTok{$}\NormalTok{HVG }\OperatorTok{==}\StringTok{ }\OtherTok{TRUE} \OperatorTok{&}
-\StringTok{                      }\KeywordTok{log10}\NormalTok{(HVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{>}\StringTok{ }\NormalTok{low.exp }\OperatorTok{&}\StringTok{ }
-\StringTok{                      }\KeywordTok{log10}\NormalTok{(HVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{<}\StringTok{ }\NormalTok{up.exp,]}
-\NormalTok{  LVG1 <-}\StringTok{ }\NormalTok{LVG_Table[LVG_Table}\OperatorTok{$}\NormalTok{LVG }\OperatorTok{==}\StringTok{ }\OtherTok{TRUE} \OperatorTok{&}
-\StringTok{                      }\KeywordTok{log10}\NormalTok{(LVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{>}\StringTok{ }\NormalTok{low.exp }\OperatorTok{&}\StringTok{ }
-\StringTok{                      }\KeywordTok{log10}\NormalTok{(LVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{<}\StringTok{ }\NormalTok{up.exp,]  }
-  
-  \CommentTok{# Select top 3 HVG and LVG within the genes selected above}
-\NormalTok{  topHVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC[HVG1}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
-\NormalTok{  topLVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC[LVG1}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
-  \CommentTok{# Add genenames}
-  \KeywordTok{colnames}\NormalTok{(topHVG) <-}\StringTok{ }\NormalTok{HVG1}\OperatorTok{$}\NormalTok{external_gene_name[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{]}
-  \KeywordTok{colnames}\NormalTok{(topLVG) <-}\StringTok{ }\NormalTok{LVG1}\OperatorTok{$}\NormalTok{external_gene_name[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{]}
-  
-\NormalTok{  plot_hvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topHVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
-\StringTok{    }\KeywordTok{geom_violin}\NormalTok{(}\DataTypeTok{na.rm =} \OtherTok{TRUE}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{coord_flip}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.05}\NormalTok{, }\KeywordTok{max}\NormalTok{(}\KeywordTok{log10}\NormalTok{(DC}\OperatorTok{+}\DecValTok{1}\NormalTok{))) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{)) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Example HVG"}\NormalTok{) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{ylab}\NormalTok{(}\StringTok{"log10(norm count + 1)"}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Gene"}\NormalTok{)}
-\NormalTok{  plot_lvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topLVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
-\StringTok{    }\KeywordTok{geom_violin}\NormalTok{(}\DataTypeTok{na.rm =} \OtherTok{TRUE}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{coord_flip}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.05}\NormalTok{, }\KeywordTok{max}\NormalTok{(}\KeywordTok{log10}\NormalTok{(DC}\OperatorTok{+}\DecValTok{1}\NormalTok{))) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{)) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Example LVG"}\NormalTok{) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{ylab}\NormalTok{(}\StringTok{"log10(norm count + 1)"}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Gene"}\NormalTok{)}
-  
-\NormalTok{  vg_plot }\OperatorTok{+}\StringTok{ }\NormalTok{plot_hvg }\OperatorTok{+}\StringTok{ }\NormalTok{plot_lvg }\OperatorTok{+}\StringTok{ }\KeywordTok{plot_annotation}\NormalTok{(}\DataTypeTok{tag_levels =} \StringTok{"A"}\NormalTok{)}
-\NormalTok{\}}
+\NormalTok{HVG_Table <-}\StringTok{ }\KeywordTok{merge}\NormalTok{(HVG}\OperatorTok{@}\NormalTok{Table, genenames, }
+                   \DataTypeTok{by.x =} \StringTok{"GeneName"}\NormalTok{, }\DataTypeTok{by.y =} \StringTok{"ensembl_gene_id"}\NormalTok{, }
+                   \DataTypeTok{all.x =} \OtherTok{TRUE}\NormalTok{, }\DataTypeTok{sort =} \OtherTok{FALSE}\NormalTok{)}
+\NormalTok{LVG_Table <-}\StringTok{ }\KeywordTok{merge}\NormalTok{(LVG}\OperatorTok{@}\NormalTok{Table, genenames, }
+                   \DataTypeTok{by.x =} \StringTok{"GeneName"}\NormalTok{, }\DataTypeTok{by.y =} \StringTok{"ensembl_gene_id"}\NormalTok{, }
+                   \DataTypeTok{all.x =} \OtherTok{TRUE}\NormalTok{, }\DataTypeTok{sort =} \OtherTok{FALSE}\NormalTok{)}
 
-\KeywordTok{my_plot_vg}\NormalTok{(DC_naive, HVG, LVG, }\DataTypeTok{low.exp =} \DecValTok{2}\NormalTok{, }\DataTypeTok{up.exp =} \FloatTok{2.2}\NormalTok{, genenames)}
+\CommentTok{# Select HVG/LVG genes with similar mean expression values  }
+\NormalTok{low.exp <-}\StringTok{ }\FloatTok{2.8}
+\NormalTok{up.exp <-}\StringTok{ }\DecValTok{3}
+\NormalTok{HVG1 <-}\StringTok{ }\NormalTok{HVG_Table[HVG_Table}\OperatorTok{$}\NormalTok{HVG }\OperatorTok{==}\StringTok{ }\OtherTok{TRUE} \OperatorTok{&}
+\StringTok{                    }\KeywordTok{log10}\NormalTok{(HVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{>}\StringTok{ }\NormalTok{low.exp }\OperatorTok{&}\StringTok{ }
+\StringTok{                    }\KeywordTok{log10}\NormalTok{(HVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{<}\StringTok{ }\NormalTok{up.exp,]}
+\NormalTok{LVG1 <-}\StringTok{ }\NormalTok{LVG_Table[LVG_Table}\OperatorTok{$}\NormalTok{LVG }\OperatorTok{==}\StringTok{ }\OtherTok{TRUE} \OperatorTok{&}
+\StringTok{                    }\KeywordTok{log10}\NormalTok{(LVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{>}\StringTok{ }\NormalTok{low.exp }\OperatorTok{&}\StringTok{ }
+\StringTok{                    }\KeywordTok{log10}\NormalTok{(LVG_Table}\OperatorTok{$}\NormalTok{Mu) }\OperatorTok{<}\StringTok{ }\NormalTok{up.exp,]  }
+
+\CommentTok{# Order by epsilon and select top 3 HVG and LVG within the genes selected above}
+\NormalTok{HVG1 <-}\StringTok{ }\NormalTok{HVG1[}\KeywordTok{order}\NormalTok{(HVG1}\OperatorTok{$}\NormalTok{Epsilon, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{),]}
+\NormalTok{LVG1 <-}\StringTok{ }\NormalTok{LVG1[}\KeywordTok{order}\NormalTok{(LVG1}\OperatorTok{$}\NormalTok{Epsilon, }\DataTypeTok{decreasing =} \OtherTok{FALSE}\NormalTok{),]}
+\NormalTok{topHVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC_naive[HVG1}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
+\NormalTok{topLVG <-}\StringTok{ }\KeywordTok{log10}\NormalTok{(}\KeywordTok{t}\NormalTok{(DC_naive[LVG1}\OperatorTok{$}\NormalTok{GeneName[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{], ]) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{)}
+\CommentTok{# Add genenames}
+\KeywordTok{colnames}\NormalTok{(topHVG) <-}\StringTok{ }\NormalTok{HVG1}\OperatorTok{$}\NormalTok{external_gene_name[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{]}
+\KeywordTok{colnames}\NormalTok{(topLVG) <-}\StringTok{ }\NormalTok{LVG1}\OperatorTok{$}\NormalTok{external_gene_name[}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{]}
+  
+\NormalTok{myplot_params <-}\StringTok{ }\KeywordTok{list}\NormalTok{(}\KeywordTok{geom_violin}\NormalTok{(}\DataTypeTok{na.rm =} \OtherTok{TRUE}\NormalTok{),}
+                      \KeywordTok{coord_flip}\NormalTok{(),}
+                      \KeywordTok{ylim}\NormalTok{(}\OperatorTok{-}\FloatTok{0.05}\NormalTok{, }\KeywordTok{max}\NormalTok{(}\KeywordTok{log10}\NormalTok{(DC_naive }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{))),}
+                      \KeywordTok{geom_jitter}\NormalTok{(}\DataTypeTok{position=}\KeywordTok{position_jitter}\NormalTok{(}\FloatTok{0.3}\NormalTok{)),}
+                      \KeywordTok{ylab}\NormalTok{(}\StringTok{"log10(norm count + 1)"}\NormalTok{),}
+                      \KeywordTok{xlab}\NormalTok{(}\StringTok{"Gene"}\NormalTok{))}
+\NormalTok{plot_hvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topHVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}\StringTok{ }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Example HVG"}\NormalTok{)}
+
+\NormalTok{plot_lvg <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{melt}\NormalTok{(topLVG), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ Var2, }\DataTypeTok{y =}\NormalTok{ value)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\NormalTok{myplot_params }\OperatorTok{+}\StringTok{ }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Example LVG"}\NormalTok{)}
+  
+\NormalTok{plot_hvg }\OperatorTok{+}\StringTok{ }\NormalTok{plot_lvg }\OperatorTok{+}\StringTok{ }\KeywordTok{plot_annotation}\NormalTok{(}\DataTypeTok{tag_levels =} \StringTok{"A"}\NormalTok{) }
 \end{Highlighting}
 \end{Shaded}
 
@@ -1414,11 +1394,11 @@ Instead, LVG tend to have more narrow and unimodal distributions
 
 }
 
-\caption{TBC}\label{fig:plot-example-vg-naive}
+\caption{BASiCS denoised counts for example HVG and LVG with similar overall levels of expression.}\label{fig:plot-example-vg-naive}
 \end{figure}
 
-\hypertarget{differential-mean-expression-testing-using-basics}{%
-\subsection{Differential mean expression testing using BASiCS}\label{differential-mean-expression-testing-using-basics}}
+\hypertarget{differential-mean-and-variability-testing-using-basics}{%
+\subsection{Differential mean and variability testing using BASiCS}\label{differential-mean-and-variability-testing-using-basics}}
 
 This section highlights the use of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} to perform differential
 expression tests for mean and variability between different pre-specified
@@ -1435,26 +1415,35 @@ T cell differentiation \citep{Zhu2010}. Therefore, any heterogeneity in the acti
 cell population does not arise from cells residing in different lineage-specific
 differentiation states.
 
-To perform robust differential mean expression testing, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}
-removes genes with small effective sample size when calculating EFDR and
-performing differential expression testing.
-As explained \protect\hyperlink{naive-convergence}{above}, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} automatically
-excludes genes with an effective sample size less than 100.
-
-The default settings for differential mean expression testing are as follows:
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} implements differential expression testing via the
+\texttt{BASiCS\_TestDE} function. The main input parameters for \texttt{BASiCS\_TestDE} are:
 
 \begin{itemize}
 \item
-  \texttt{EpsilonM}: Log\textsubscript{2} fold change (LFC) threshold for changes in mean expression.
-  Default value is \(\log_2(1.5)\approx0.41\).
-  differential tests. Default value is 100.
+  \texttt{Chain1} and \texttt{Chain2}: two \texttt{BASiCS\_Chain} objects created via the \texttt{BASiCS\_MCMC}
+  function. Each object corresponds to a different pre-specified group of cells
 \item
-  \texttt{EFDR\_M}: Expected false discovery rate: 10\%
+  \texttt{EpsilonM} and \texttt{EpsilonR}: introduce a minimum effect size (in a
+  \(\log_2\) fold change scale) for the detection of changes in mean or residual
+  over-dispersion, respectively.
+  This enables us to discard small expression changes that are less biologically
+  meaningful.
+  By default, we set these thresholds to be equivalent to a 50\% change between
+  the groups.
+  However, different thresholds may be required depending on the context.
+  For example, if most genes show strong differences in mean expression, it can be
+  beneficial to increase the value of \texttt{EpsilonM} to focus on strong changes in
+  mean expression.
 \item
-  \texttt{MinESS}: Minimum effective sample size for genes to be included in
+  \texttt{EFDR\_M} and \texttt{EFDR\_R}: define the target EFDR to calibrate the
+  decision rule associated to changes in mean or residual over-dispersion,
+  respectively. Default is 10\%.\\
 \item
-  \texttt{Plot}, \texttt{PlotOffset}: Boolean to control if results are plotted.
-  Default value is TRUE for both.
+  \texttt{MinESS}: Minimum ESS threshold beyond which genes will be excluded from the
+  differential expression tests.
+  This is used to increase the robustness of the results, excludes genes for which
+  the sampler explored the parameter space less efficiently (see
+  \emph{MCMC diagnostics} Section). Default: \texttt{MinESS} = 100.
 \end{itemize}
 
 \begin{Shaded}
@@ -1463,150 +1452,73 @@ The default settings for differential mean expression testing are as follows:
 \NormalTok{Test_DE <-}\StringTok{ }\KeywordTok{BASiCS_TestDE}\NormalTok{(}
   \DataTypeTok{Chain1 =}\NormalTok{ chain_naive,}
   \DataTypeTok{Chain2 =}\NormalTok{ chain_active,}
-  \DataTypeTok{EpsilonM =} \KeywordTok{log2}\NormalTok{(}\FloatTok{1.5}\NormalTok{),}
   \DataTypeTok{GroupLabel1 =} \StringTok{"Naive"}\NormalTok{,}
   \DataTypeTok{GroupLabel2 =} \StringTok{"Active"}\NormalTok{,}
   \DataTypeTok{Plot =} \OtherTok{FALSE}\NormalTok{,}
-  \DataTypeTok{PlotOffset =} \OtherTok{FALSE}\NormalTok{,}
-  \DataTypeTok{MinESS =} \DecValTok{100}
+  \DataTypeTok{PlotOffset =} \OtherTok{FALSE}
 \NormalTok{)}
+\NormalTok{TableMean <-}\StringTok{ }\KeywordTok{format}\NormalTok{(Test_DE, }\DataTypeTok{Which =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Filter =} \OtherTok{FALSE}\NormalTok{)}
+\NormalTok{TableResDisp <-}\StringTok{ }\KeywordTok{format}\NormalTok{(Test_DE, }\DataTypeTok{Which =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Filter =} \OtherTok{FALSE}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-After running the test, we can now visualise the results in form of a MA-plot
-(log ratio \emph{versus} mean average; Figure \ref{fig:visualise-MA-plot})
-and volcano plot (posterior probability \emph{versus} log ratio; Figure
-\ref{fig:visualise-volcano-plot}).
+After running the test, we can now visualise the results in form of MA-plots
+(log ratio M versus mean average A) and volcano plots (posterior probability
+versus log ratio). For our analysis, these are displayed in
+Figure @ref(visualise\_DE\_plot).
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"MA"}\NormalTok{)}
+\NormalTok{(}\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"MA"}\NormalTok{) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"Volcano"}\NormalTok{)) }\OperatorTok{/}\StringTok{ }
+\StringTok{  }\NormalTok{(}\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"MA"}\NormalTok{) }\OperatorTok{+}
+\StringTok{     }\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"Volcano"}\NormalTok{))}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}
 
-{\centering \includegraphics{figure/visualise-MA-plot-1} 
+{\centering \includegraphics{figure/visualise-DE-plot-1} 
 
 }
 
-\caption{Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group.}\label{fig:visualise-MA-plot}
+\caption{Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group.}\label{fig:visualise-DE-plot}
 \end{figure}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"Volcano"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{figure}
-
-{\centering \includegraphics{figure/visualise-volcano-plot-1} 
-
-}
-
-\caption{Posterior probability of differential expression is plotted again log fold change. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group.}\label{fig:visualise-volcano-plot}
-\end{figure}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{TableMean <-}\StringTok{ }\KeywordTok{format}\NormalTok{(Test_DE, }\DataTypeTok{Which =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Filter =} \OtherTok{FALSE}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-As we can see for the comparison of naive and activated CD4\textsuperscript{+} T cells, most
-genes show strong differences in mean expression.
-In such cases, it can be beneficial to increase the LFC threshold or to
-decrease the target EFDR.
-Here, we set the LFC threshold to \(\log_2(2)=1\) to detect genes
-with strong changes in mean expression. We also set \texttt{MinESS} to 100,
-causing genes with effective sample size less than 100 in either input chain
-to be excluded from EFDR calibration and differential expression testing.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{# Perform differential testing}
-\NormalTok{Test_DE <-}\StringTok{ }\KeywordTok{BASiCS_TestDE}\NormalTok{(}
-  \DataTypeTok{Chain1 =}\NormalTok{ chain_naive,}
-  \DataTypeTok{Chain2 =}\NormalTok{ chain_active,}
-  \DataTypeTok{EpsilonM =} \KeywordTok{log2}\NormalTok{(}\DecValTok{2}\NormalTok{),}
-  \DataTypeTok{GroupLabel1 =} \StringTok{"Naive"}\NormalTok{,}
-  \DataTypeTok{GroupLabel2 =} \StringTok{"Active"}\NormalTok{,}
-  \DataTypeTok{Plot =} \OtherTok{FALSE}\NormalTok{,}
-  \DataTypeTok{PlotOffset =} \OtherTok{FALSE}\NormalTok{,}
-  \DataTypeTok{MinESS =} \DecValTok{100}
-\NormalTok{)}
-\NormalTok{TableMean <-}\StringTok{ }\KeywordTok{format}\NormalTok{(Test_DE, }\DataTypeTok{Which =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Filter =} \OtherTok{FALSE}\NormalTok{)}
-\NormalTok{TableDisp <-}\StringTok{ }\KeywordTok{format}\NormalTok{(Test_DE, }\DataTypeTok{Which =} \StringTok{"Disp"}\NormalTok{, }\DataTypeTok{Filter =} \OtherTok{FALSE}\NormalTok{)}
-\KeywordTok{table}\NormalTok{(TableMean}\OperatorTok{$}\NormalTok{ResultDiffMean)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## 
-##        Active+ ExcludedLowESS         Naive+         NoDiff 
-##           1269             20           1134           6530
-\end{verbatim}
+It may also be useful to perform functional enrichment analysis to identify
+biologically meaningful patterns amongst differentially expressed genes.
+For example, this could be done using \emph{\href{https://bioconductor.org/packages/3.11/goseq}{goseq}} \citep{Young2010}.
+We do not perform this here, as it is outside of the scope of
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
+However, a workflow for this process is detailed in Supplementary section TODO.
 
 When interpreting the results of differential expression tests, it is useful
-to visualise the differentially expressed genes in order to appraise the
-significance of the results. It is also useful to
-perform functional enrichment analysis to identify biologically
-meaningful patterns, for example using \emph{\href{https://bioconductor.org/packages/3.11/goseq}{goseq}} \citep{Young2010}.
-We do not perform this here, as it is outside of the scope of
-\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}. However, a workflow for this process
-is detailed in Supplementary section TODO.
-
-It is useful to visualise differentially expressed genes to ensure that
-the identified genes are the result of biologically meaningful shifts in
-expression and not technical issues. As an example, we visualise the
-expression of Cd69, a known marker of T cell activation \citep{Ziegler1994},
-in Figures \ref{fig:violin-plots} and \ref{fig:pca-cd69}.
+to visualise expression patterns for differentially expressed genes in order to
+appraise the significance of the results and guide interpretation.
+First, here we focus on genes with changes in mean expression.
+For example, our test identifies a significant different in mean expression for
+Cd69 (ENSMUSG00000030156), a known marker of T cell activation \citep{Ziegler1994}
+(Figures @ref(violin\_plot\_cd69)).
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \CommentTok{# Expression of Cd69 in both conditions}
-\NormalTok{ind_cd <-}\StringTok{ }\NormalTok{genenames}\OperatorTok{$}\NormalTok{external_gene_name }\OperatorTok{==}\StringTok{ "Cd69"}
+\NormalTok{ind_cd <-}\StringTok{ }\KeywordTok{which}\NormalTok{(}\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{external_gene_name }\OperatorTok{==}\StringTok{ "Cd69"}\NormalTok{)}
+\NormalTok{TableMean[TableMean}\OperatorTok{$}\NormalTok{GeneName }\OperatorTok{==}\StringTok{ }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{ensembl_gene_id[ind_cd],]}
 \KeywordTok{plotExpression}\NormalTok{(sce_naive_active,}
-  \DataTypeTok{features =}\NormalTok{ genenames[ind_cd, }\DecValTok{1}\NormalTok{],}
-  \DataTypeTok{x =} \StringTok{"Stimulus"}
+               \DataTypeTok{features =}\NormalTok{ genenames[ind_cd, }\DecValTok{1}\NormalTok{],}
+               \DataTypeTok{x =} \StringTok{"Stimulus"}
 \NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{figure}
-
-{\centering \includegraphics{figure/violin-plots-1} 
-
-}
-
-\caption{Violin plot of Cd69 expression in naive and active cells.}\label{fig:violin-plots}
-\end{figure}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{plotReducedDim}\NormalTok{(sce_naive_active,}
-  \DataTypeTok{dimred =} \StringTok{"PCA"}\NormalTok{,}
-  \DataTypeTok{colour_by =}\NormalTok{ genenames[ind_cd, }\DecValTok{1}\NormalTok{]}
-\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{scale_fill_viridis}\NormalTok{(}\DataTypeTok{name =} \StringTok{"Cd69"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{figure}
-
-{\centering \includegraphics{figure/pca-cd69-1} 
-
-}
-
-\caption{Principal component plot of naive and stimulated T cells. Colour indicates Cd69 expression level.}\label{fig:pca-cd69}
-\end{figure}
-
-It may also useful to visualise many genes at once. This is useful in quality
-checking the results of a differential expression analysis, and may also
-aid in identifying systematic patterns among differentially expressed genes
-and guiding downstream analysis. Here we use \emph{\href{https://bioconductor.org/packages/3.11/ComplexHeatmap}{ComplexHeatmap}}
-to visualise genes that are up-regulated in each condition \citep{Gu2016},
-the output of which is shown in Figure \ref{fig:heatmap-diffexp}.
+It may also useful to visualise multiple genes at once.
+This is useful in quality checking the results of a differential expression
+analysis, and may also aid in identifying systematic patterns among
+differentially expressed genes and guiding downstream analysis.
+Here we use \emph{\href{https://bioconductor.org/packages/3.11/ComplexHeatmap}{ComplexHeatmap}} to visualise genes that are
+up-regulated in each condition \citep{Gu2016}, the output of which is shown in
+Figure \ref{fig:heatmap-diffexp}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1651,7 +1563,7 @@ the output of which is shown in Figure \ref{fig:heatmap-diffexp}.
 \NormalTok{max_range <-}\StringTok{ }\KeywordTok{log}\NormalTok{(}\KeywordTok{max}\NormalTok{(}\KeywordTok{abs}\NormalTok{(all_mean)))}
 \CommentTok{## colour scale symmetric around zero}
 \NormalTok{colour <-}\StringTok{ }\KeywordTok{colorRamp2}\NormalTok{(}\KeywordTok{seq}\NormalTok{(}\OperatorTok{-}\NormalTok{max_range, max_range, }\DataTypeTok{length.out =} \DecValTok{9}\NormalTok{),}
-  \KeywordTok{rev}\NormalTok{(}\KeywordTok{brewer.pal}\NormalTok{(}\DecValTok{9}\NormalTok{, }\StringTok{"RdBu"}\NormalTok{)))}
+                     \KeywordTok{rev}\NormalTok{(}\KeywordTok{brewer.pal}\NormalTok{(}\DecValTok{9}\NormalTok{, }\StringTok{"RdBu"}\NormalTok{)))}
 
 \CommentTok{## Combine count matrices by cell type}
 \NormalTok{counts_active <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(act_counts_act, act_counts_nai)}
@@ -1683,37 +1595,81 @@ the output of which is shown in Figure \ref{fig:heatmap-diffexp}.
     \DataTypeTok{col =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{log_mu =}\NormalTok{ colour)}
 \NormalTok{  ),}
   \DataTypeTok{col =} \KeywordTok{viridis}\NormalTok{(}\DecValTok{100}\NormalTok{)) }\OperatorTok{+}
-\KeywordTok{Heatmap}\NormalTok{(}
-  \KeywordTok{log10}\NormalTok{(counts_active }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{),}
-  \DataTypeTok{row_labels =}\NormalTok{ syms,}
-  \DataTypeTok{column_dend_height =} \KeywordTok{unit}\NormalTok{(}\FloatTok{0.2}\NormalTok{, }\StringTok{"npc"}\NormalTok{),}
-  \DataTypeTok{row_names_gp =} \KeywordTok{gpar}\NormalTok{(}\DataTypeTok{fontsize =}\NormalTok{ fontsize),}
-  \DataTypeTok{column_title =} \StringTok{"Active cells"}\NormalTok{,}
-  \DataTypeTok{column_title_side =} \StringTok{"bottom"}\NormalTok{,}
-  \DataTypeTok{show_column_names =} \OtherTok{FALSE}\NormalTok{,}
-  \DataTypeTok{name =} \StringTok{"log10(count + 1)"}\NormalTok{,}
-  \DataTypeTok{split =}\NormalTok{ split,}
-  \DataTypeTok{right_annotation =} \KeywordTok{rowAnnotation}\NormalTok{(}
-    \DataTypeTok{log_mu =} \KeywordTok{log}\NormalTok{(}\KeywordTok{c}\NormalTok{(active_mean}\OperatorTok{$}\NormalTok{Mean2, naive_mean}\OperatorTok{$}\NormalTok{Mean2)),}
-    \DataTypeTok{col =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{log_mu =}\NormalTok{ colour)}
-\NormalTok{  ),}
-  \DataTypeTok{cluster_rows =} \OtherTok{FALSE}\NormalTok{,}
-  \DataTypeTok{col =} \KeywordTok{viridis}\NormalTok{(}\DecValTok{100}\NormalTok{))}
+\StringTok{  }\KeywordTok{Heatmap}\NormalTok{(}
+    \KeywordTok{log10}\NormalTok{(counts_active }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{),}
+    \DataTypeTok{row_labels =}\NormalTok{ syms,}
+    \DataTypeTok{column_dend_height =} \KeywordTok{unit}\NormalTok{(}\FloatTok{0.2}\NormalTok{, }\StringTok{"npc"}\NormalTok{),}
+    \DataTypeTok{row_names_gp =} \KeywordTok{gpar}\NormalTok{(}\DataTypeTok{fontsize =}\NormalTok{ fontsize),}
+    \DataTypeTok{column_title =} \StringTok{"Active cells"}\NormalTok{,}
+    \DataTypeTok{column_title_side =} \StringTok{"bottom"}\NormalTok{,}
+    \DataTypeTok{show_column_names =} \OtherTok{FALSE}\NormalTok{,}
+    \DataTypeTok{name =} \StringTok{"log10(count + 1)"}\NormalTok{,}
+    \DataTypeTok{split =}\NormalTok{ split,}
+    \DataTypeTok{right_annotation =} \KeywordTok{rowAnnotation}\NormalTok{(}
+      \DataTypeTok{log_mu =} \KeywordTok{log}\NormalTok{(}\KeywordTok{c}\NormalTok{(active_mean}\OperatorTok{$}\NormalTok{Mean2, naive_mean}\OperatorTok{$}\NormalTok{Mean2)),}
+      \DataTypeTok{col =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{log_mu =}\NormalTok{ colour)}
+\NormalTok{    ),}
+    \DataTypeTok{cluster_rows =} \OtherTok{FALSE}\NormalTok{,}
+    \DataTypeTok{col =} \KeywordTok{viridis}\NormalTok{(}\DecValTok{100}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+While other computational tools exist to perform differential mean expression
+analysis, we next want to highlight the use of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} for
+differential variability testing.
+To avoid the mean versus over-dispersion confounding, we recommend this analysis
+to use residual over-dispersion parameters \(\epsilon_i\) as input.
+
+While one could focus on the gene sets that show significant changes in
+residual over-dispersion, here, we want to highlight how to analyse
+changes in mean expression in parallel to changes in variability.
+For this, we will first combine the results of the differential mean expression
+and the differential residual over-dispersion test.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{TableCombined <-}\StringTok{ }\KeywordTok{merge}\NormalTok{(TableMean, TableResDisp, }\DataTypeTok{by =} \StringTok{"GeneName"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+While the analysis in the previous section is well suited to detect global
+changes in variability (e.g.~detecting if one cell population overall displays
+higher expression variabilty), it does not allow the testing of changes in
+mean expression and expression variability in parallel.
+For this, \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} compares the residual over-dispersion
+parameters, which do not scale with mean expression, between the two conditions.
+Here, we remove genes that are lowly expressed in both conditions.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# exclude lowly expressed genes}
+\NormalTok{high_expr <-}\StringTok{ }\NormalTok{TableMean}\OperatorTok{$}\NormalTok{Mean1 }\OperatorTok{>}\StringTok{ }\DecValTok{1} \OperatorTok{&}\StringTok{ }\NormalTok{TableMean}\OperatorTok{$}\NormalTok{Mean2 }\OperatorTok{>}\StringTok{ }\DecValTok{1}
+\end{Highlighting}
+\end{Shaded}
+
+We can now visualise the changes in residual over-dispersion between naive and
+activated CD4\textsuperscript{+} T cells in the form of a MA-plot
+(Figure \ref{fig:diff-res-plot}).
+In this visualisation, the difference between the posterior medians of the
+residual over-dispersion parameters \(\epsilon\) are shown on the y-axis.
+Epsilon values for genes that are not expressed in at least 2 cells per
+conditions are marked as \texttt{NA} and are therefore not being displayed.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{TableResDisp <-}\StringTok{ }\KeywordTok{format}\NormalTok{(Test_DE, }\DataTypeTok{Which =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Filter =} \OtherTok{FALSE}\NormalTok{)}
+\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Plot =} \StringTok{"MA"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}
 
-{\centering \includegraphics{figure/heatmap-diffexp-1} 
+{\centering \includegraphics{figure/diff-res-plot-1} 
 
 }
 
-\caption{Heatmap of 30 differentially expressed genes in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the logged average expression for each gene in each population.}\label{fig:heatmap-diffexp}
+\caption{Distance of residual over-dispersion in naive cells relative to active cells. Colour indicates whether genes were excluded from testing, and whether a significant difference was identified between the two groups for that gene.}\label{fig:diff-res-plot}
 \end{figure}
-
-While other computational tools exist to perform differential mean expression
-analysis, we next want to highlight the use of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} for
-differential variability testing.
 
 {\small\bibliography{Workflow.bib}}
 
