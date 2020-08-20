@@ -1260,18 +1260,9 @@ TableMean <- format(Test_DE, Which = "Mean", Filter = FALSE)
 TableResDisp <- format(Test_DE, Which = "ResDisp", Filter = FALSE)
 ```
 
-After running the test, we can now visualise the results in form of MA-plots 
-(log ratio M versus mean average A) and volcano plots (posterior probability 
-versus log ratio). For our analysis, these are displayed in 
-Figure \@ref(visualise_DE_plot). 
-
-```{r visualise-DE-plot, fig.cap="Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
-(BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "MA") +
-    BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "Volcano")) / 
-  (BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plots = "MA") +
-     BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plots = "Volcano"))
-```
-
+After running the test, it is important to visualise the results in order to
+interpret the results and identify systematic patterns among differentially
+expressed genes. 
 It may also be useful to perform functional enrichment analysis to identify 
 biologically meaningful patterns amongst differentially expressed genes. 
 For example, this could be done using `r Biocpkg("goseq")` [@Young2010].
@@ -1280,36 +1271,53 @@ We do not perform this here, as it is outside of the scope of
 However, a workflow for this process is detailed in Supplementary section TODO. 
 <!--- INSTEAD OF SUPP, IS THERE ANOTHER WORKFLOW TO CITE HERE? ---> 
 
+Here we first focus on the differential mean expression test. 
+MA-plots (log fold change M versus mean average A) and volcano plots (posterior 
+probability versus log fold change) are popular graphical summaries in this
+context (see Figure \@ref(visualise-DE-mean-plot)). 
+
+```{r visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between naive and active cells. Log-fold changes of average expression in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
+p1 <- BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "MA") 
+p2 <- BASiCS_PlotDE(Test_DE, Parameters = "Mean", Plots = "Volcano") 
+p1 / p2
+```
+
 When interpreting the results of differential expression tests, it is useful
 to visualise expression patterns for differentially expressed genes in order to 
 appraise the significance of the results and guide interpretation. 
-First, here we focus on genes with changes in mean expression. 
-For example, our test identifies a significant different in mean expression for
-Cd69 (ENSMUSG00000030156), a known marker of T cell activation [@Ziegler1994]
-(Figures \@ref(violin_plot_cd69)).
+For this purpose, we obtain normalised expression values for each group of 
+cells after correcting for global changes in overall expression between the 
+groups, i.e. a global offset that leads to uniformly higher expression across 
+genes within one group of cells (such step is also internally done by 
+`BASiCS_TestDE`). 
+Among others, the latter can be due to overall differences in mRNA content
+between the groups. 
 
-<!--- CV: change this plot to use denoised counts ? ---> 
-```{r violin-plot-cd69, eval = FALSE, fig.cap="Violin plot of Cd69 expression in naive and active cells."}
-# Expression of Cd69 in both conditions
-ind_cd <- which(rowData(sce_naive_active)$external_gene_name == "Cd69")
-TableMean[TableMean$GeneName == rowData(sce_naive_active)$ensembl_gene_id[ind_cd],]
-plotExpression(sce_naive_active,
-               features = genenames[ind_cd, 1],
-               x = "Stimulus"
-)
+```{r offset-denoised}
+# Calculate a global offset between the groups
+my_offset <- BASiCS_CorrectOffset(chain_naive, chain_active)
+my_offset$Offset
+# Get offset corrected chain
+chain_naive <- my_offset$Chain
+# Obtain normalised counts within each group of cells
+DC_naive <- BASiCS_DenoisedCounts(sce_naive, chain_naive)
+DC_active <- BASiCS_DenoisedCounts(sce_active, chain_active)
 ```
 
-It may also useful to visualise multiple genes at once. 
-This is useful in quality checking the results of a differential expression 
-analysis, and may also aid in identifying systematic patterns among 
-differentially expressed genes and guiding downstream analysis. 
-Here we use `r Biocpkg("ComplexHeatmap")` to visualise genes that are 
-up-regulated in each condition [@Gu2016], the output of which is shown in 
-Figure \@ref(fig:heatmap-diffexp).
+To visualise expression patterns for multiple genes at once, we use the 
+`r Biocpkg("ComplexHeatmap")` [@Gu2016] Biocondutor package, grouping genes
+according to the result of the differential mean expression test (i.e. 
+up-regulated in naive/active cells or non differentially expressed). 
+Figure \@ref(fig:heatmap-diffexp) shows 15 genes are shown for each group. 
+Fpr example, amongst the non DE group, we observe several genes ribosomal 
+proteins (e.g. *Rps14*). 
+Genes in this family have been previously observed to have stable expression
+across a wide range of scRNAseq datasets in mouse and human [REF]. 
+Moreover, the genes that are found to be upregulated in the active group include 
+known markers of T cell activation such as **Cd69* [@Ziegler1994]. 
 
-<!--- CV: Change to use BASiCS_DenoisedCounts ---> 
-  
-```{r heatmap-diffexp, eval = FALSE, fig.width = 7, fig.height = 5, fig.cap="Heatmap of 30 differentially expressed genes in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the logged average expression for each gene in each population."}
+
+```{r heatmap-diffexp, fig.width = 7, fig.height = 6, fig.cap="Heatmap displays normalised expression values (log10(x + 1) scale) for naive and active cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in naive or active cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 library("ComplexHeatmap")
 library("circlize")
 library("RColorBrewer")
@@ -1326,6 +1334,12 @@ active_mean <- TableMean[ind_a, ]
 active_mean <- active_mean[order(active_mean$MeanLog2FC, decreasing = TRUE), ]
 active_mean$Symbol <- genenames[active_mean$GeneName, 2]
 
+# Non DE genes
+ind_non <- TableMean$ResultDiffMean == "NoDiff"
+nonde_mean <- TableMean[ind_non, ]
+nonde_mean <- nonde_mean[order(abs(nonde_mean$MeanLog2FC), decreasing = FALSE), ]
+nonde_mean$Symbol <- genenames[nonde_mean$GeneName, 2]
+
 heatmap_ngenes <- 15
 heatmap_seq <- seq_len(heatmap_ngenes)
 
@@ -1333,20 +1347,28 @@ heatmap_seq <- seq_len(heatmap_ngenes)
 active_ind <- order(active_mean$ProbDiffMean, decreasing = TRUE)[heatmap_seq]
 active_mean <- active_mean[active_ind, ]
 ## subset counts from each cell type to these genes
-act_counts_act <- counts(sce_active)[active_mean$GeneName, ]
-nai_counts_act <- counts(sce_naive)[active_mean$GeneName, ]
+act_counts_act <- DC_active[active_mean$GeneName, ]
+nai_counts_act <- DC_naive[active_mean$GeneName, ]
 
 ## Select genes with largest probability of differential expression
 s_ind <- order(naive_mean$ProbDiffMean, decreasing = TRUE)[heatmap_seq]
 naive_mean <- naive_mean[s_ind, ]
 ## subset counts from each cell type to these genes
-act_counts_nai <- counts(sce_active)[naive_mean$GeneName, ]
-nai_counts_nai <- counts(sce_naive)[naive_mean$GeneName, ]
+act_counts_nai <- DC_active[naive_mean$GeneName, ]
+nai_counts_nai <- DC_naive[naive_mean$GeneName, ]
+
+## Select genes with lowest probability of differential expression
+s_ind <- order(nonde_mean$ProbDiffMean, decreasing = FALSE)[heatmap_seq]
+nonde_mean <- nonde_mean[s_ind, ]
+## subset counts from each cell type to these genes
+act_counts_nde <- DC_active[nonde_mean$GeneName, ]
+nai_counts_nde <- DC_naive[nonde_mean$GeneName, ]
 
 ## Calculate max absolute value for min/max of colour scale
 all_mean <- c(
   active_mean$Mean1, active_mean$Mean2,
-  naive_mean$Mean1, naive_mean$Mean2
+  naive_mean$Mean1, naive_mean$Mean2,
+  nonde_mean$Mean1, nonde_mean$Mean2
 )
 max_range <- log(max(abs(all_mean)))
 ## colour scale symmetric around zero
@@ -1354,14 +1376,15 @@ colour <- colorRamp2(seq(-max_range, max_range, length.out = 9),
                      rev(brewer.pal(9, "RdBu")))
 
 ## Combine count matrices by cell type
-counts_active <- rbind(act_counts_act, act_counts_nai)
-counts_naive <- rbind(nai_counts_act, nai_counts_nai)
+counts_active <- rbind(act_counts_act, act_counts_nai, act_counts_nde)
+counts_naive <- rbind(nai_counts_act, nai_counts_nai, nai_counts_nde)
 
 ## split heatmaps by gene category
 split <- data.frame(
   Upregulated = c(
     rep("Up-regulated \nin active", nrow(act_counts_act)),
-    rep("Up-regulated \nin naive", nrow(act_counts_nai))
+    rep("Up-regulated \nin naive", nrow(act_counts_nai)),
+    rep("Non DE", nrow(act_counts_nde))
   )
 )
 syms <- genenames[rownames(counts_active), 2]
@@ -1379,8 +1402,142 @@ Heatmap(
   cluster_rows = FALSE,
   split = split,
   right_annotation = rowAnnotation(
-    log_mu = log(c(active_mean$Mean1, naive_mean$Mean1)),
+    log_mu = log(c(active_mean$Mean1, naive_mean$Mean1, nonde_mean$Mean1)),
     col = list(log_mu = colour)
+  ),
+  col = viridis(100)) +
+  Heatmap(
+    log10(counts_active + 1),
+    row_labels = syms,
+    column_dend_height = unit(0.2, "npc"),
+    row_names_gp = gpar(fontsize = fontsize),
+    column_title = "Active cells",
+    column_title_side = "bottom",
+    show_column_names = FALSE,
+    #name = "log10(count + 1)",
+    split = split,
+    right_annotation = rowAnnotation(
+      log_mu = log(c(active_mean$Mean2, naive_mean$Mean2, nonde_mean$Mean2)),
+      col = list(log_mu = colour)
+    ),
+    cluster_rows = FALSE,
+    col = viridis(100))
+```
+
+Whist several computational tools exist to perform differential mean expression
+analysis using scRNAseq data [@Soneson2018], they key focus of
+`r Biocpkg("BASiCS")` is to perform differential variability testing:
+identifying changes in transcriptional variability between the groups of cells. 
+To avoid the mean versus over-dispersion confounding, we recommend this analysis
+to use residual over-dispersion parameters $\epsilon_i$ as input. 
+
+We can now visualise the changes in residual over-dispersion between naive and 
+activated CD4^+^ T cells in the form of a MA-plot 
+(Figure \@ref(fig:diff-res-plot)).
+In this visualisation, the difference between the posterior medians of the 
+residual over-dispersion parameters $\epsilon$ are shown on the y-axis.
+Epsilon values for genes that are not expressed in at least 2 cells per 
+conditions are marked as `NA` and are therefore not being displayed.
+
+
+```{r diff-res-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential residual overdispersion test between naive and active cells. Differences of residual overdispersion in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual overdispersion in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
+TableResDisp <- format(Test_DE, Which = "ResDisp", Filter = FALSE)
+p1 <- BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plots = "MA") 
+p2 <- BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plots = "Volcano") 
+p1 / p2
+```
+
+While one could focus on the genesets that show significant changes in
+residual over-dispersion, here, we want to highlight how to analyse 
+changes in mean expression in parallel to changes in variability.
+For this, we will first combine the results of the differential mean expression 
+and the differential residual over-dispersion test.
+<!---We will further remove the genes that were excluded from the test and those 
+that are not expressed in at least 2 cells in either condition.---> 
+
+```{r combine-results}
+TableCombined <- merge(TableMean, TableResDisp, by = "GeneName")
+```
+
+As discussed [previously](#vis-diff-exp), it is useful to visualise the results
+of differential expression tests in order to appraise the quality of the 
+results, and to identify systematic patterns among the genes identified.
+For this purpose, we again use `r Biocpkg("ComplexHeatmap")`; the result is
+shown in Figure \@ref(fig:heatmap-diffresdisp).
+
+```{r heatmap-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Heatmap of 30 genes with higher residual over-dispersion in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the residual over-dispersion for each gene in that population."}
+# More variable in naive, but non DE
+ind_n <- TableCombined$ResultDiffResDisp == "Naive+" &
+  TableCombined$ResultDiffMean == "NoDiff"
+naive_resdisp <- TableCombined[ind_n, ]
+ord <- order(naive_resdisp$ResDispDistance, decreasing = FALSE)
+naive_resdisp <- naive_resdisp[ord, ]
+naive_resdisp$Symbol <- genenames[naive_resdisp$GeneName, 2]
+
+# More variable in active, but non DE
+ind_a <- TableCombined$ResultDiffResDisp == "Active+" & 
+  TableCombined$ResultDiffMean == "NoDiff"
+active_resdisp <- TableCombined[ind_a, ]
+ord <- order(active_resdisp$ResDispDistance, decreasing = TRUE)
+active_resdisp <- active_resdisp[ord, ]
+active_resdisp$Symbol <- genenames[active_resdisp$GeneName, 2]
+
+heatmap_ngenes <- 15
+heatmap_seq <- seq_len(heatmap_ngenes)
+
+## Select genes with largest probability of differential variability
+active_ind <- order(active_resdisp$ProbDiffResDisp, decreasing = TRUE)[heatmap_seq]
+active_resdisp <- active_resdisp[active_ind, ]
+## Subset count matrices to genes with highest probability
+act_counts_act <- DC_active[active_resdisp$GeneName, ]
+nai_counts_act <- DC_naive[active_resdisp$GeneName, ]
+
+## Select genes with largest probability of differential variability
+s_ind <- order(naive_resdisp$ProbDiffResDisp, decreasing = TRUE)[heatmap_seq]
+naive_resdisp <- naive_resdisp[s_ind, ]
+## Subset count matrices to genes with highest probability
+act_counts_nai <- DC_active[naive_resdisp$GeneName, ]
+nai_counts_nai <- DC_naive[naive_resdisp$GeneName, ]
+
+## Calculate max values for colour scale
+all_resdisp <- c(
+  active_resdisp$ResDisp1, active_resdisp$ResDisp2,
+  naive_resdisp$ResDisp1, naive_resdisp$ResDisp2
+)
+max_range <- max(abs(all_resdisp))
+## colour scale symmetric around zero
+colour <- colorRamp2(seq(-max_range, max_range, length.out = 9),
+  rev(brewer.pal(9, "RdBu")))
+
+## Combine count matrices by cell type
+counts_active <- rbind(act_counts_act, act_counts_nai)
+counts_naive <- rbind(nai_counts_act, nai_counts_nai)
+
+## Split heatmaps using gene categories
+split <- data.frame(
+  Upregulated = c(
+    rep("More variable \nin active", nrow(act_counts_act)),
+    rep("More variable \nin naive", nrow(act_counts_nai))
+  )
+)
+syms <- genenames[rownames(counts_active), 2]
+
+fontsize <- 7
+
+Heatmap(
+  log10(counts_naive + 1),
+  row_labels = syms,
+  row_names_gp = gpar(fontsize = fontsize),
+  #name = "log10(count + 1)",
+  column_dend_height = unit(0.2, "npc"),
+  column_title_side = "bottom",
+  column_title = "Naive cells",
+  show_column_names = FALSE,
+  cluster_rows = FALSE,
+  split = split,
+  right_annotation = rowAnnotation(
+    epsilon = c(active_resdisp$ResDisp1, naive_resdisp$ResDisp1),
+    col = list(epsilon = colour)
   ),
   col = viridis(100)) +
   Heatmap(
@@ -1394,51 +1551,13 @@ Heatmap(
     name = "log10(count + 1)",
     split = split,
     right_annotation = rowAnnotation(
-      log_mu = log(c(active_mean$Mean2, naive_mean$Mean2)),
-      col = list(log_mu = colour)
+      epsilon = c(active_resdisp$ResDisp2, naive_resdisp$ResDisp2),
+      col = list(epsilon = colour)
     ),
     cluster_rows = FALSE,
     col = viridis(100))
 ```
 
-While other computational tools exist to perform differential mean expression
-analysis, we next want to highlight the use of `r Biocpkg("BASiCS")` for 
-differential variability testing.
-To avoid the mean versus over-dispersion confounding, we recommend this analysis
-to use residual over-dispersion parameters $\epsilon_i$ as input. 
+<!--- NOTE: heatmap doesn't seem to be the best way to visualise results.
+This section needs to be edited + some interpretation added ---> 
 
-While one could focus on the gene sets that show significant changes in
-residual over-dispersion, here, we want to highlight how to analyse 
-changes in mean expression in parallel to changes in variability.
-For this, we will first combine the results of the differential mean expression 
-and the differential residual over-dispersion test.
-
-```{r combine, eval = FALSE}
-TableCombined <- merge(TableMean, TableResDisp, by = "GeneName")
-```
-
-While the analysis in the previous section is well suited to detect global 
-changes in variability (e.g. detecting if one cell population overall displays
-                        higher expression variabilty), it does not allow the testing of changes in 
-mean expression and expression variability in parallel.
-For this, `r Biocpkg("BASiCS")` compares the residual over-dispersion 
-parameters, which do not scale with mean expression, between the two conditions.
-Here, we remove genes that are lowly expressed in both conditions.
-
-```{r res-over-disp-filtering}
-# exclude lowly expressed genes
-high_expr <- TableMean$Mean1 > 1 & TableMean$Mean2 > 1
-```
-
-We can now visualise the changes in residual over-dispersion between naive and 
-activated CD4^+^ T cells in the form of a MA-plot 
-(Figure \@ref(fig:diff-res-plot)).
-In this visualisation, the difference between the posterior medians of the 
-residual over-dispersion parameters $\epsilon$ are shown on the y-axis.
-Epsilon values for genes that are not expressed in at least 2 cells per 
-conditions are marked as `NA` and are therefore not being displayed.
-
-```{r diff-res-plot, fig.cap="Distance of residual over-dispersion in naive cells relative to active cells. Colour indicates whether genes were excluded from testing, and whether a significant difference was identified between the two groups for that gene."}
-TableResDisp <- format(Test_DE, Which = "ResDisp", Filter = FALSE)
-BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plot = "MA")
-```

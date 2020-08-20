@@ -1462,29 +1462,9 @@ differentiation states.
 \end{Highlighting}
 \end{Shaded}
 
-After running the test, we can now visualise the results in form of MA-plots
-(log ratio M versus mean average A) and volcano plots (posterior probability
-versus log ratio). For our analysis, these are displayed in
-Figure @ref(visualise\_DE\_plot).
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{(}\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"MA"}\NormalTok{) }\OperatorTok{+}
-\StringTok{    }\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"Volcano"}\NormalTok{)) }\OperatorTok{/}\StringTok{ }
-\StringTok{  }\NormalTok{(}\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"MA"}\NormalTok{) }\OperatorTok{+}
-\StringTok{     }\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"Volcano"}\NormalTok{))}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{figure}
-
-{\centering \includegraphics{figure/visualise-DE-plot-1} 
-
-}
-
-\caption{Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group.}\label{fig:visualise-DE-plot}
-\end{figure}
-
+After running the test, it is important to visualise the results in order to
+interpret the results and identify systematic patterns among differentially
+expressed genes.
 It may also be useful to perform functional enrichment analysis to identify
 biologically meaningful patterns amongst differentially expressed genes.
 For example, this could be done using \emph{\href{https://bioconductor.org/packages/3.11/goseq}{goseq}} \citep{Young2010}.
@@ -1492,33 +1472,71 @@ We do not perform this here, as it is outside of the scope of
 \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}}.
 However, a workflow for this process is detailed in Supplementary section TODO.
 
-When interpreting the results of differential expression tests, it is useful
-to visualise expression patterns for differentially expressed genes in order to
-appraise the significance of the results and guide interpretation.
-First, here we focus on genes with changes in mean expression.
-For example, our test identifies a significant different in mean expression for
-Cd69 (ENSMUSG00000030156), a known marker of T cell activation \citep{Ziegler1994}
-(Figures @ref(violin\_plot\_cd69)).
+Here we first focus on the differential mean expression test.
+MA-plots (log fold change M versus mean average A) and volcano plots (posterior
+probability versus log fold change) are popular graphical summaries in this
+context (see Figure \ref{visualise-DE-mean-plot}).
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{# Expression of Cd69 in both conditions}
-\NormalTok{ind_cd <-}\StringTok{ }\KeywordTok{which}\NormalTok{(}\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{external_gene_name }\OperatorTok{==}\StringTok{ "Cd69"}\NormalTok{)}
-\NormalTok{TableMean[TableMean}\OperatorTok{$}\NormalTok{GeneName }\OperatorTok{==}\StringTok{ }\KeywordTok{rowData}\NormalTok{(sce_naive_active)}\OperatorTok{$}\NormalTok{ensembl_gene_id[ind_cd],]}
-\KeywordTok{plotExpression}\NormalTok{(sce_naive_active,}
-               \DataTypeTok{features =}\NormalTok{ genenames[ind_cd, }\DecValTok{1}\NormalTok{],}
-               \DataTypeTok{x =} \StringTok{"Stimulus"}
-\NormalTok{)}
+\NormalTok{p1 <-}\StringTok{ }\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"MA"}\NormalTok{) }
+\NormalTok{p2 <-}\StringTok{ }\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"Mean"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"Volcano"}\NormalTok{) }
+\NormalTok{p1 }\OperatorTok{/}\StringTok{ }\NormalTok{p2}
 \end{Highlighting}
 \end{Shaded}
 
-It may also useful to visualise multiple genes at once.
-This is useful in quality checking the results of a differential expression
-analysis, and may also aid in identifying systematic patterns among
-differentially expressed genes and guiding downstream analysis.
-Here we use \emph{\href{https://bioconductor.org/packages/3.11/ComplexHeatmap}{ComplexHeatmap}} to visualise genes that are
-up-regulated in each condition \citep{Gu2016}, the output of which is shown in
-Figure \ref{fig:heatmap-diffexp}.
+\begin{figure}
+
+{\centering \includegraphics{figure/visualise-DE-mean-plot-1} 
+
+}
+
+\caption{Fold changes of average expression in naive cells relative to active cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group.}\label{fig:visualise-DE-mean-plot}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Calculate a global offset between the groups}
+\NormalTok{my_offset <-}\StringTok{ }\KeywordTok{BASiCS_CorrectOffset}\NormalTok{(chain_naive, chain_active)}
+\NormalTok{my_offset}\OperatorTok{$}\NormalTok{Offset}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0.7730592
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Get offset corrected chain}
+\NormalTok{chain_naive <-}\StringTok{ }\NormalTok{my_offset}\OperatorTok{$}\NormalTok{Chain}
+\CommentTok{# Obtain normalised counts within each group of cells}
+\NormalTok{DC_naive <-}\StringTok{ }\KeywordTok{BASiCS_DenoisedCounts}\NormalTok{(sce_naive, chain_naive)}
+\NormalTok{DC_active <-}\StringTok{ }\KeywordTok{BASiCS_DenoisedCounts}\NormalTok{(sce_active, chain_active)}
+\end{Highlighting}
+\end{Shaded}
+
+When interpreting the results of differential expression tests, it is useful
+to visualise expression patterns for differentially expressed genes in order to
+appraise the significance of the results and guide interpretation.
+For this purpose, we obtain normalised expression values for each group of
+cells after correcting for global changes in overall expression between the
+groups (i.e.~a global offset that leads to uniformly higher expression across
+genes within one group of cells).
+Among others, the latter can be due to overall differences in mRNA content
+between the groups.
+
+To visualise expression patterns for multiple genes at once, we use the
+\emph{\href{https://bioconductor.org/packages/3.11/ComplexHeatmap}{ComplexHeatmap}} \citep{Gu2016} Biocondutor package, grouping genes
+according to the result of the differential mean expression test (i.e.~
+up-regulated in naive/active cells or non differentially expressed).
+Figure \ref{fig:heatmap-diffexp} shows 15 genes are shown for each group.
+Fpr example, amongst the non DE group, we observe several genes ribosomal
+proteins (e.g.~\emph{Rps14}).
+Genes in this family have been previously observed to have stable expression
+across a wide range of scRNAseq datasets in mouse and human {[}REF{]}.
+Moreover, the differentially expressed genes includes known markers of T cell
+activation such as **Cd69* \citep{Ziegler1994}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1538,6 +1556,12 @@ Figure \ref{fig:heatmap-diffexp}.
 \NormalTok{active_mean <-}\StringTok{ }\NormalTok{active_mean[}\KeywordTok{order}\NormalTok{(active_mean}\OperatorTok{$}\NormalTok{MeanLog2FC, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{), ]}
 \NormalTok{active_mean}\OperatorTok{$}\NormalTok{Symbol <-}\StringTok{ }\NormalTok{genenames[active_mean}\OperatorTok{$}\NormalTok{GeneName, }\DecValTok{2}\NormalTok{]}
 
+\CommentTok{# Non DE genes}
+\NormalTok{ind_non <-}\StringTok{ }\NormalTok{TableMean}\OperatorTok{$}\NormalTok{ResultDiffMean }\OperatorTok{==}\StringTok{ "NoDiff"}
+\NormalTok{nonde_mean <-}\StringTok{ }\NormalTok{TableMean[ind_non, ]}
+\NormalTok{nonde_mean <-}\StringTok{ }\NormalTok{nonde_mean[}\KeywordTok{order}\NormalTok{(}\KeywordTok{abs}\NormalTok{(nonde_mean}\OperatorTok{$}\NormalTok{MeanLog2FC), }\DataTypeTok{decreasing =} \OtherTok{FALSE}\NormalTok{), ]}
+\NormalTok{nonde_mean}\OperatorTok{$}\NormalTok{Symbol <-}\StringTok{ }\NormalTok{genenames[nonde_mean}\OperatorTok{$}\NormalTok{GeneName, }\DecValTok{2}\NormalTok{]}
+
 \NormalTok{heatmap_ngenes <-}\StringTok{ }\DecValTok{15}
 \NormalTok{heatmap_seq <-}\StringTok{ }\KeywordTok{seq_len}\NormalTok{(heatmap_ngenes)}
 
@@ -1545,20 +1569,28 @@ Figure \ref{fig:heatmap-diffexp}.
 \NormalTok{active_ind <-}\StringTok{ }\KeywordTok{order}\NormalTok{(active_mean}\OperatorTok{$}\NormalTok{ProbDiffMean, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{)[heatmap_seq]}
 \NormalTok{active_mean <-}\StringTok{ }\NormalTok{active_mean[active_ind, ]}
 \CommentTok{## subset counts from each cell type to these genes}
-\NormalTok{act_counts_act <-}\StringTok{ }\KeywordTok{counts}\NormalTok{(sce_active)[active_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
-\NormalTok{nai_counts_act <-}\StringTok{ }\KeywordTok{counts}\NormalTok{(sce_naive)[active_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
+\NormalTok{act_counts_act <-}\StringTok{ }\NormalTok{DC_active[active_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
+\NormalTok{nai_counts_act <-}\StringTok{ }\NormalTok{DC_naive[active_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
 
 \CommentTok{## Select genes with largest probability of differential expression}
 \NormalTok{s_ind <-}\StringTok{ }\KeywordTok{order}\NormalTok{(naive_mean}\OperatorTok{$}\NormalTok{ProbDiffMean, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{)[heatmap_seq]}
 \NormalTok{naive_mean <-}\StringTok{ }\NormalTok{naive_mean[s_ind, ]}
 \CommentTok{## subset counts from each cell type to these genes}
-\NormalTok{act_counts_nai <-}\StringTok{ }\KeywordTok{counts}\NormalTok{(sce_active)[naive_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
-\NormalTok{nai_counts_nai <-}\StringTok{ }\KeywordTok{counts}\NormalTok{(sce_naive)[naive_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
+\NormalTok{act_counts_nai <-}\StringTok{ }\NormalTok{DC_active[naive_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
+\NormalTok{nai_counts_nai <-}\StringTok{ }\NormalTok{DC_naive[naive_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
+
+\CommentTok{## Select genes with lowest probability of differential expression}
+\NormalTok{s_ind <-}\StringTok{ }\KeywordTok{order}\NormalTok{(nonde_mean}\OperatorTok{$}\NormalTok{ProbDiffMean, }\DataTypeTok{decreasing =} \OtherTok{FALSE}\NormalTok{)[heatmap_seq]}
+\NormalTok{nonde_mean <-}\StringTok{ }\NormalTok{nonde_mean[s_ind, ]}
+\CommentTok{## subset counts from each cell type to these genes}
+\NormalTok{act_counts_nde <-}\StringTok{ }\NormalTok{DC_active[nonde_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
+\NormalTok{nai_counts_nde <-}\StringTok{ }\NormalTok{DC_naive[nonde_mean}\OperatorTok{$}\NormalTok{GeneName, ]}
 
 \CommentTok{## Calculate max absolute value for min/max of colour scale}
 \NormalTok{all_mean <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}
 \NormalTok{  active_mean}\OperatorTok{$}\NormalTok{Mean1, active_mean}\OperatorTok{$}\NormalTok{Mean2,}
-\NormalTok{  naive_mean}\OperatorTok{$}\NormalTok{Mean1, naive_mean}\OperatorTok{$}\NormalTok{Mean2}
+\NormalTok{  naive_mean}\OperatorTok{$}\NormalTok{Mean1, naive_mean}\OperatorTok{$}\NormalTok{Mean2,}
+\NormalTok{  nonde_mean}\OperatorTok{$}\NormalTok{Mean1, nonde_mean}\OperatorTok{$}\NormalTok{Mean2}
 \NormalTok{)}
 \NormalTok{max_range <-}\StringTok{ }\KeywordTok{log}\NormalTok{(}\KeywordTok{max}\NormalTok{(}\KeywordTok{abs}\NormalTok{(all_mean)))}
 \CommentTok{## colour scale symmetric around zero}
@@ -1566,14 +1598,15 @@ Figure \ref{fig:heatmap-diffexp}.
                      \KeywordTok{rev}\NormalTok{(}\KeywordTok{brewer.pal}\NormalTok{(}\DecValTok{9}\NormalTok{, }\StringTok{"RdBu"}\NormalTok{)))}
 
 \CommentTok{## Combine count matrices by cell type}
-\NormalTok{counts_active <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(act_counts_act, act_counts_nai)}
-\NormalTok{counts_naive <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(nai_counts_act, nai_counts_nai)}
+\NormalTok{counts_active <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(act_counts_act, act_counts_nai, act_counts_nde)}
+\NormalTok{counts_naive <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(nai_counts_act, nai_counts_nai, nai_counts_nde)}
 
 \CommentTok{## split heatmaps by gene category}
 \NormalTok{split <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
   \DataTypeTok{Upregulated =} \KeywordTok{c}\NormalTok{(}
     \KeywordTok{rep}\NormalTok{(}\StringTok{"Up-regulated }\CharTok{\textbackslash{}n}\StringTok{in active"}\NormalTok{, }\KeywordTok{nrow}\NormalTok{(act_counts_act)),}
-    \KeywordTok{rep}\NormalTok{(}\StringTok{"Up-regulated }\CharTok{\textbackslash{}n}\StringTok{in naive"}\NormalTok{, }\KeywordTok{nrow}\NormalTok{(act_counts_nai))}
+    \KeywordTok{rep}\NormalTok{(}\StringTok{"Up-regulated }\CharTok{\textbackslash{}n}\StringTok{in naive"}\NormalTok{, }\KeywordTok{nrow}\NormalTok{(act_counts_nai)),}
+    \KeywordTok{rep}\NormalTok{(}\StringTok{"Non DE"}\NormalTok{, }\KeywordTok{nrow}\NormalTok{(act_counts_nde))}
 \NormalTok{  )}
 \NormalTok{)}
 \NormalTok{syms <-}\StringTok{ }\NormalTok{genenames[}\KeywordTok{rownames}\NormalTok{(counts_active), }\DecValTok{2}\NormalTok{]}
@@ -1591,7 +1624,7 @@ Figure \ref{fig:heatmap-diffexp}.
   \DataTypeTok{cluster_rows =} \OtherTok{FALSE}\NormalTok{,}
   \DataTypeTok{split =}\NormalTok{ split,}
   \DataTypeTok{right_annotation =} \KeywordTok{rowAnnotation}\NormalTok{(}
-    \DataTypeTok{log_mu =} \KeywordTok{log}\NormalTok{(}\KeywordTok{c}\NormalTok{(active_mean}\OperatorTok{$}\NormalTok{Mean1, naive_mean}\OperatorTok{$}\NormalTok{Mean1)),}
+    \DataTypeTok{log_mu =} \KeywordTok{log}\NormalTok{(}\KeywordTok{c}\NormalTok{(active_mean}\OperatorTok{$}\NormalTok{Mean1, naive_mean}\OperatorTok{$}\NormalTok{Mean1, nonde_mean}\OperatorTok{$}\NormalTok{Mean1)),}
     \DataTypeTok{col =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{log_mu =}\NormalTok{ colour)}
 \NormalTok{  ),}
   \DataTypeTok{col =} \KeywordTok{viridis}\NormalTok{(}\DecValTok{100}\NormalTok{)) }\OperatorTok{+}
@@ -1606,7 +1639,7 @@ Figure \ref{fig:heatmap-diffexp}.
     \DataTypeTok{name =} \StringTok{"log10(count + 1)"}\NormalTok{,}
     \DataTypeTok{split =}\NormalTok{ split,}
     \DataTypeTok{right_annotation =} \KeywordTok{rowAnnotation}\NormalTok{(}
-      \DataTypeTok{log_mu =} \KeywordTok{log}\NormalTok{(}\KeywordTok{c}\NormalTok{(active_mean}\OperatorTok{$}\NormalTok{Mean2, naive_mean}\OperatorTok{$}\NormalTok{Mean2)),}
+      \DataTypeTok{log_mu =} \KeywordTok{log}\NormalTok{(}\KeywordTok{c}\NormalTok{(active_mean}\OperatorTok{$}\NormalTok{Mean2, naive_mean}\OperatorTok{$}\NormalTok{Mean2, nonde_mean}\OperatorTok{$}\NormalTok{Mean2)),}
       \DataTypeTok{col =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{log_mu =}\NormalTok{ colour)}
 \NormalTok{    ),}
     \DataTypeTok{cluster_rows =} \OtherTok{FALSE}\NormalTok{,}
@@ -1614,9 +1647,19 @@ Figure \ref{fig:heatmap-diffexp}.
 \end{Highlighting}
 \end{Shaded}
 
-While other computational tools exist to perform differential mean expression
-analysis, we next want to highlight the use of \emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} for
-differential variability testing.
+\begin{figure}
+
+{\centering \includegraphics{figure/heatmap-diffexp-1} 
+
+}
+
+\caption{Heatmap of 30 differentially expressed genes in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the logged average expression for each gene in each population.}\label{fig:heatmap-diffexp}
+\end{figure}
+
+Whist several computational tools exist to perform differential mean expression
+analysis using scRNAseq data \citep{Soneson2018}, they key focus of
+\emph{\href{https://bioconductor.org/packages/3.11/BASiCS}{BASiCS}} is to perform differential variability testing,
+identifying changes in transcriptional variability between the groups of cells.
 To avoid the mean versus over-dispersion confounding, we recommend this analysis
 to use residual over-dispersion parameters \(\epsilon_i\) as input.
 
@@ -1658,17 +1701,166 @@ conditions are marked as \texttt{NA} and are therefore not being displayed.
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{TableResDisp <-}\StringTok{ }\KeywordTok{format}\NormalTok{(Test_DE, }\DataTypeTok{Which =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Filter =} \OtherTok{FALSE}\NormalTok{)}
-\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Plot =} \StringTok{"MA"}\NormalTok{)}
+\NormalTok{p3 <-}\StringTok{ }\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"MA"}\NormalTok{) }\CommentTok{#+ myplot_params}
+\NormalTok{p4 <-}\StringTok{ }\KeywordTok{BASiCS_PlotDE}\NormalTok{(Test_DE, }\DataTypeTok{Parameters =} \StringTok{"ResDisp"}\NormalTok{, }\DataTypeTok{Plots =} \StringTok{"Volcano"}\NormalTok{) }\CommentTok{#+ myplot_params}
+\end{Highlighting}
+\end{Shaded}
+
+While one could focus on the genesets that show significant changes in
+residual over-dispersion, here, we want to highlight how to analyse
+changes in mean expression in parallel to changes in variability.
+For this, we will first combine the results of the differential mean expression
+and the differential residual over-dispersion test.
+We will further remove the genes that were excluded from the test and those
+that are not expressed in at least 2 cells in either condition.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{cols <-}\StringTok{ }\KeywordTok{setdiff}\NormalTok{(}\KeywordTok{colnames}\NormalTok{(TableResDisp), }\KeywordTok{c}\NormalTok{(}\StringTok{"GeneName"}\NormalTok{, }\StringTok{"MeanOverall"}\NormalTok{))}
+\NormalTok{res_df <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(TableMean, TableResDisp[, cols])}
+\NormalTok{ind_exclude <-}\StringTok{ }\NormalTok{res_df}\OperatorTok{$}\NormalTok{ResultDiffResDisp }\OperatorTok{==}\StringTok{ "ExcludedByUser"} \OperatorTok{|}
+\StringTok{  }\NormalTok{res_df}\OperatorTok{$}\NormalTok{ResultDiffResDisp }\OperatorTok{==}\StringTok{ "ExcludedFromTesting"}
+\NormalTok{res_df <-}\StringTok{ }\NormalTok{res_df[}\OperatorTok{!}\NormalTok{ind_exclude, ]}
+\end{Highlighting}
+\end{Shaded}
+
+Next, we can visualise the regulation of each individual gene based on its
+changes in mean expression and expression variability
+(Figure \ref{fig:DV-DE-vis}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{res_df}\OperatorTok{$}\NormalTok{ResultDiffMean[}\KeywordTok{grep}\NormalTok{(}\StringTok{"Excluded"}\NormalTok{, res_df}\OperatorTok{$}\NormalTok{ResultDiffMean)] <-}\StringTok{ "NoDiff"}
+\NormalTok{res_df}\OperatorTok{$}\NormalTok{ResultDiffResDisp[}\KeywordTok{grep}\NormalTok{(}\StringTok{"Excluded"}\NormalTok{, res_df}\OperatorTok{$}\NormalTok{ResultDiffResDisp)] <-}\StringTok{ "NoDiff"}
+\KeywordTok{ggplot}\NormalTok{(res_df) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_point}\NormalTok{(}
+    \KeywordTok{aes}\NormalTok{(}
+\NormalTok{      MeanLog2FC,}
+\NormalTok{      ResDispDistance,}
+      \DataTypeTok{colour =} \KeywordTok{interaction}\NormalTok{(ResultDiffMean, ResultDiffResDisp, }\DataTypeTok{sep =} \StringTok{", "}\NormalTok{)}
+\NormalTok{    ),}
+    \DataTypeTok{alpha =} \FloatTok{0.8}\NormalTok{,}
+    \DataTypeTok{shape =} \DecValTok{16}
+\NormalTok{  ) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_colour_brewer}\NormalTok{(}\DataTypeTok{name =} \StringTok{"Categories"}\NormalTok{, }\DataTypeTok{palette =} \StringTok{"Paired"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{x =} \KeywordTok{bquote}\NormalTok{(log[}\DecValTok{2}\NormalTok{](FC)), }\DataTypeTok{y =} \StringTok{"Difference in residual over-dispersion"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}
 
-{\centering \includegraphics{figure/diff-res-plot-1} 
+{\centering \includegraphics{figure/DV-DE-vis-1} 
 
 }
 
-\caption{Distance of residual over-dispersion in naive cells relative to active cells. Colour indicates whether genes were excluded from testing, and whether a significant difference was identified between the two groups for that gene.}\label{fig:diff-res-plot}
+\caption{Difference in residual over-dispersion is plotted against log fold change for all genes. Colour indicates whether significant differences were detected between the groups for each parameter.}\label{fig:DV-DE-vis}
+\end{figure}
+
+As discussed \protect\hyperlink{vis-diff-exp}{previously}, it is useful to visualise the results
+of differential expression tests in order to appraise the quality of the
+results, and to identify systematic patterns among the genes identified.
+For this purpose, we again use \emph{\href{https://bioconductor.org/packages/3.11/ComplexHeatmap}{ComplexHeatmap}}; the result is
+shown in Figure \ref{fig:heatmap-diffresdisp}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# More variable in naive}
+\NormalTok{ind_n <-}\StringTok{ }\NormalTok{TableResDisp}\OperatorTok{$}\NormalTok{ResultDiffResDisp }\OperatorTok{==}\StringTok{ "Naive+"}
+\NormalTok{naive_resdisp <-}\StringTok{ }\NormalTok{TableResDisp[ind_n, ]}
+\NormalTok{ord <-}\StringTok{ }\KeywordTok{order}\NormalTok{(naive_resdisp}\OperatorTok{$}\NormalTok{ResDispDistance, }\DataTypeTok{decreasing =} \OtherTok{FALSE}\NormalTok{)}
+\NormalTok{naive_resdisp <-}\StringTok{ }\NormalTok{naive_resdisp[ord, ]}
+\NormalTok{naive_resdisp}\OperatorTok{$}\NormalTok{Symbol <-}\StringTok{ }\NormalTok{genenames[naive_resdisp}\OperatorTok{$}\NormalTok{GeneName, }\DecValTok{2}\NormalTok{]}
+
+\CommentTok{# More variable in active}
+\NormalTok{ind_a <-}\StringTok{ }\NormalTok{TableResDisp}\OperatorTok{$}\NormalTok{ResultDiffResDisp }\OperatorTok{==}\StringTok{ "Active+"}
+\NormalTok{active_resdisp <-}\StringTok{ }\NormalTok{TableResDisp[ind_a, ]}
+\NormalTok{ord <-}\StringTok{ }\KeywordTok{order}\NormalTok{(active_resdisp}\OperatorTok{$}\NormalTok{ResDispDistance, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{)}
+\NormalTok{active_resdisp <-}\StringTok{ }\NormalTok{active_resdisp[ord, ]}
+\NormalTok{active_resdisp}\OperatorTok{$}\NormalTok{Symbol <-}\StringTok{ }\NormalTok{genenames[active_resdisp}\OperatorTok{$}\NormalTok{GeneName, }\DecValTok{2}\NormalTok{]}
+
+\NormalTok{heatmap_ngenes <-}\StringTok{ }\DecValTok{15}
+\NormalTok{heatmap_seq <-}\StringTok{ }\KeywordTok{seq_len}\NormalTok{(heatmap_ngenes)}
+
+\CommentTok{## Select genes with largest probability of differential variability}
+\NormalTok{active_ind <-}\StringTok{ }\KeywordTok{order}\NormalTok{(active_resdisp}\OperatorTok{$}\NormalTok{ProbDiffResDisp, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{)[heatmap_seq]}
+\NormalTok{active_resdisp <-}\StringTok{ }\NormalTok{active_resdisp[active_ind, ]}
+\CommentTok{## Subset count matrices to genes with highest probability}
+\NormalTok{act_counts_act <-}\StringTok{ }\NormalTok{DC_active[active_resdisp}\OperatorTok{$}\NormalTok{GeneName, ]}
+\NormalTok{nai_counts_act <-}\StringTok{ }\NormalTok{DC_naive[active_resdisp}\OperatorTok{$}\NormalTok{GeneName, ]}
+
+\CommentTok{## Select genes with largest probability of differential variability}
+\NormalTok{s_ind <-}\StringTok{ }\KeywordTok{order}\NormalTok{(naive_resdisp}\OperatorTok{$}\NormalTok{ProbDiffResDisp, }\DataTypeTok{decreasing =} \OtherTok{TRUE}\NormalTok{)[heatmap_seq]}
+\NormalTok{naive_resdisp <-}\StringTok{ }\NormalTok{naive_resdisp[s_ind, ]}
+\CommentTok{## Subset count matrices to genes with highest probability}
+\NormalTok{act_counts_nai <-}\StringTok{ }\NormalTok{DC_active[naive_resdisp}\OperatorTok{$}\NormalTok{GeneName, ]}
+\NormalTok{nai_counts_nai <-}\StringTok{ }\NormalTok{DC_naive[naive_resdisp}\OperatorTok{$}\NormalTok{GeneName, ]}
+
+\CommentTok{## Calculate max values for colour scale}
+\NormalTok{all_resdisp <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}
+\NormalTok{  active_resdisp}\OperatorTok{$}\NormalTok{ResDisp1, active_resdisp}\OperatorTok{$}\NormalTok{ResDisp2,}
+\NormalTok{  naive_resdisp}\OperatorTok{$}\NormalTok{ResDisp1, naive_resdisp}\OperatorTok{$}\NormalTok{ResDisp2}
+\NormalTok{)}
+\NormalTok{max_range <-}\StringTok{ }\KeywordTok{max}\NormalTok{(}\KeywordTok{abs}\NormalTok{(all_resdisp))}
+\CommentTok{## colour scale symmetric around zero}
+\NormalTok{colour <-}\StringTok{ }\KeywordTok{colorRamp2}\NormalTok{(}\KeywordTok{seq}\NormalTok{(}\OperatorTok{-}\NormalTok{max_range, max_range, }\DataTypeTok{length.out =} \DecValTok{9}\NormalTok{),}
+  \KeywordTok{rev}\NormalTok{(}\KeywordTok{brewer.pal}\NormalTok{(}\DecValTok{9}\NormalTok{, }\StringTok{"RdBu"}\NormalTok{)))}
+
+\CommentTok{## Combine count matrices by cell type}
+\NormalTok{counts_active <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(act_counts_act, act_counts_nai)}
+\NormalTok{counts_naive <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(nai_counts_act, nai_counts_nai)}
+
+\CommentTok{## Split heatmaps using gene categories}
+\NormalTok{split <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
+  \DataTypeTok{Upregulated =} \KeywordTok{c}\NormalTok{(}
+    \KeywordTok{rep}\NormalTok{(}\StringTok{"More variable }\CharTok{\textbackslash{}n}\StringTok{in active"}\NormalTok{, }\KeywordTok{nrow}\NormalTok{(act_counts_act)),}
+    \KeywordTok{rep}\NormalTok{(}\StringTok{"More variable }\CharTok{\textbackslash{}n}\StringTok{in naive"}\NormalTok{, }\KeywordTok{nrow}\NormalTok{(act_counts_nai))}
+\NormalTok{  )}
+\NormalTok{)}
+\NormalTok{syms <-}\StringTok{ }\NormalTok{genenames[}\KeywordTok{rownames}\NormalTok{(counts_active), }\DecValTok{2}\NormalTok{]}
+
+\NormalTok{fontsize <-}\StringTok{ }\DecValTok{7}
+\KeywordTok{Heatmap}\NormalTok{(}
+  \KeywordTok{log10}\NormalTok{(counts_naive }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{),}
+  \DataTypeTok{row_labels =}\NormalTok{ syms,}
+  \DataTypeTok{row_names_gp =} \KeywordTok{gpar}\NormalTok{(}\DataTypeTok{fontsize =}\NormalTok{ fontsize),}
+  \DataTypeTok{name =} \StringTok{"log10(count + 1)"}\NormalTok{,}
+  \DataTypeTok{column_dend_height =} \KeywordTok{unit}\NormalTok{(}\FloatTok{0.2}\NormalTok{, }\StringTok{"npc"}\NormalTok{),}
+  \DataTypeTok{column_title_side =} \StringTok{"bottom"}\NormalTok{,}
+  \DataTypeTok{column_title =} \StringTok{"Naive cells"}\NormalTok{,}
+  \DataTypeTok{cluster_rows =} \OtherTok{FALSE}\NormalTok{,}
+  \DataTypeTok{show_column_names =} \OtherTok{FALSE}\NormalTok{,}
+  \DataTypeTok{split =}\NormalTok{ split,}
+  \DataTypeTok{right_annotation =} \KeywordTok{rowAnnotation}\NormalTok{(}
+    \DataTypeTok{epsilon =} \KeywordTok{c}\NormalTok{(active_resdisp}\OperatorTok{$}\NormalTok{ResDisp1, naive_resdisp}\OperatorTok{$}\NormalTok{ResDisp1),}
+    \DataTypeTok{col =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{epsilon =}\NormalTok{ colour)}
+\NormalTok{  ),}
+  \DataTypeTok{col =} \KeywordTok{viridis}\NormalTok{(}\DecValTok{100}\NormalTok{)) }\OperatorTok{+}
+\KeywordTok{Heatmap}\NormalTok{(}
+  \KeywordTok{log10}\NormalTok{(counts_active }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{),}
+  \DataTypeTok{row_labels =}\NormalTok{ syms,}
+  \DataTypeTok{column_dend_height =} \KeywordTok{unit}\NormalTok{(}\FloatTok{0.2}\NormalTok{, }\StringTok{"npc"}\NormalTok{),}
+  \DataTypeTok{row_names_gp =} \KeywordTok{gpar}\NormalTok{(}\DataTypeTok{fontsize =}\NormalTok{ fontsize),}
+  \DataTypeTok{column_title =} \StringTok{"Active cells"}\NormalTok{,}
+  \DataTypeTok{column_title_side =} \StringTok{"bottom"}\NormalTok{,}
+  \DataTypeTok{show_column_names =} \OtherTok{FALSE}\NormalTok{,}
+  \DataTypeTok{name =} \StringTok{"log10(count + 1)"}\NormalTok{,}
+  \DataTypeTok{split =}\NormalTok{ split,}
+  \DataTypeTok{right_annotation =} \KeywordTok{rowAnnotation}\NormalTok{(}
+    \DataTypeTok{epsilon =} \KeywordTok{c}\NormalTok{(active_resdisp}\OperatorTok{$}\NormalTok{ResDisp2, naive_resdisp}\OperatorTok{$}\NormalTok{ResDisp2),}
+    \DataTypeTok{col =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{epsilon =}\NormalTok{ colour)}
+\NormalTok{  ),}
+  \DataTypeTok{cluster_rows =} \OtherTok{FALSE}\NormalTok{,}
+  \DataTypeTok{col =} \KeywordTok{viridis}\NormalTok{(}\DecValTok{100}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+
+{\centering \includegraphics{figure/heatmap-diffresdisp-1} 
+
+}
+
+\caption{Heatmap of 30 genes with higher residual over-dispersion in naive or active cells. Colour indicates expression level; colour bars on the right of heatmap segments indicate the residual over-dispersion for each gene in that population.}\label{fig:heatmap-diffresdisp}
 \end{figure}
 
 {\small\bibliography{Workflow.bib}}
