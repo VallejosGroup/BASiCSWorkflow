@@ -1561,3 +1561,140 @@ Heatmap(
 <!--- NOTE: heatmap doesn't seem to be the best way to visualise results.
 This section needs to be edited + some interpretation added ---> 
 
+## Using BASiCS without spike-in genes
+
+### Inference using BASiCS without spike-in genes
+
+`r Biocpkg("BASiCS")`, when using spike-in molecules, utilises a vertical 
+integration framework.
+Under this framework, spike-in genes are used as a reference in order to
+aid normalisation, based on the knowledge that the original quantity of spike-in
+molecules was approximately equal in each well.
+@Eling2018 introduced a novel method of inferring gene expression profiles
+using `r Biocpkg("BASiCS")` without relying on spike-in genes to quantify 
+technical noise.
+In this horizontal integration framework, technical variation is quantified 
+using replication [@Carroll2005]. 
+In the absence of true technical replicates, we assume that
+population-level characteristics of the cells are replicated using appropriate
+experimental design. This requires that cells from the same population
+have been randomly allocated to different batches. Given appropriate 
+experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
+are shared across batches, while technical variation leads to spurious 
+differences between cells in different batches.
+
+Using `r Biocpkg("BASiCS")` without spike-in genes is a very similar process 
+to the process of using it with spike-in genes. We will demonstrate using the 
+naive cells. First, we must ensure that a `BatchInfo` field is present in the 
+`SingleCellExperiment` used as input. In this case we use individual of origin 
+as the batch vector.
+
+```{r MCMC-naive-nospikes, eval = FALSE}
+chain_naive_nospikes <- BASiCS_MCMC(
+  Data = sce_naive,
+  PrintProgress = FALSE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  StoreChains = TRUE,
+  StoreDir = "rds/", 
+  RunName = "naive_nospikes",
+  WithSpikes = FALSE
+)
+```
+
+```{r download-chain-naive-nospikes}
+if (!file.exists("rds/chain_naive_nospikes.Rds")) {
+  download.file(
+    "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/chain_naive_nospikes.Rds",
+    destfile = "rds/chain_naive_nospikes.Rds"
+  )
+}
+chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
+```
+
+The resulting `BASiCS_Chain` object produced using this horizontal integration
+framework is functionally similar to one produced using the vertical integration
+framework. It can be used in place of the `BASiCS_Chain` objects produced using
+the vertical integration approach, as described above.
+
+As discussed previously, it is important to ensure that an adequate effective
+sample size has been generated using MCMC.
+Figure \@ref(fig:diag-plot-naive-nospikes) shows that the sampler has generated
+a large effective sample size for most parameters, similar to the case when we 
+included spike-in molecules.
+
+
+```{r diag-hist-naive-nospikes, eval = FALSE, fig.cap="Distribution of effective sample size across all genes for mean and over-dispersion parameters using the horizontal integration approach.", eval=FALSE, echo=FALSE}
+mu_ess <- BASiCS_DiagHist(chain_naive, Param = "mu") +
+  xlab("ESS: mu")
+delta_ess <- BASiCS_DiagHist(chain_naive, Param = "delta") +
+  xlab("ESS: delta")
+multiplot(mu_ess, delta_ess, cols = 2)
+```
+
+```{r diag-plot-naive-nospikes, eval = FALSE, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters using the horizontal integration approach. Colour indicates local density, with lighter colours representing higher density."}
+mu_ess2 <- BASiCS_DiagPlot(chain_naive, Param = "mu") +
+  theme(legend.position = "bottom")
+delta_ess2 <- BASiCS_DiagPlot(chain_naive, Param = "delta") +
+  theme(legend.position = "bottom")
+multiplot(mu_ess2, delta_ess2, cols = 2)
+```
+
+### Comparison of parameter estimates when using spike-ins and when not-using spike-ins
+
+Under the horizontal integration approach described above,
+the scale of mean expression parameters and global scaling factors is not 
+jointly identifiable, in that a global shift in mean expression parameters 
+could be exactly offset by an equivalent shift in cell-specific normalisation
+parameters. Therefore, the geometric mean of the mean expression parameters
+is fixed to a constant value. Relative expression level estimates are broadly 
+consistent between the horizontal and vertical integration approaches; 
+however there may be a global difference in mean expression estimates, as shown
+in Figure \@ref(fig:offset). It is important to remove this global scale offset
+before performing comparative analyses. This is performed by default in
+`BASiCS_TestDE`, but can be performed manually using `BASiCS_CorrectOffset`.
+
+```{r offset, fig.cap="Distribution of mean expression values before and after correcting the global difference in scale."}
+BASiCS_PlotOffset(chain_naive_nospikes, chain_naive,
+  GroupLabel1 = "No spike-ins", GroupLabel2 = "Spike-ins",
+  Type = "before-after")
+offset <- BASiCS_CorrectOffset(chain_naive_nospikes, chain_naive)
+chain_naive_nospikes_offset <- offset$Chain
+chain_naive_nospikes_offset
+```
+
+Following removal of the global offset, the mean expression and over-dispersion 
+estimates obtained from each method are directly comparable.
+As seen in Figures \@ref(fig:mu-spike-comp) and 
+\@ref(fig:delta-spike-comp), parameter point estimates from the two 
+methods are highly correlated.
+
+```{r mu-spike-comp, fig.cap="Comparison of mean expression point estimates using spike-in genes, and the same parameters estimated without using spike-in genes."}
+mu_spikes <- displayChainBASiCS(chain_naive)
+mu_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset)
+ggplot(mapping = aes(colMedians(mu_spikes), colMedians(mu_nospikes))) +
+  geom_pointdensity() +
+  scale_colour_viridis() +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    x = "Mean expression (with spike-ins)",
+    y = "Mean expression (without spike-ins)"
+  )
+```
+
+```{r delta-spike-comp, fig.cap="Comparison of over-dispersion point estimates using spike-in genes, and the same parameters estimated without using spike-in genes."}
+delta_spikes <- displayChainBASiCS(chain_naive, Param = "delta")
+delta_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset, Param = "delta")
+ggplot(mapping = aes(colMedians(delta_spikes), colMedians(delta_nospikes))) +
+  geom_pointdensity() +
+  scale_colour_viridis() +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    x = "Over-dispersion (with spike-ins)",
+    y = "Over-dispersion (without spike-ins)"
+  )
+```
