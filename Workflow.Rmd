@@ -368,7 +368,7 @@ under the same accession number.
 
 ```{r selecting-serum-cells}
 if (!file.exists("downloads/metadata_file.txt")) {
-  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888"
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
   file <- "E-MTAB-4888.additional.1.zip"
   download.file(
     paste0(website, file),
@@ -628,7 +628,7 @@ Finally, input concentrations $C_i$ can be downloaded from
 
 ```{r spike-in_download}
 if (!file.exists("downloads/spike_info.txt")) {
-  website <- "https://assets.thermofisher.com/TFS-Assets/LSG/manuals"
+  website <- "https://assets.thermofisher.com/TFS-Assets/LSG/manuals/"
   file <- "cms_095046.txt"
   download.file(
     paste0(website, file),
@@ -710,6 +710,11 @@ Practical guidance about the diagnostic criteria required to assess the
 performance of the MCMC algorithn is provided in the next section.
 
 ```{r MCMC-run, eval = FALSE}
+## MCMC results may vary slightly due to pseudorandom number generation.
+## We fix a random seed here for exact reproducibility, though this isn't
+## strictly necessary
+set.seed(42)
+prior_param_naive <- BASiCS_PriorParam(sce_naive, PriorMu = "EmpiricalBayes")
 chain_naive <- BASiCS_MCMC(
   Data = sce_naive,
   N = 40000,
@@ -717,11 +722,12 @@ chain_naive <- BASiCS_MCMC(
   Burn = 20000,
   Regression = TRUE,
   WithSpikes = TRUE,
+  PriorParam = prior_param_naive,
   StoreChains = TRUE,
   StoreDir = "rds/",
   RunName = "naive"
 )
-
+prior_param_active <- BASiCS_PriorParam(sce_active, PriorMu = "EmpiricalBayes")
 chain_active <- BASiCS_MCMC(
   Data = sce_active,
   N = 40000,
@@ -729,14 +735,15 @@ chain_active <- BASiCS_MCMC(
   Burn = 20000,
   Regression = TRUE,
   WithSpikes = TRUE,
+  PriorParam = prior_param_active,
   StoreChains = TRUE,
   StoreDir = "rds/",
   RunName = "active"
 )
 ```
 
-This first of these samplers takes 127 minutes to complete on a 3.4 GHz Intel 
-Core i7 4770k procesor with 16GB RAM, while the second takes 75 minutes.
+This first of these samplers takes 227 minutes to complete on a 3.4 GHz Intel 
+Core i7 4770k procesor with 16GB RAM, while the second takes 154 minutes.
 For convenience, these can be obtained online at 
 [https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
 
@@ -1721,14 +1728,16 @@ naive cells. First, we must ensure that a `BatchInfo` field is present in the
 as the batch vector.
 
 ```{r MCMC-naive-nospikes, eval = FALSE}
+set.seed(42)
 chain_naive_nospikes <- BASiCS_MCMC(
   Data = sce_naive,
-  PrintProgress = FALSE,
+  PrintProgress = TRUE,
   N = 40000,
   Thin = 20,
   Burn = 20000,
   Regression = TRUE,
   StoreChains = TRUE,
+  PriorParam = prior_param_naive,
   StoreDir = "rds/", 
   RunName = "naive_nospikes",
   WithSpikes = FALSE
