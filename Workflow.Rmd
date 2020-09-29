@@ -1133,8 +1133,8 @@ HVG <- BASiCS_DetectHVG(chain_naive, EpsilonThreshold = log(2))
 LVG <- BASiCS_DetectLVG(chain_naive, EpsilonThreshold = -log(2))
 
 VG_Table <- merge(
-  format(HVG, Filter = FALSE),
-  format(LVG, Filter = FALSE),
+  as.data.frame(HVG, Filter = FALSE),
+  as.data.frame(LVG, Filter = FALSE),
   all = TRUE
 )
 ## mark genes as highly variable, lowly variable, or not either.
@@ -1177,7 +1177,7 @@ library("reshape2")
 DC_naive <- BASiCS_DenoisedCounts(sce_naive, chain_naive)
 
 HVG_Table <- merge(
-  format(HVG, Filter = FALSE),
+  as.data.frame(HVG, Filter = FALSE),
   genenames, 
   by.x = "GeneName", by.y = "ensembl_gene_id", 
   all.x = TRUE,
@@ -1185,7 +1185,7 @@ HVG_Table <- merge(
 )
 
 LVG_Table <- merge(
-  format(LVG, Filter = FALSE),
+  as.data.frame(LVG, Filter = FALSE),
   genenames,
   by.x = "GeneName", by.y = "ensembl_gene_id", 
   all.x = TRUE,
@@ -1288,8 +1288,8 @@ Test_DE <- BASiCS_TestDE(
   Plot = FALSE,
   PlotOffset = FALSE
 )
-TableMean <- format(Test_DE, Which = "Mean", Filter = FALSE)
-TableResDisp <- format(Test_DE, Which = "ResDisp", Filter = FALSE)
+TableMean <- as.data.frame(Test_DE, Parameter = "Mean", Filter = FALSE)
+TableResDisp <- as.data.frame(Test_DE, Parameter = "ResDisp", Filter = FALSE)
 ```
 
 After running the test, it is important to visualise the results in order to
@@ -1474,7 +1474,7 @@ conditions are marked as `NA` and are therefore not being displayed.
 
 
 ```{r diff-res-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential residual overdispersion test between naive and active cells. Differences of residual overdispersion in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual overdispersion in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
-TableResDisp <- format(Test_DE, Which = "ResDisp", Filter = FALSE)
+#TableResDisp <- format(Test_DE, Which = "ResDisp", Filter = FALSE)
 p1 <- BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plots = "MA") 
 p2 <- BASiCS_PlotDE(Test_DE, Parameters = "ResDisp", Plots = "Volcano") 
 p1 / p2
@@ -1717,7 +1717,7 @@ A Docker image containing all software requirements is available at
 sessionInfo()
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, eval = FALSE}
 saveRDS(sce_naive, "rds/sce_naive.rds")
 saveRDS(sce_active, "rds/sce_active.rds")
 ```
