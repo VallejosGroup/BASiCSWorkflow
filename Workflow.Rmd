@@ -88,20 +88,21 @@ knitr::opts_chunk$set(
 <!--- scRNA-seq and the different types of heterogeneity ---> 
 <!--- Nils to revisit and add additional references if required --->
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
-transcriptional heterogeneity in cell populations that is not 
-captured by bulk experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
+cell-to-cell transcriptional heterogeneity that is not captured by bulk 
+experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
 On the broadest level, this heterogeneity can reflect the presence of distinct 
 cell subtypes or states. 
 Alternatively, it can be due to gradual changes along biological processes, 
 such as development and differentiation. 
-Several clustering and pseudotime inference methods have been developed to
-characterise these types of heterogeneity [@Kiselev2019; @Saelens2019].
+Several clustering and pseudotime inference tools have been developed to
+capture these types of heterogeneity [@Kiselev2019; @Saelens2019].
 However, there is a limited availability of computational tools tailored 
 to study more subtle variability within seemingly homogeneous cell populations. 
-This variability can reflect deterministic or stochastic events that regulate
-gene expression and, among other cases, has been reported to increase prior 
-to cell fate decisions [@Mojtahedi2016] as well as during ageing 
-[@Martinez-jimenez2017]. 
+This variability can reflect deterministic or stochastic events that regulate 
+gene expression and, among other cases, has been seen to increase prior to 
+cell fate decisions [@Mojtahedi2016] and during ageing [@Martinez-jimenez2017]. 
+Transcriptional variability has also been observed to differ from gene to gene 
+and can be conserved across cell types and species [@Lin2019]. 
 
 <!--- Narrow focus to transcriptional noise --->
 Stochastic variability within a seemingly homogeneous cell population --- often 
@@ -121,9 +122,7 @@ capture a combination of these effects, as well as deterministic regulatory
 mechanisms [@Eling2019]. 
 Moreover, these variability estimates can also be inflated by the technical 
 noise that is typically observed in scRNA-seq data [@Brennecke2013].
-Furthermore, the level of variability observed may differ from gene to gene;
-there is evidence that some genes exhibit stable expression levels
-across cell types and species [@Lin2019].
+
 
 <!--- Experimental strategies to tackle technical noise --->
 Different strategies have been incorporated into scRNA-seq protocols to control 
@@ -172,7 +171,7 @@ Our analysis pipeline includes practical guidance to assess the convergence of
 the Markov Chain Monte Carlo (MCMC) algorithm that is used to infer model 
 parameters in `r Biocpkg("BASiCS")`, as well as recommendations to interpret 
 and post-process the model outputs. 
-Finally, through a case study in the context of immune cells, we illustrate
+Finally, through a case study in the context of mouse immune cells, we illustrate
 how `r Biocpkg("BASiCS")` can identify highly and lowly variable
 genes within a cell population, as well as to compare expression profiles
 between experimental conditions or cell types. 
@@ -234,7 +233,7 @@ exploratory analyses [@Amezquita2019].
 Here, we use the `r Biocpkg("scater")` package [@McCarthy2017] to calculate 
 QC metrics for each cell (e.g. total read-count) and gene (e.g. percentage of 
 zeroes across all cells), respectively. 
-Moreover, we use the visualisation tools implemented in `r Biocpkg("scater")` to 
+We also use the visualisation tools implemented in `r Biocpkg("scater")` to 
 explore the input dataset and its associated QC diagnostic metrics. 
 For further exploratory data analysis we use the `r Biocpkg("scran")` package 
 [@Lun2016].
@@ -242,16 +241,15 @@ The latter can perform *global scaling* normalisation, calculating
 cell-specific scaling factors that capture global differences in read-counts 
 across cells (e.g. due to sequencing depth and PCR amplification) 
 [@Lun2016pooling]. 
-To quantify transcriptional variability, `r Biocpkg("scran")` can be used to 
-infer an overall trend between mean expression and the squared coefficent of 
+To quantify transcriptional variability, `r Biocpkg("scran")` can infer an 
+overall trend between mean expression and the squared coefficent of 
 variation (CV^2^) for each gene. 
-To derive variability estimates that are not confounded by this overall trend, 
-`r Biocpkg("scran")` also defines gene-specific DM (distance to the mean) 
-estimates as the distance between CV$^2$ and a rolling median along the range 
-of mean expression values [@Kolodziejczyk2015cell].
-DM estimates enable exploratory analyses of cell-to-cell gene expression 
-variability, but a measure of statistical uncertainty is not readily available 
-for these estimates. 
+Variability estimates that are not confounded by this 
+trend are then obtained via the DM approach [@Kolodziejczyk2015cell]. 
+For each gene, these are defined as the distance between CV$^2$ and a rolling 
+median along the range of mean expression values.
+DM estimates enable exploratory analyses of transcriptional 
+variability, but a measure of statistical uncertainty is not readily available. 
 As such, gene-specific downstream inference (such as differential variability 
 testing) is precluded.
 
@@ -289,14 +287,14 @@ To account for the strong relationship that is typically observed
 between gene-specific mean expression and over-dispersion estimates, 
 Eling *et al.*  [@Eling2018] introduced a joint prior specification for 
 these parameters. 
-This joint prior formulation has been observed to improve posterior inference
+This joint prior has been observed to improve posterior inference
 when the data is less informative (e.g. small sample size, lowly expressed 
-genes), borroring information across all genes to infer an overall trend that
-captures the relationship between mean and over-dispersion.
+genes), borrowing information across all genes (and cells) to infer an overall 
+trend that captures the relationship between mean and over-dispersion.
 The trend is then used to derive gene-specific *residual over-dispersion* 
 parameters $\epsilon_i$ that are not confounded by mean expression. 
-Similar to DM values implemented in `r Biocpkg("scran")`, these are defined as 
-deviations with respect to the overall trend.
+Similar to the DM values implemented in `r Biocpkg("scran")`, these are defined 
+as deviations with respect to the overall trend.
 
 Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
 observed variability in expression measurements into technical and biological 
@@ -311,7 +309,7 @@ These may relate to essential cellular functions and can assist the development
 of new data normalisation or integration strategies [@Lin2019].
 
 `r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
-perform differential expression analyses between two (or more) pre-specified 
+perform differential expression analyses between two pre-specified 
 groups of cells [@Vallejos2016; @Eling2018].
 While several differential expression tools have been proposed for scRNA-seq 
 data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that 
@@ -413,7 +411,7 @@ bio_counts <- CD4_raw[!grepl("ERCC", rownames(CD4_raw)), ]
 spike_counts <- CD4_raw[grepl("ERCC", rownames(CD4_raw)), ]
 # Generate the SingleCellExperiment object
 sce_CD4_all <- SingleCellExperiment(
-  assays = list(counts = as.matrix(bio_counts)),
+  assays = list(counts = bio_counts),
   colData = CD4_metadata[colnames(CD4_raw), ]
 )
 # Add read-counts for spike-ins as an alternative experiment
@@ -437,40 +435,34 @@ sce_naive_active
 
 ## Annotation
 
-Input read counts were annotated using Ensembl gene identifiers. 
-In order to facilitate the visualisation and interpretation of results, it is 
-often useful to generate a mapping from Ensembl gene IDs to gene symbols using 
-the BioMart software suite ([http://www.biomart.org](http://www.biomart.org)) 
-via the Bioconductor package, `r Biocpkg("biomaRt")` [@Durinck2009].
-These packages can also be used to obtain gene-pathways mappings and other
-information such as gene length, useful for performing functional analysis
-of the gene sets identified in downstream analyses, for example by performing
-gene ontology enrichment analysis [@.
+Input data was annotated using Ensembl gene identifiers. 
+To facilitate interpretation, it is often useful to obtain a mapping from 
+Ensembl gene IDs to gene symbols using the BioMart suite ([http://www.biomart.org](http://www.biomart.org)) via the 
+`r Biocpkg("biomaRt")` package [@Durinck2009].
+This can also be used to obtain gene-pathways mappings and other
+metadata (e.g. gene length), useful for performing functional analysis
+of gene sets identified in downstream analyses.
 
 ```{r obtain-gene-symbols}
-if(!file.exists("rds/"))
-  dir.create("rds", showWarnings = FALSE)
-
 library("biomaRt")
 
+if(!file.exists("rds/"))
+  dir.create("rds", showWarnings = FALSE)
 if (!file.exists("rds/genenames.rds")) {
   # Initialize mart and dataset
   ensembl <- useMart(
     biomart = "ensembl",
     dataset = "mmusculus_gene_ensembl"
   )
-  
   # Select gene ID and gene name
   genenames <- getBM(
     attributes = c("ensembl_gene_id", "external_gene_name"),
     mart = ensembl
   )
-
   rownames(genenames) <- genenames$ensembl_gene_id
   saveRDS(genenames, "rds/genenames.rds")
-} else {
-  genenames <- readRDS("rds/genenames.rds")
-}
+} 
+genenames <- readRDS("rds/genenames.rds")
 ```
 
 We add this information as `rowData` within the `SingleCellExperiment` 
@@ -480,10 +472,9 @@ object created above.
 # Merge biomaRt annotation
 rowdata <- data.frame(ensembl_gene_id = rownames(sce_naive_active))
 rowdata <- merge(rowdata, genenames, by = "ensembl_gene_id", all.x = TRUE)
-rownames(rowdata) <- rownames(sce_naive_active)
-# Check to see that the order is correct after merge
-stopifnot(all(rowdata$ensembl_gene_id == rownames(rowdata)))
-# Add to the SingleCellExperiment object
+rownames(rowdata) <- rowdata$ensembl_gene_id 
+# Check if  order is correct after merge; add to he SingleCellExperiment object
+stopifnot(all(rownames(rowdata) == rownames(sce_naive_active)))
 rowData(sce_naive_active) <- rowdata
 ```
 
@@ -505,7 +496,6 @@ spike-in counts and a low fraction of endogeneous counts
 (see Figure \@ref(fig:PerCellQC)).
 
 ```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
-# Calculate and plot per cell QC metrics
 sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
 p_cellQC1 <- plotColData(
   sce_naive_active, 
@@ -528,7 +518,7 @@ p_cellQC1 + p_cellQC2
 
 We can also visualise these metrics with respect to cell-level metadata, such
 as the experimental conditions (active vs unstimulated) and the different mice 
-that cells were collected from 
+from which cells were collected 
 (see Figure \@ref(fig:experimental-condition-batch)). 
 
 ```{r experimental-condition-batch, fig.cap="Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
@@ -559,17 +549,19 @@ p_batch <- plotColData(
 p_stimulus + p_batch
 ```
 
-To further explore the underlying structure of the data, we compute global
-scaling normalisation factors using `r Biocpkg("scran")` and perform a 
+To further explore the underlying structure of the data, we perform global
+scaling normalisation using `r Biocpkg("scran")` and a 
 principal component analysis (PCA) of log-transformed normalised expression 
 counts using `r Biocpkg("scater")`.
 As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
 suggests the absence of strong batch effects.
 It should be noted that the estimation of global scaling normalisation factors 
 using `r Biocpkg("scran")` is not strictly necessary in the 
-`r Biocpkg("BASiCS")` workflow. We use it here only as part of the exploratory 
-data analysis. Moreover, count-based models for dimensionality reduction (e.g. [@Townes2019;@Lopez2018]) could be used as an alternative to PCA, 
-removing the need for log normalisation .
+`r Biocpkg("BASiCS")` workflow. 
+Here, we only use it as part of the exploratory data analysis. 
+Moreover, count-based models for dimensionality reduction 
+(e.g. [@Townes2019;@Lopez2018]) could be used as an alternative to PCA, 
+removing the need for log normalisation.
 
 ```{r pca-visualisation-stimulus-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
 # Global scaling normalisation + log tranformation + PCA
@@ -583,26 +575,24 @@ p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
 p_stimulus + p_batch
 ```
 
-In addition to cell-specific QC, we also recommend the use of a gene filtering 
-step prior to the use of `r Biocpkg("BASiCS")`. 
+In addition to cell-specific QC, we also recommend a gene filtering 
+step prior to using `r Biocpkg("BASiCS")`. 
 The purpose of this filter is to remove lowly expressed genes that were largely
 undetected through sequencing, making reliable variability estimates difficult
 to obtain.
-Here, we remove all genes that are not detected in at least 5 cells across both 
-experimental conditions or that have an average read count below 1. 
-These thresholds can vary across datasets and should be informed by 
-gene-specific QC metrics such as those shown in
+Here, we remove genes that are not detected in at least 5 cells across all 
+cells or that have an average read count below 1. 
+These thresholds are generally arbitrary, can vary across datasets and should be 
+informed by gene-specific QC metrics such as those shown in
 Figure \@ref(fig:gene-selection).
 
 ```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
-# Calculate per gene QC metrics
 sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
 # Remove genes with zero total counts across all cells
 sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
-# Transform 'detected' metadata into number of cells 
+# Transform 'detected' into number of cells and define inclusion criteria
 rowData(sce_naive_active)$detected_cells <- 
   rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
-# Define inclusion criteria for genes
 rowData(sce_naive_active)$include_gene <- rowData(sce_naive_active)$mean >= 1 &
   rowData(sce_naive_active)$detected_cells >= 5
 plotRowData(
@@ -654,12 +644,12 @@ sce_naive <- sce_naive_active[, ind_naive]
 sce_active <- sce_naive_active[, ind_active]
 ```
 
-`r Biocpkg("BASiCS")` requires the user to update these objects with additional
+`r Biocpkg("BASiCS")` requires these objects to be augmented with extra
 information in a specific format.
-Firstly, if multiple batches of sequenced cells are available (e.g. multiple 
-donors that cells were extracted from, or multiple sequencing batches from the 
-same experimental condition), this information must be included under the 
-`BatchInfo` label as part of the cell-level metadata.
+If multiple batches of sequenced cells are available (e.g. multiple 
+donors from which cells were extracted, sequencing batches from the 
+same experimental condition), this must be indicated under the 
+`BatchInfo` label as cell-level metadata.
 
 ```{r BatchInfo}
 colData(sce_naive)$BatchInfo <- colData(sce_naive)$Individuals
@@ -694,7 +684,6 @@ if (!file.exists("downloads/spike_info.txt")) {
     destfile = "downloads/spike_info.txt"
   )  
 }
-
 ERCC_conc <- read.table("downloads/spike_info.txt", sep = "\t", header = TRUE)
 ```
 
@@ -712,11 +701,10 @@ ERCC_count_final <- ERCC_count * 0.009
 ```
 
 To update the `sce_naive` and `sce_active` objects, the user must create a 
-`data.frame` whose first column contains the labels associated to 
-the spike-in molecule (e.g. ERCC-00130) and whose second column contains the 
-input number of molecules calculated above.
-We add this information as metadata for `altExp(sce_naive)` and 
-`altExp(sce_active)`, respectively. 
+`data.frame` whose first column contains the spike-in labels (e.g. ERCC-00130) 
+and whose second column contains the number of molecules calculated above.
+We add this as row metadata for `altExp(sce_naive)` and 
+`altExp(sce_active)`. 
 
 ```{r spike-info}
 SpikeInput <- data.frame(
@@ -724,11 +712,10 @@ SpikeInput <- data.frame(
   count = ERCC_count_final
 )
 # Exclude spike-ins not included in the input SingleCellExperiment objects
-# and ensure the order of the rows is identical
 SpikeInput <- SpikeInput[match(rownames(altExp(sce_naive)), SpikeInput$Names), ]
-
-metadata(sce_naive)$SpikeInput <- SpikeInput
-metadata(sce_active)$SpikeInput <- SpikeInput
+# Add as metadata 
+rowData(altExp(sce_naive)) <- SpikeInput
+rowData(altExp(sce_naive)) <- SpikeInput
 ```
 
 ## Parameter estimation using BASiCS
@@ -747,63 +734,57 @@ The primary inputs for `BASiCS_MCMC` correspond to:
   [@Eling2018], and residual over-dispersion values $\epsilon_i$ are inferred. 
   Alternatively, independent log-normal priors are assigned to $\mu_i$ and 
   $\delta_i$ [@Vallejos2016]. 
+- `WithSpikes`: if `TRUE` information from spike-in molecules is used to aid
+  data normalisation and to quantify technical noise. 
 - `PriorMu`: If `"EmpiricalBayes"`, $\mu_i$'s are assigned a log-normal prior 
 with gene-specific location hyper-parameters defined via an empirical Bayes 
 framework. Alternatively, if `PriorMu = "default"`, location hyper-parameter are 
 set to be equal 0 for all genes. 
-- `WithSpikes`: if `TRUE` information from spike-in molecules is used to aid
-  data normalisation and to quantify technical noise. 
 
-As a default, we recommend to use `Regression = TRUE`, as we have observed that
-the joint prior introduced by Eling *et al.* leads to more stable estimation,
+
+As a default, we recommend to use `Regression = TRUE`, as the joint prior 
+introduced by [@Eling2018] leads to more stable estimation,
 particularly for small sample sizes and lowly expressed genes. 
-Moreover, the joint prior formulation enables users to obtain a measure of
+This approach also enables users to obtain a measure of
 transcriptional variability that is not confounded by mean expression. 
 We also recommend to use `PriorMu = "EmpiricalBayes"` as we have observed 
-that the empirical Bayes framework [@Casella1985]
+that an empirical Bayes framework [@Casella1985]
 improves estimation performance for sparser datasets. 
-Additional optional parameters can be used to store the generated output 
+Extra parameters can be used to store the output 
 (`StoreChains`, `StoreDir`, `RunName`) and to monitor the progress of the 
-algorithm (`PrintProgress`). 
+algorithm (`PrintProgress`).
 
 Here, we run the MCMC sampler separately for naive and activated cells.
 We use 40,000 iterations, discarding the initial 20,000 iterations.
 We recommend this setting as a default choice, as we have observed it to 
 ensure good convergence across multiple datasets.
-However, for large and less sparse datasets, a lower number of 
-iterations may be sufficient. 
-Practical guidance about the diagnostic criteria required to assess the 
-performance of the MCMC algorithn is provided in the next section.
+However, less iterations may be sufficient for large and less sparse datasets. 
+Practical guidance about MCMC convergence diagnostics is provided in the next section.
 
 ```{r MCMC-run, eval = FALSE}
 ## MCMC results may vary slightly due to pseudorandom number generation.
-## We fix a random seed here for exact reproducibility, though this isn't
-## strictly necessary
+## We fix a random seed for exact reproducibility, but this is not strictly required
 set.seed(42)
-prior_param_naive <- BASiCS_PriorParam(sce_naive, PriorMu = "EmpiricalBayes")
 chain_naive <- BASiCS_MCMC(
   Data = sce_naive,
   N = 40000,
   Thin = 20,
   Burn = 20000,
   Regression = TRUE,
-  PriorMu = "EmpiricalBayes",
   WithSpikes = TRUE,
-  PriorParam = prior_param_naive,
+  PriorParam = BASiCS_PriorParam(sce_naive, PriorMu = "EmpiricalBayes"),
   StoreChains = TRUE,
   StoreDir = "rds/",
   RunName = "naive"
 )
-prior_param_active <- BASiCS_PriorParam(sce_active, PriorMu = "EmpiricalBayes")
 chain_active <- BASiCS_MCMC(
   Data = sce_active,
   N = 40000,
   Thin = 20,
   Burn = 20000,
   Regression = TRUE,
-  PriorMu = "EmpiricalBayes",
   WithSpikes = TRUE,
-  PriorParam = prior_param_active,
+  PriorParam = BASiCS_PriorParam(sce_active, PriorMu = "EmpiricalBayes"),
   StoreChains = TRUE,
   StoreDir = "rds/",
   RunName = "active"
@@ -816,23 +797,16 @@ For convenience, these can be obtained online at
 [https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
 
 ```{r download-chain-naive}
+website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/raw/master/rds/"
 if (!file.exists("rds/chain_naive.Rds")) {
   download.file(
-    paste0(
-      "https://git.ecdf.ed.ac.uk/",
-      "vallejosgroup/basicsworkflow2020/",
-      "raw/master/rds/chain_naive.Rds"
-    ),
+    paste0(website, "chain_naive.Rds"),
     destfile = "rds/chain_naive.Rds"
   )  
 }
 if (!file.exists("rds/chain_active.Rds")) {
   download.file(
-    paste0(
-      "https://git.ecdf.ed.ac.uk/",
-      "vallejosgroup/basicsworkflow2020/",
-      "raw/master/rds/chain_active.Rds"
-    ),
+    paste0(website, "chain_active.Rds"),
     destfile = "rds/chain_active.Rds"
   )  
 }
@@ -841,7 +815,7 @@ chain_active <- readRDS("rds/chain_active.Rds")
 ```
 
 The output from `BASiCS_MCMC` is a `BASiCS_Chain` object that contains the 
-draws associated to all model parameters; given that 
+draws associated to all model parameters. Given that 
 `N` = 40,000, `Thin` = 20 and `Burn` = 20,000, the object contains 1,000 
 draws for each parameter.
 These can be accessed using the `displayChainBASiCS` function.
@@ -857,7 +831,7 @@ displayChainBASiCS(chain_naive, Param = "mu")[1:2, 1:3]
 Before interpreting the estimates obtained by `r Biocpkg("BASiCS")`, 
 it is critical to assess the convergence of the MCMC algorithm, i.e. whether
 the MCMC reached its stationary distribution.
-If convergence has been achieved, each parameter should not evolve
+If convergence has been achieved, the trace for each parameter should not evolve
 significantly across iterations, and MCMC draws are expected to be stochastic 
 fluctuations around a horizontal trend.
 It is not possible to prove convergence, but multiple graphical and
@@ -868,14 +842,14 @@ order to ensure that the algorithm consistently converges to the same
 distribution.
 For `r Biocpkg("BASiCS")`, we have observed that using informed starting values 
 (e.g. based on `r Biocpkg("scran")` normalisation) and a sufficiently large 
-value for `N` and `Burn` generally leads to consistent estimates across 
+value for `N` and `Burn` generally leads to largely consistent estimates across 
 multiple MCMC runs.
 Hence, the focus of this section is to evaluate quantitative measures of 
 convergence (e.g. [@Geweke1995]) based on a single MCMC chain.
 
 Traceplots can be used to visually assess the history of MCMC iterations 
-for a specific parameter (e.g. Figure \@ref(fig:convergence-naive)). 
-As mentioned above, significan departures from a horizontal trend suggest a
+for a specific parameter (e.g. Figure \@ref(fig:convergence-naive), left panel). 
+As mentioned above, significant departures from a horizontal trend suggest a
 lack of convergence.
 As illustrated in Figure \@ref(fig:convergence-naive), histograms can also be 
 used to display the marginal distribution for each parameter. 
@@ -891,7 +865,7 @@ plot(chain_naive, Param = "mu", Gene = 1)
 ```
 
 As `r Biocpkg("BASiCS")` infers thousands of parameters, it is 
-impractical to assess these diagnostics for each parameter. 
+impractical to assess these diagnostics separately for each parameter. 
 Thus, it is helpful to use numerical diagnostics that can be applied to multiple
 parameters simultaneously.
 Here, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995],
@@ -904,7 +878,6 @@ expression parameters $\mu_i$ were small in absolute value
 (see Figure \@ref(fig:geweke-diag)), suggesting that the algorithm has 
 largely converged.
 
-TODO: why are there red lines at +-3? What do they signify?
 
 ```{r geweke-diag, fig.cap="Geweke Z-score for mean expression parameters is plotted against mean expression estimates for naive (left) and activated (right) cells."}
 library("coda")
@@ -992,12 +965,12 @@ features (e.g. CpG island composition [@Morgan2018]), transcriptional dynamics
 [@Antolovic2017] and aging [@Martinez-jimenez2017], among others. 
 The squared coefficient of variation (CV^2^) is widely used as a proxy for 
 transcriptional variability. 
-For example, here we obtain CV^2^ estimates for each gene using 
-`r Biocpkg("scran")` normalised expression counts as input. 
+For example, we can obtain CV^2^ estimates for each gene using 
+`r Biocpkg("scran")` normalised counts as input. 
 Instead, `r Biocpkg("BASiCS")` infers transcriptional variability using 
 gene-specific over-dispersion parameters $\delta_i$ (see *Methods*). 
-Here, we compare these approaches, focusing on naive CD4^+^ T cells. We
-note that repeating this analysis for active cells produces similar results. 
+Here, we compare these approaches, focusing on naive CD4^+^ T cells (repeating 
+this analysis for active cells led to similar results). 
 As seen in Figure \@ref(fig:dispersion-vs-mean)A, CV^2^ and posterior estimates 
 for $\delta_i$ are highly correlated. 
 Moreover, both variability metrics are confounded by differences in mean 
@@ -1016,8 +989,6 @@ mean expression (Figure \@ref(fig:dispersion-vs-mean)E-F).
 However, unlike the DM method, the integrated approach implemented in 
 `r Biocpkg("BASiCS")` provides a direct measure of statistical uncertainty for 
 these estimates. 
-As illustrated in the following sections, this enables gene-specific
-downstream inference such as differential variability analyses. 
 
 <!--- CV: Can we make the n_neigh smaller? --->
 
@@ -1110,7 +1081,7 @@ HVGs are marked as those for which $\epsilon_i$ exceeds a pre-defined threshold
 with high probability, where the probability cut-off is chosen to match a given 
 expected false discovery rate (EFDR; default EFDR = 10\%) [@Newton2004].
 A similar approach is implemented for LVG detection, but based on whether 
-$\epsilon_i$ is below a pre-specified threshold. 
+$\epsilon_i$ is below a pre-specified threshold `EpsilonThreshold`. 
 In principle, a threshold for $\epsilon_i$ could be directly specified by the 
 user. 
 For example, if the threshold for $\epsilon_i$ is equal to $\log(2)$, HVGs would 
@@ -1119,11 +1090,11 @@ times higher than would be expected given the inferred mean expression level.
 In practice, however, it may be of interest to rank genes and to select the
 those with the highest or the lowest residual over-dispersion. 
 <!--- CV: LIKELY TO BE EDITED TO USE THE APPROACH ABOVE --->
-For this purpose, the `PercentileThreshold` parameter can be used to define the 
+<!--- For this purpose, the `PercentileThreshold` parameter can be used to define the 
 threshold based on the empirical distribution of posterior estimates for 
 residual over-dispersion parameters $\epsilon_i$. 
 For example, if `PercentileThreshold = 0.9`, the `BASiCS_DetectHVG` function 
-defines the threshold as the 90\% percentile of the above distribution.
+defines the threshold as the 90\% percentile of the above distribution. ---> 
 
 
 ```{r plot-vg-naive, fig.cap="HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
@@ -1251,8 +1222,8 @@ T cell differentiation [@Zhu2010]. Therefore, any heterogeneity in the activated
 cell population does not arise from cells residing in different lineage-specific 
 differentiation states. 
 
-`r Biocpkg("BASiCS")` implements differential expression testing via the
-`BASiCS_TestDE` function. The main input parameters for `BASiCS_TestDE` are:
+Differential expression testing is provided via the
+`BASiCS_TestDE` function. The main input parameters are:
 
 <!-- Removed testing over-dispersion from here, not the main feature (e.g. naive and active CD4^+^ T cells). ---> 
 <!--`EpsilonD` ---> 
@@ -1292,14 +1263,13 @@ TableMean <- as.data.frame(Test_DE, Parameter = "Mean", Filter = FALSE)
 TableResDisp <- as.data.frame(Test_DE, Parameter = "ResDisp", Filter = FALSE)
 ```
 
-After running the test, it is important to visualise the results in order to
-interpret the results and identify systematic patterns among differentially
+After running the test, it is important to visualise the results to facilitate
+interpretation and to identify systematic patterns among differentially
 expressed genes. 
 It may also be useful to perform functional enrichment analysis to identify 
-biologically meaningful patterns amongst differentially expressed genes. 
+biologically meaningful patterns among these genes. 
 For example, this could be performed using `r Biocpkg("goseq")` [@Young2010].
-We do not perform this here, as it is outside of the scope of 
-`r Biocpkg("BASiCS")`; such a workflow is described by @Maksimovic2020.
+We do not perform this here, but a relevant workflow is described by @Maksimovic2020.
 
 We first focus on the differential mean expression test. 
 MA-plots (log fold change M versus mean average A) and volcano plots (posterior 
@@ -1339,11 +1309,11 @@ DC_active <- BASiCS_DenoisedCounts(sce_active, chain_active)
 ```
 
 To visualise expression patterns for multiple genes at once, we use the 
-`r Biocpkg("ComplexHeatmap")` [@Gu2016] Biocondutor package, grouping genes
-according to the result of the differential mean expression test (i.e. 
-up-regulated in naive/active cells or non differentially expressed). 
-Figure \@ref(fig:heatmap-diffexp) shows 15 genes for each group. 
-Fpr example, amongst the non DE group, we observe several genes encoding
+`r Biocpkg("ComplexHeatmap")` [@Gu2016] package, grouping genes
+according to the result of the differential mean expression test 
+(i.e. up-regulated in naive/active cells or non differentially expressed;
+see Figure \@ref(fig:heatmap-diffexp)). 
+Fpr example, among the non DE group, we observe several genes encoding
 ribosomal proteins (e.g. *Rps14*). 
 Genes in this family have been previously observed to have stable expression
 across a wide range of scRNAseq datasets in mouse and human [@Lin2019]. 
@@ -1498,11 +1468,167 @@ results, and to identify systematic patterns among the genes identified.
 Figure \@ref(fig:violin-diffresdisp) shows denoised counts for five genes with higher residual overdispersion in naive cells. Here, we show only genes with 
 similar mean expression.
 
+
+```{r, eval = FALSE, echo = FALSE}
+# Tests
+myDF <- data.frame("GeneName" = rownames(DC_naive),
+                   "ExpPropNaive" = rowMeans(DC_naive > 0),
+                   "ExpPropActive" = rowMeans(DC_active > 0),
+                   "nExpPropNaive" = rowSums(DC_naive > 0),
+                   "nExpPropActive" = rowSums(DC_active > 0))
+myDF <- myDF[!grepl("ERCC", myDF$GeneName),]
+dim(myDF)
+dim(TableCombined)
+myDF <- merge(TableCombined, myDF)
+
+
+plot_params <- list(
+  geom_pointdensity(),
+  scale_colour_viridis(name = "Density"),
+  theme(
+    text = element_text(size = rel(3)),
+    legend.position = "bottom",
+    legend.text = element_text(angle = 90, size = 8, hjust = 0.5, vjust = 0.5),
+    legend.key.size =  unit(0.018, "npc")
+  )
+)
+
+g1 <- ggplot(myDF[myDF$ResultDiffResDisp == "Naive+",], 
+             aes(log10(MeanOverall), MeanLog2FC)) + plot_params + ylim(-18,18) +
+  geom_abline(slope = 0, intercept = 0, colour = "firebrick", linetype = "dashed")
+
+g2 <- ggplot(myDF[myDF$ResultDiffResDisp == "Active+",], 
+             aes(log10(MeanOverall), MeanLog2FC)) + plot_params + ylim(-18,18) +
+  geom_abline(slope = 0, intercept = 0, colour = "firebrick", linetype = "dashed")
+
+g3 <- ggplot(myDF[myDF$ResultDiffResDisp == "Naive+",],
+             aes(x = ExpPropNaive, y = ExpPropActive)) + plot_params +
+  geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
+
+g4 <- ggplot(myDF[myDF$ResultDiffResDisp == "Active+",],
+             aes(x = ExpPropNaive, y = ExpPropActive)) + plot_params +
+  geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
+
+(g1 + g3) / (g2 + g4)
+# DiffResDisp is not confounded by mean expression changes
+# However, we do observe a change in terms of the proportion of cells with expression
+# Higher var <-> lower proportion of expression
+
+g5 <- ggplot(myDF,
+             aes(x = ExpPropNaive, y = ExpPropActive)) + plot_params +
+  geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
+
+myDF <- myDF[order(abs(myDF$ResDispDistance), decreasing = TRUE),]
+
+ind_vg <- myDF$ResultDiffResDisp %in% c("Naive+") & 
+  myDF$ResultDiffMean %in% c("NoDiff") &
+  abs(myDF$ExpPropNaive - myDF$ExpPropActive) < 0.10 &
+  (myDF$ExpPropNaive + myDF$ExpPropActive)/2 > 0.5
+var_genes <- myDF$GeneName[ind_vg]
+length(var_genes)
+var_naive <- DC_naive[var_genes, ]
+var_active <- DC_active[var_genes, ]
+var_df <- rbind(
+  data.frame(t(var_naive), Group = "Naive"),
+  data.frame(t(var_active), Group = "Active")
+)
+colnames(var_df)[-ncol(var_df)] <- genenames[var_genes, "external_gene_name"]
+var_long_df <- pivot_longer(var_df, cols = colnames(var_df)[-ncol(var_df)])
+ggplot(var_long_df, aes(x = name, y = value+1, colour = Group)) +
+  geom_violin() +
+  geom_jitter(position = position_jitterdodge()) +
+  scale_y_log10() +
+  labs(x = "Gene", y = "Denoised count + 1") +
+  scale_colour_brewer(palette = "Set1")
+
+for(i in 1:length(var_genes)) {
+  plot(sort(var_naive[i,]), pch = 16, main = i)
+  points(sort(var_active[i,]), col = "red", pch = 16)  
+}
+
+for(i in 1:length(var_genes)) {
+  par(mfrow = c(1,2))
+  plot(log10(var_naive[i,var_naive[i,]>0]), main = i)
+  plot(log10(var_active[i,var_active[i,]>0]), main = i) 
+}
+
+ind_vg <- myDF$ResultDiffResDisp %in% c("Active+") & 
+  myDF$ResultDiffMean %in% c("NoDiff") &
+  abs(myDF$ExpPropNaive - myDF$ExpPropActive) < 0.10 &
+  (myDF$ExpPropNaive + myDF$ExpPropActive)/2 > 0.5
+var_genes <- myDF$GeneName[ind_vg]
+length(var_genes)
+var_naive <- DC_naive[var_genes, ]
+var_active <- DC_active[var_genes, ]
+var_df <- rbind(
+  data.frame(t(var_naive), Group = "Naive"),
+  data.frame(t(var_active), Group = "Active")
+)
+colnames(var_df)[-ncol(var_df)] <- genenames[var_genes, "external_gene_name"]
+var_long_df <- pivot_longer(var_df, cols = colnames(var_df)[-ncol(var_df)])
+ggplot(var_long_df, aes(x = name, y = value+1, colour = Group)) +
+  geom_violin() +
+  geom_jitter(position = position_jitterdodge()) +
+  scale_y_log10() +
+  labs(x = "Gene", y = "Denoised count + 1") +
+  scale_colour_brewer(palette = "Set1")
+
+for(i in 1:length(var_genes)) {
+  plot(sort(var_naive[i,]), pch = 16, main = i)
+  points(sort(var_active[i,]), col = "red", pch = 16)  
+}
+
+for(i in 1:length(var_genes)) {
+  par(mfrow = c(1,2))
+  boxplot(log10(var_naive[i,var_naive[i,]>0]), main = i)
+  boxplot(log10(var_active[i,var_active[i,]>0]), main = i) 
+}
+
+for(i in 1:length(var_genes)) {
+  par(mfrow = c(1,2))
+  plot(log10(var_naive[i,var_naive[i,]>0]), main = i)
+  plot(log10(var_active[i,var_active[i,]>0]), main = i) 
+}
+
+
+```
+
 ```{r violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plot of denoised counts for five genes with higher residual overdispersion in naive cells."}
 library("tidyr")
-ind_vg <- abs(TableCombined$MeanLog2FC) < 0.025 &
-  TableCombined$ResultDiffResDisp %in% c("Naive+")
+#TableCombined <- TableCombined[order(TableCombined$ProbDiffResDisp, decreasing = TRUE),]
+#ind_vg <- #abs(TableCombined$MeanLog2FC) < 0.5 &
+#  log10(TableCombined$MeanOverall) > 2 &
+#  log10(TableCombined$MeanOverall) < 2.5  &
+#  abs(TableCombined$ResDispDistance) > 2 &
+#  TableCombined$ResultDiffMean %in% c("NoDiff") &
+#  TableCombined$ResultDiffResDisp %in% c("Naive+")
+#table(ind_vg)
+#var_genes <- TableCombined$GeneName[ind_vg]
+#var_genes <- var_genes[1:3]
+var_naive <- DC_naive[var_genes, ]
+var_active <- DC_active[var_genes, ]
+var_df <- rbind(
+  data.frame(t(var_naive), Group = "Naive"),
+  data.frame(t(var_active), Group = "Active")
+)
+colnames(var_df)[-ncol(var_df)] <- genenames[var_genes, "external_gene_name"]
+var_long_df <- pivot_longer(var_df, cols = colnames(var_df)[-ncol(var_df)])
+ggplot(var_long_df, aes(x = name, y = value+1, colour = Group)) +
+  geom_violin() +
+  geom_jitter(position = position_jitterdodge()) +
+  scale_y_log10() +
+  labs(x = "Gene", y = "Denoised count + 1") +
+  scale_colour_brewer(palette = "Set1")
+
+
+ind_vg <- #abs(TableCombined$MeanLog2FC) < 0.1 &
+  #log10(TableCombined$MeanOverall) > 2 &
+  #log10(TableCombined$MeanOverall) < 2.5 &
+  TableCombined$ResultDiffMean %in% c("NoDiff") &
+  TableCombined$ResultDiffResDisp %in% c("Active+")
+table(ind_vg)
 var_genes <- TableCombined$GeneName[ind_vg]
+var_genes <- var_genes[1:3]
 var_naive <- DC_naive[var_genes, ]
 var_active <- DC_active[var_genes, ]
 var_df <- rbind(
