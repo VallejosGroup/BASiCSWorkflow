@@ -456,7 +456,7 @@ if (!file.exists("rds/genenames.rds")) {
   )
   # Select gene ID and gene name
   genenames <- getBM(
-    attributes = c("ensembl_gene_id", "external_gene_name"),
+    attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
     mart = ensembl
   )
   rownames(genenames) <- genenames$ensembl_gene_id
@@ -476,6 +476,15 @@ rownames(rowdata) <- rowdata$ensembl_gene_id
 # Check if  order is correct after merge; add to he SingleCellExperiment object
 stopifnot(all(rownames(rowdata) == rownames(sce_naive_active)))
 rowData(sce_naive_active) <- rowdata
+```
+
+For the remaining analysis, we will only focus on the 
+`r sum(rowData(sce_naive_active)$gene_biotype == "protein_coding")` protein 
+coding genes that are contained in the data. These are selected below. 
+
+```{r}
+pcg <- which(rowData(sce_naive_active)$gene_biotype == "protein_coding")
+sce_naive_active <- sce_naive_active[pcg, ]
 ```
 
 ## QC and exploratory data analysis
@@ -594,21 +603,21 @@ sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
 rowData(sce_naive_active)$detected_cells <- 
   rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
 rowData(sce_naive_active)$include_gene <- rowData(sce_naive_active)$mean >= 1 &
-  rowData(sce_naive_active)$detected_cells >= 5
+  rowData(sce_naive_active)$detected_cells >= 10
 plotRowData(
     sce_naive_active,
     x = "detected_cells",
     y = "mean",
     colour_by = "include_gene") +
-  xlab("Total engogenous reads per cell") +
-  ylab("Number of detected genes per cell") +
+  xlab("Number of cells in which expression was detected") +
+  ylab("Average number of read counts across cells") +
   scale_x_log10() +
   scale_y_log10() +
   theme(
     legend.position = "bottom",
     axis.text.x = element_text(angle = 45, hjust = 1)
   ) +
-geom_vline(xintercept = 5, linetype = "dashed", col = "grey60") +
+geom_vline(xintercept = 10, linetype = "dashed", col = "grey60") +
 geom_hline(yintercept = 1, linetype = "dashed", col = "grey60")
 # Apply gene filter
 sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
@@ -775,7 +784,7 @@ chain_naive <- BASiCS_MCMC(
   PriorParam = BASiCS_PriorParam(sce_naive, PriorMu = "EmpiricalBayes"),
   StoreChains = TRUE,
   StoreDir = "rds/",
-  RunName = "naive"
+  RunName = "naive_cata"
 )
 chain_active <- BASiCS_MCMC(
   Data = sce_active,
@@ -787,7 +796,7 @@ chain_active <- BASiCS_MCMC(
   PriorParam = BASiCS_PriorParam(sce_active, PriorMu = "EmpiricalBayes"),
   StoreChains = TRUE,
   StoreDir = "rds/",
-  RunName = "active"
+  RunName = "active_cata"
 )
 ```
 
