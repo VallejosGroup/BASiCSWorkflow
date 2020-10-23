@@ -810,8 +810,8 @@ chain_active <- BASiCS_MCMC(
 )
 ```
 
-This first of these samplers takes 227 minutes to complete on a 3.4 GHz Intel 
-Core i7 4770k procesor with 16GB RAM, while the second takes 154 minutes.
+This first of these samplers takes 650 minutes to complete on a 3.4 GHz Intel 
+Core i7 4770k procesor with 16GB RAM, while the second takes 540 minutes.
 For convenience, these can be obtained online at 
 [https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
 
