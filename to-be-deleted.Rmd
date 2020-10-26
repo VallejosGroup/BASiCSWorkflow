@@ -85,17 +85,28 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-To visualise expression patterns for multiple genes at once, we use the 
-`r Biocpkg("ComplexHeatmap")` [@Gu2016] package, grouping genes
-according to the result of the differential mean expression test 
-(i.e. up-regulated in naive/active cells or non differentially expressed;
-see Figure \@ref(fig:heatmap-diffexp)). 
-Fpr example, among the non DE group, we observe several genes encoding
-ribosomal proteins (e.g. *Rps14*). 
-Genes in this family have been previously observed to have stable expression
-across a wide range of scRNAseq datasets in mouse and human [@Lin2019]. 
-Moreover, the genes that are found to be upregulated in the active group include 
-known markers of T cell activation such as *Cd69* [@Ziegler1994].
+Parameter estimation is implemented in the `BASiCS_MCMC` function using an 
+adaptive Metropolis within Gibbs algorithm [@Roberts2009].
+The primary inputs for `BASiCS_MCMC` correspond to:
 
+- `Data`: a `SingleCellExperiment` object created as described in the 
+  previous sections. 
+- `N`: the total number of MCMC iterations.
+- `Thin`: thining period for output storage
+  (only the `Thin`-th MCMC draw is stored).
+- `Burn`: the initial number of MCMC iterations to be discarded.
+- `Regression`: if `TRUE` a join prior is assigned to $\mu_i$ and $\delta_i$ 
+  [@Eling2018], and residual over-dispersion values $\epsilon_i$ are inferred. 
+  Alternatively, independent log-normal priors are assigned to $\mu_i$ and 
+  $\delta_i$ [@Vallejos2016]. 
+- `WithSpikes`: if `TRUE` information from spike-in molecules is used to aid
+  data normalisation and to quantify technical noise. 
+- `PriorParam`: Defines the prior hyper-parameters to be used by 
+`r Biocpkg("BASiCS")`. We recommend to use the `BASiCS_PriorParam` function
+for this purpose. If `PriorMu = "EmpiricalBayes"`, 
+$\mu_i$'s are assigned a log-normal prior with gene-specific location 
+hyper-parameters defined via an 
+empirical Bayes framework. Alternatively, if `PriorMu = "default"`, location 
+hyper-parameters are set to be equal 0 for all genes. 
 
 
