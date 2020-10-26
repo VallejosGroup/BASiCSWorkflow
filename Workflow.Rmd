@@ -1104,7 +1104,7 @@ VG_Table <- merge(
   all = TRUE
 )
 ## mark genes as highly variable, lowly variable, or not either.
-VG_Table$VG <- NA
+VG_Table$VG <- "Not HVG or LVG"
 VG_Table$VG[VG_Table$HVG] <- "HVG"
 VG_Table$VG[VG_Table$LVG] <- "LVG"
 
