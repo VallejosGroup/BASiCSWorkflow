@@ -724,7 +724,7 @@ SpikeInput <- data.frame(
 SpikeInput <- SpikeInput[match(rownames(altExp(sce_naive)), SpikeInput$Names), ]
 # Add as metadata 
 rowData(altExp(sce_naive)) <- SpikeInput
-rowData(altExp(sce_naive)) <- SpikeInput
+rowData(altExp(sce_active)) <- SpikeInput
 ```
 
 ## Parameter estimation using BASiCS
@@ -782,6 +782,7 @@ chain_naive <- BASiCS_MCMC(
   Regression = TRUE,
   WithSpikes = TRUE,
   PriorParam = BASiCS_PriorParam(sce_naive, PriorMu = "EmpiricalBayes"),
+  Threads = 4,
   StoreChains = TRUE,
   StoreDir = "rds/",
   RunName = "naive_cata"
@@ -794,14 +795,15 @@ chain_active <- BASiCS_MCMC(
   Regression = TRUE,
   WithSpikes = TRUE,
   PriorParam = BASiCS_PriorParam(sce_active, PriorMu = "EmpiricalBayes"),
+  Threads = 4,
   StoreChains = TRUE,
   StoreDir = "rds/",
   RunName = "active_cata"
 )
 ```
 
-This first of these samplers takes 650 minutes to complete on a 3.4 GHz Intel 
-Core i7 4770k procesor with 16GB RAM, while the second takes 540 minutes.
+This first of these samplers takes 129 minutes to complete on a 3.4 GHz Intel 
+Core i7 4770k procesor with 32GB RAM, while the second takes 116 minutes.
 For convenience, these can be obtained online at 
 [https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
 
@@ -1691,8 +1693,9 @@ chain_naive_nospikes <- BASiCS_MCMC(
   Thin = 20,
   Burn = 20000,
   Regression = TRUE,
-  StoreChains = TRUE,
   PriorParam = prior_param_naive,
+  Threads = 4,
+  StoreChains = TRUE,
   StoreDir = "rds/", 
   RunName = "naive_nospikes",
   WithSpikes = FALSE
