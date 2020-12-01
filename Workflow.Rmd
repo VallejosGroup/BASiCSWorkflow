@@ -589,7 +589,7 @@ step prior to using `r Biocpkg("BASiCS")`.
 The purpose of this filter is to remove lowly expressed genes that were largely
 undetected through sequencing, making reliable variability estimates difficult
 to obtain.
-Here, we remove genes that are not detected in at least 5 cells across all 
+Here, we remove genes that are not detected in at least 10 cells across all 
 cells or that have an average read count below 1. 
 These thresholds are generally arbitrary, can vary across datasets and should be 
 informed by gene-specific QC metrics such as those shown in
@@ -610,7 +610,7 @@ plotRowData(
     y = "mean",
     colour_by = "include_gene") +
   xlab("Number of cells in which expression was detected") +
-  ylab("Average number of read counts across cells") +
+  ylab("Average number of read counts across all cells") +
   scale_x_log10() +
   scale_y_log10() +
   theme(
@@ -745,10 +745,12 @@ The primary inputs for `BASiCS_MCMC` correspond to:
   $\delta_i$ [@Vallejos2016]. 
 - `WithSpikes`: if `TRUE` information from spike-in molecules is used to aid
   data normalisation and to quantify technical noise. 
-- `PriorMu`: If `"EmpiricalBayes"`, $\mu_i$'s are assigned a log-normal prior 
-with gene-specific location hyper-parameters defined via an empirical Bayes 
-framework. Alternatively, if `PriorMu = "default"`, location hyper-parameter are 
-set to be equal 0 for all genes. 
+- `PriorParam`: Defines the prior hyper-parameters to be used by 
+`r Biocpkg("BASiCS")`. We recommend to use the `BASiCS_PriorParam` function
+for this purpose. If `PriorMu = "EmpiricalBayes"`, $\mu_i$'s are assigned a 
+log-normal prior with gene-specific location hyper-parameters defined via an 
+empirical Bayes framework. Alternatively, if `PriorMu = "default"`, location 
+hyper-parameters are set to be equal 0 for all genes. 
 
 
 As a default, we recommend to use `Regression = TRUE`, as the joint prior 
@@ -785,8 +787,9 @@ chain_naive <- BASiCS_MCMC(
   Threads = 4,
   StoreChains = TRUE,
   StoreDir = "rds/",
-  RunName = "naive_cata"
+  RunName = "naive"
 )
+set.seed(43)
 chain_active <- BASiCS_MCMC(
   Data = sce_active,
   N = 40000,
@@ -798,7 +801,7 @@ chain_active <- BASiCS_MCMC(
   Threads = 4,
   StoreChains = TRUE,
   StoreDir = "rds/",
-  RunName = "active_cata"
+  RunName = "active"
 )
 ```
 
@@ -821,8 +824,8 @@ if (!file.exists("rds/chain_active.Rds")) {
     destfile = "rds/chain_active.Rds"
   )  
 }
-chain_naive <- readRDS("rds/chain_naive.Rds")
-chain_active <- readRDS("rds/chain_active.Rds")
+chain_naive <- readRDS("rds/chain_naive_cata.Rds")
+chain_active <- readRDS("rds/chain_active_cata.Rds")
 ```
 
 The output from `BASiCS_MCMC` is a `BASiCS_Chain` object that contains the 
@@ -879,56 +882,18 @@ As `r Biocpkg("BASiCS")` infers thousands of parameters, it is
 impractical to assess these diagnostics separately for each parameter. 
 Thus, it is helpful to use numerical diagnostics that can be applied to multiple
 parameters simultaneously.
-Here, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995],
-which compares the average of draws obtained during the initial (10\% after burn 
-in, by default) and the average of draws obtained during the final part of the 
-chain (50\% by default).
-Large absolute $Z$-scores suggest that the algorithm has not converged. 
+Here, we illustrate usage for two of such metrics focusing using the MCMC
+chain that was obtained for the naive CD4^+^T cells (similar results were 
+obtained for activated cells). 
+First, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995].
+The latter compares the average of draws obtained during the initial (10\% after 
+burn in, by default) and the final part of the chain (50\% by default).
+Large absolute $Z$-scores suggest that the algorithm has not converged (as a
+rule of thumb, a threshold at $|Z| < 3$ is often applied). 
 For the naive and activatived CD4^+^ T datasets most Z-scores associated to mean
 expression parameters $\mu_i$ were small in absolute value 
-(see Figure \@ref(fig:geweke-diag)), suggesting that the algorithm has 
+(see Figure \@ref(fig:mcmc-diag)A), suggesting that the algorithm has 
 largely converged.
-
-
-```{r geweke-diag, fig.cap="Geweke Z-score for mean expression parameters is plotted against mean expression estimates for naive (left) and activated (right) cells."}
-library("coda")
-library("ggplot2")
-library("viridis")
-
-# Calculate and plot Geweke Z scores 
-gew_mu_naive_obj <- geweke.diag(
-  mcmc(displayChainBASiCS(chain_naive, Param = "mu"))
-)
-gew_mu_naive <- gew_mu_naive_obj$z
-gew_mu_active_obj <- geweke.diag(
-  mcmc(displayChainBASiCS(chain_active, Param = "mu"))
-)
-gew_mu_active <- gew_mu_active_obj$z
-
-plot_params <- list(
-  geom_hex(),
-  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed"),
-  scale_fill_viridis(),
-  labs(x = "log(mu)", y = "Geweke Z-score")
-)
-
-p_geweke_naive <- ggplot() +
-  aes(
-    log10(colMedians(displayChainBASiCS(chain_naive, Param = "mu"))),
-    gew_mu_naive
-  ) +
-  plot_params +
-  ggtitle("Naive cells")
-p_geweke_active <- ggplot() +
-  aes(
-    log10(colMedians(displayChainBASiCS(chain_active, Param = "mu"))),
-    gew_mu_active
-  ) +
-  plot_params+
-  ggtitle("Activated cells")
-
-p_geweke_naive + p_geweke_active
-```
 
 As well as assessing MCMC convergence, it is important to ensure that the MCMC 
 algorithm has efficiently explored the parameter space. 
@@ -951,22 +916,43 @@ $$
 $$
 where $N_{tot}$ represents the total number of MCMC draws (after burn-in and
 thining) and $\rho(k)$ is the autocorrelation at lag $k$.
-ESS estimates associated to mean expression parameters for the naive and 
-activated CD4^+^ T cells are displayed in Figure \@ref(fig:ess-diag).
+ESS estimates associated to mean expression parameters for the naive CD4^+^ T 
+cells are displayed in Figure \@ref(fig:mcmc-diag)B.
 Whilst ESS is around 1,000 ($N_{tot}$ in this case) for most genes, we observe 
 low ESS values for a small proportion of genes (primarily lowly expressed genes 
 whose expression was only captured in a small number of cells).
 As described later in this manuscript, `BASiCS_TestDE` automatically excludes 
-genes with low ESS when performing differential expression testing.
+genes with low ESS during differential expression testing (by default
+a threshold at ESS $< 100$ is applied).
 
-```{r ess-diag, fig.cap="ESS for mean expression parameters is plotted against mean expression estimates for naive (left) and activated (right) cells."}
+```{r mcmc-diag, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; naive CD4^+^T cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. B: Effective sample size (ESS) is plotted agains mean expression estimates."}
+library("coda")
+library("ggplot2")
+library("viridis")
+
+# Calculate and plot Geweke Z scores 
+gew_mu_naive_obj <- geweke.diag(
+  mcmc(displayChainBASiCS(chain_naive, Param = "mu"))
+)
+geweke_mu_naive <- ggplot() +
+  aes(
+    colMedians(displayChainBASiCS(chain_naive, Param = "mu")),
+    gew_mu_naive_obj$z
+  ) +
+  geom_hex() +
+  scale_x_log10() + 
+  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
+  scale_fill_viridis() +
+  labs(x = "log(mu)", y = "Geweke Z-score") +
+  theme(legend.position = "bottom")
+
+# Calculate and plot ESS 
 ess_mu_naive <- BASiCS_DiagPlot(chain_naive, Param = "mu") +
-  theme(legend.position = "bottom")
-ess_mu_active <- BASiCS_DiagPlot(chain_active, Param = "mu") +
-  theme(legend.position = "bottom")
-ess_mu_naive + ess_mu_active
-```
+  theme(legend.position = "bottom") +
+  geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed")
 
+geweke_mu_naive + ess_mu_naive + plot_annotation(tag_levels = "A")
+```
 
 ## Quantifying transcriptional variability using BASiCS
 
@@ -1120,7 +1106,7 @@ VG_Table <- merge(
   all = TRUE
 )
 ## mark genes as highly variable, lowly variable, or not either.
-VG_Table$VG <- NA
+VG_Table$VG <- "Not HVG or LVG"
 VG_Table$VG[VG_Table$HVG] <- "HVG"
 VG_Table$VG[VG_Table$LVG] <- "LVG"
 

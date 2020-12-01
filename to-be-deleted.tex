@@ -95,17 +95,38 @@ Single-cell RNA sequencing, expression variability, transcriptional noise, diffe
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
 
-To visualise expression patterns for multiple genes at once, we use the
-\emph{\href{https://bioconductor.org/packages/3.11/ComplexHeatmap}{ComplexHeatmap}} \citep{Gu2016} package, grouping genes
-according to the result of the differential mean expression test
-(i.e.~up-regulated in naive/active cells or non differentially expressed;
-see Figure \ref{fig:heatmap-diffexp}).
-Fpr example, among the non DE group, we observe several genes encoding
-ribosomal proteins (e.g.~\emph{Rps14}).
-Genes in this family have been previously observed to have stable expression
-across a wide range of scRNAseq datasets in mouse and human \citep{Lin2019}.
-Moreover, the genes that are found to be upregulated in the active group include
-known markers of T cell activation such as \emph{Cd69} \citep{Ziegler1994}.
+Parameter estimation is implemented in the \texttt{BASiCS\_MCMC} function using an
+adaptive Metropolis within Gibbs algorithm \citep{Roberts2009}.
+The primary inputs for \texttt{BASiCS\_MCMC} correspond to:
+
+\begin{itemize}
+\item
+  \texttt{Data}: a \texttt{SingleCellExperiment} object created as described in the
+  previous sections.
+\item
+  \texttt{N}: the total number of MCMC iterations.
+\item
+  \texttt{Thin}: thining period for output storage
+  (only the \texttt{Thin}-th MCMC draw is stored).
+\item
+  \texttt{Burn}: the initial number of MCMC iterations to be discarded.
+\item
+  \texttt{Regression}: if \texttt{TRUE} a join prior is assigned to \(\mu_i\) and \(\delta_i\)
+  \citep{Eling2018}, and residual over-dispersion values \(\epsilon_i\) are inferred.
+  Alternatively, independent log-normal priors are assigned to \(\mu_i\) and
+  \(\delta_i\) \citep{Vallejos2016}.
+\item
+  \texttt{WithSpikes}: if \texttt{TRUE} information from spike-in molecules is used to aid
+  data normalisation and to quantify technical noise.
+\item
+  \texttt{PriorParam}: Defines the prior hyper-parameters to be used by
+  \emph{\href{https://bioconductor.org/packages/3.12/BASiCS}{BASiCS}}. We recommend to use the \texttt{BASiCS\_PriorParam} function
+  for this purpose. If \texttt{PriorMu\ =\ "EmpiricalBayes"} in \texttt{BASiCS\_PriorParam},
+  \(\mu_i\)'s are assigned a log-normal prior with gene-specific location
+  hyper-parameters defined via an
+  empirical Bayes framework. Alternatively, if \texttt{PriorMu\ =\ "default"}, location
+  hyper-parameter are set to be equal 0 for all genes.
+\end{itemize}
 
 {\small\bibliography{Workflow.bib}}
 
