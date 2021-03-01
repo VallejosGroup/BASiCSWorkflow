@@ -1722,7 +1722,7 @@ delta_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "delta") +
 multiplot(mu_ess2, delta_ess2, cols = 2)
 ```
 
-### Comparison of parameter estimates when using spike-ins and when not-using spike-ins
+### Comparison of parameter estimates with and without spike-ins
 
 Under the horizontal integration approach described above,
 the scale of mean expression parameters and global scaling factors is not 
