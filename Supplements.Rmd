@@ -590,7 +590,7 @@ Droplet_Test_logFC0 <- BASiCS_TestDE(
 ```
 
 ```{r droplet-tested-boxplot, fig.cap="Boxplot of log over-dispersion parameters in pre-somitic and somitic mesoderm cells, respectively."}
-DropletTableDisp <- format(Droplet_Test_logFC0, Which = "Disp", Filter = FALSE)
+DropletTableDisp <- as.data.frame(Droplet_Test_logFC0, Parameter = "Disp", Filter = FALSE)
 not_excluded <- DropletTableDisp$ResultDiffDisp != "ExcludedFromTesting"
 for_plot <- DropletTableDisp[not_excluded, c("Disp1", "Disp2")]
 for_plot <- reshape2::melt(for_plot)
@@ -624,11 +624,11 @@ Droplet_Test <- BASiCS_TestDE(
 )
 
 BASiCS_PlotDE(Droplet_Test, Parameter = "Mean", Plot = "MA")
-Droplet_TableMean <- format(Droplet_Test, Which = "Mean", Filter = FALSE)
+Droplet_TableMean <- as.data.frame(Droplet_Test, Parameter = "Mean", Filter = FALSE)
 ```
 
 ```{r droplet-gene-specific-testing-resdisp, fig.cap="Differences in residual over-dispersion parameters in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher residual over-dispersion in either group."}
-Droplet_TableResDisp <- format(Droplet_Test, Which = "ResDisp", Filter = FALSE)
+Droplet_TableResDisp <- as.data.frame(Droplet_Test, Parameter = "ResDisp", Filter = FALSE)
 BASiCS_PlotDE(Droplet_Test, Parameter = "ResDisp", Plot = "MA")
 ```
 
