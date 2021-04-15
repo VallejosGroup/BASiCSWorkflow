@@ -203,9 +203,9 @@ knitr::include_graphics("figure/Overview.png")
 library("SingleCellExperiment")
 ```
 
-We use `r Biocpkg("SingleCellExperiment")` to convert an input
-matrix of raw read counts (molecule counts for UMI-based protocols) into a 
-`SingleCellExperiment` object that can also store its associated 
+We use the Bioconductor package `r Biocpkg("SingleCellExperiment")` to convert 
+an input matrix of raw read counts (molecule counts for UMI-based protocols) 
+into a `SingleCellExperiment` object that can also store its associated 
 metadata, such as gene- and cell-specific information. 
 Moreover, when available, the same object can also store read counts for 
 spike-in molecules (see `help("altExp")`).
@@ -226,7 +226,7 @@ In this step, we use QC diagnostics to identify and remove samples that
 correspond to broken cells, that are empty, or that contain multiple cells 
 [@Ilicic2016]. We  also typically remove lowly expressed genes that represent 
 less reliable information.
-The [*OSCA*](https://osca.bioconductor.org/) online book provides an extensive
+The [*OSCA*](https://bioconductor.org/books/release/OSCA/) online book provides an extensive
 overview on important aspects of how to perform QC of scRNA-seq data, including
 exploratory analyses [@Amezquita2019].
 
@@ -611,20 +611,32 @@ sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
 rowData(sce_naive_active)$detected_cells <- 
   rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
 
-rowData(sce_naive_active)$include_gene <- rowData(sce_naive_active)$mean >= 1 &
-  rowData(sce_naive_active)$detected_cells >= 20
+detected_threshold <- 20
+mean_threshold <- 1
+include_gene <- rowData(sce_naive_active)$mean >= mean_threshold &
+  rowData(sce_naive_active)$detected_cells >= detected_threshold
+rowData(sce_naive_active)$include_gene <- include_gene
 plotRowData(
     sce_naive_active,
     x = "detected_cells",
     y = "mean",
-    colour_by = "include_gene") +
+    colour_by = "include_gene"
+  ) +
   xlab("Number of cells in which expression was detected") +
   ylab("Average number of read counts across all cells") +
   scale_x_log10() +
   scale_y_log10() +
   theme(legend.position = "bottom") +
-geom_vline(xintercept = 10, linetype = "dashed", col = "grey60") +
-geom_hline(yintercept = 1, linetype = "dashed", col = "grey60")
+  geom_vline(
+    xintercept = detected_threshold,
+    linetype = "dashed",
+    col = "grey60"
+  ) +
+  geom_hline(
+    yintercept = mean_threshold,
+    linetype = "dashed",
+    col = "grey60"
+  )
 
 ## Apply gene filter
 sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
@@ -632,7 +644,7 @@ sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
 
 Subsequently, we also require users to remove spike-in molecules that were not 
 captured through sequencing. We will do this separately for naive and active
-cells separately.
+cells.
 
 ```{r spike-ins-present}
 ind_active <- sce_naive_active$Stimulus == "Active"
@@ -901,7 +913,9 @@ chain that was obtained for the naive CD4^+^T cells (similar results were
 obtained for activated cells). 
 First, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995].
 The latter compares the average of draws obtained during the initial (10\% after 
-burn in, by default) and the final part of the chain (50\% by default).
+burn in, by default) and the final part of the chain (50\% by default)
+by calculating $Z$-scores of the relative difference between the two sets 
+of draws.
 Large absolute $Z$-scores suggest that the algorithm has not converged (as a
 rule of thumb, a threshold at $|Z| < 3$ is often applied). 
 For the naive and activatived CD4^+^ T datasets most Z-scores associated to mean
@@ -1028,7 +1042,7 @@ parameter_df$DM <- DM(
 ind_not_na <- !(is.na(parameter_df$epsilon))
 
 plot_params <- list(
-  geom_pointdensity(),
+  geom_pointdensity(size = 1),
   scale_colour_viridis(name = "Density"),
   theme(
     text = element_text(size = rel(3)),
@@ -1101,7 +1115,8 @@ with high probability, where the probability cut-off is chosen to match a given
 expected false discovery rate (EFDR; by default the target EFDR is set to 10\%) 
 [@Newton2004]. A similar approach is implemented for LVG detection, but based 
 on whether $\epsilon_i$ is below a pre-specified threshold `EpsilonThreshold`. 
-For example, if the threshold for $\epsilon_i$ is equal to $\log(2)$, HVGs would 
+For example, if the threshold for $\epsilon_i$ is equal to $\log(2)$ 
+(the default), HVGs would 
 be those genes for which the over-dispersion is estimated to be at 
 least $2$ times higher than would be expected given the inferred mean 
 expression level, while LVGs would be those genes for which the residual 
@@ -1219,7 +1234,7 @@ This section highlights the use of `r Biocpkg("BASiCS")` to perform differential
 expression tests for mean and variability between different pre-specified 
 populations of cells and experimental conditions. 
 Here, we compare the naive CD4^+^ T cells, analysed in the previous section, to 
-activated CD4^+^ T cells obtained by the same authors [@Martinez-jimenez2017]. 
+activated CD4^+^ T cells analysed in the same study [@Martinez-jimenez2017]. 
 Naive CD4^+^ T cells were activated for 3 hours 
 using plate-bound CD3e and CD28 antibodies.
 T cell activation is linked to strong transcriptional shifts and the
@@ -1230,26 +1245,25 @@ T cell differentiation [@Zhu2010]. Therefore, any heterogeneity in the activated
 cell population does not arise from cells residing in different lineage-specific 
 differentiation states. 
 
-Differential expression testing is provided via the
+Differential expression testing is performed via the
 `BASiCS_TestDE` function. The main input parameters are
+
 - `Chain1` and `Chain2`: two `BASiCS_Chain` objects created via the `BASiCS_MCMC`
 function. Each object corresponds to a different pre-specified group of cells
 - `EpsilonM` and `EpsilonR`: introduce a minimum effect size (in a
 $\log_2$ fold change scale) for the detection of changes in mean or residual 
 over-dispersion, respectively. 
 This enables us to discard small expression changes that are less biologically
-meaningful.
-By default, we set these thresholds to be equivalent to a 50\% change between
-the groups. 
+meaningful. By default, we set these thresholds to be equivalent to a 50\% 
+change between the groups. 
 However, different thresholds may be required depending on the context.
 For example, if most genes show strong differences in mean expression, it can be 
 beneficial to increase the value of `EpsilonM` to focus on strong changes in 
 mean expression.
-
 - `EFDR_M` and `EFDR_R`: define the target EFDR to calibrate the 
 decision rule associated to changes in mean or residual over-dispersion, 
-respectively. Default: 10\%.  
-- `MinESS`: Minimum ESS threshold beyond which genes will be excluded from the
+respectively. Default: 10\%.
+- `MinESS`: ESS threshold, below which genes will be excluded from the
 differential expression tests.
 This is used to increase the robustness of the results, excludes genes for which 
 the sampler explored the parameter space less efficiently (see 
@@ -1262,6 +1276,9 @@ test_de <- BASiCS_TestDE(
   Chain2 = chain_active,
   GroupLabel1 = "Naive",
   GroupLabel2 = "Active",
+  EFDR_M = 0.1,
+  EFDR_R = 0.1,
+  MinESS = 100,
   Plot = FALSE,
   PlotOffset = FALSE
 )
@@ -1328,9 +1345,10 @@ see Figure \@ref(fig:heatmap-diffexp)).
 For example, among the non DE group, we observe several genes encoding
 ribosomal proteins (e.g. *Rps14*). 
 Genes in this family have been previously observed to have stable expression
-across a wide range of scRNAseq datasets in mouse and human [@Lin2019]. 
-Moreover, the genes that are found to be upregulated in the active group include 
-known markers of T cell activation such as *Cd69* [@Ziegler1994].
+across a wide range of scRNAseq datasets in mouse and human [@Lin2019].
+Such visualisations may aid in the interpretation of such stable or 
+"housekeeping" genes, as well as genes which are up- or down-regulated in each
+population.
 
 ```{r heatmap-diffexp, fig.width = 7, fig.height = 6, fig.cap="Heatmap displays normalised expression values (log10(x + 1) scale) for naive and active cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in naive or active cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 library("ComplexHeatmap")
@@ -1398,7 +1416,7 @@ log_mu_naive <- log10(table_de_selected$Mean1)
 log_mu_active <- log10(table_de_selected$Mean2)
 mu_col <- colorRamp2(
   breaks = seq(0, max(c(log_mu_naive, log_mu_active)), length.out = 20),
-  colors = viridis(20, option="A", direction = -1)
+  colors = viridis(20, option="A", direction = 1)
 )
 
 Heatmap(
@@ -1479,7 +1497,7 @@ and vice versa. Thus, these genes may represent those with a more stochastic
 expression pattern in one population, or markers of a cell subpopulation that
 is more prevalent in one cell population relative to the other.
 
-```{r, var-plots, fig.width = 7, fig.height = 5, fig.cap="A, C: log2 change in expression against against log mean expression for genes with higher residual over-dispersion in naive (A) cells and active (B) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in naive cells (B) and active (C) cells. Dashed red lines in panels A and C represent a fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
+```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: log2 change in expression against against log mean expression for genes with higher residual over-dispersion in naive (A) cells and active (D) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in naive cells (B) and active (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
 gene_tests <- data.frame(
   "GeneName" = rownames(dc_naive),
   "ExpPropNaive" = rowMeans(dc_naive > 0),
@@ -1526,8 +1544,8 @@ g3 <- ggplot(
   aes(x = ExpPropNaive, y = ExpPropActive) +
   plot_params +
   labs(
-    x = "Proportion of cells expressing (naive)",
-    y = "Proportion of cells \nexpressing (active)"
+    x = "Proportion of cells\nexpressing (naive)",
+    y = "Proportion of cells\nexpressing (active)"
   ) +
   geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
 
@@ -1537,8 +1555,8 @@ g4 <- ggplot(
   aes(x = ExpPropNaive, y = ExpPropActive) +
   plot_params +
   labs(
-    x = "Proportion of cells expressing (naive)",
-    y = "Proportion of cells \nexpressing (active)"
+    x = "Proportion of cells\nexpressing (naive)",
+    y = "Proportion of cells\nexpressing (active)"
   ) +
   geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
 
@@ -1591,6 +1609,7 @@ plot_vg <- function(ind_vg) {
       position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
       alpha = 0.5
     ) +
+    scale_x_discrete(guide = guide_axis(angle = 45)) +
     scale_y_log10() +
     labs(x = "Gene", y = "Denoised count + 1") +
     scale_colour_brewer(palette = "Set1")
@@ -1652,9 +1671,11 @@ g4 <- plot_vg(ind_vg)
 
 ### Inference using BASiCS without spike-ins
 
+<!-- todo: Maybe extend the intro here a bit that this section applies to droplet-technologies and why in general it's important to measure read-outs in replicates. -->
+
 `r Biocpkg("BASiCS")`, when using spike-in molecules, uses
 spike-ins as a reference in order to aid normalisation,
-based on the knowledge that the original quantity of spike-in molecules was
+based on the assumption that the original quantity of spike-in molecules was
 approximately equal in each well. @Eling2018 introduced a novel method of
 inferring gene expression profiles using `r Biocpkg("BASiCS")` without
 relying on spike-ins to quantify technical noise.
@@ -1667,8 +1688,8 @@ experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
 are shared across batches, while technical variation leads to spurious
 differences between cells in different batches.
 
-Using `r Biocpkg("BASiCS")` without spike-ins is a very similar process
-to the process of using it with spike-ins. We will demonstrate using the
+Using `r Biocpkg("BASiCS")` without spike-ins is very similar to using it
+with spike-ins. We will demonstrate using the
 naive cells. However, first, we must ensure that a `BatchInfo` field is present
 in the `SingleCellExperiment` used as input. In this case we use individual
 of origin as the batch vector.
@@ -1745,23 +1766,30 @@ chain_naive_nospikes_offset <- offset$Chain
 chain_naive_nospikes_offset
 ```
 
-A number of genes have very low expression estimates in the naive population.
-These genes each have zero read counts across the entire naive population.
-Following removal of the global offset, the mean expression and over-dispersion 
-estimates obtained from each method are directly comparable.
-As seen in Figures \@ref(fig:mu-spike-comp) and 
-\@ref(fig:delta-spike-comp), parameter point estimates from the two 
+A number of genes have very low expression estimates in the naive population,
+due to the fact that they each have zero read counts across the entire naive
+population; we therefore remove these genes before making a comparison.
+Following removal of the global offset, the mean expression 
+and over-dispersion estimates obtained from each method are directly comparable.
+As seen in Figures \@ref(fig:spike-comp)A and 
+\@ref(fig:spike-comp)B, parameter point estimates from the two 
 methods are highly correlated. There is a tail of non-expressed genes with
 very low mean expression level as inferred without spike-ins, comprising
 those genes with no measured expression across the entire population.
 
-```{r mu-spike-comp, fig.cap="Comparison of mean expression point estimates using spike-ins, and the same parameters estimated without using spike-ins."}
+```{r spike-comp, fig.cap="Comparison of point estimates using spike-ins, and the same parameters estimated without using spike-ins for mean expression (A) and over-dispersion (B). Genes with zero counts across all cells were excluded from the plot of mean expression parameters."}
 mu_spikes <- displayChainBASiCS(chain_naive)
 mu_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset)
-ggplot() +
-  aes(colMedians(mu_spikes), colMedians(mu_nospikes)) +
-  geom_pointdensity() +
-  scale_colour_viridis() +
+
+# Remove genes with zero counts across all cells and calculate medians
+ind_nonzero <- rowSums(counts(sce_naive)) != 0
+mu_spikes <- colMedians(mu_spikes[, ind_nonzero])
+mu_nospikes <- colMedians(mu_nospikes[, ind_nonzero])
+
+g1 <- ggplot() +
+  aes(mu_spikes, mu_nospikes) +
+  geom_pointdensity(alpha = 0.7) +
+  scale_colour_viridis(name = "Density") +
   scale_x_log10() +
   scale_y_log10() +
   geom_abline(
@@ -1771,19 +1799,21 @@ ggplot() +
     intercept = 0
   ) +
   labs(
-    x = "Mean expression (with spike-ins)",
-    y = "Mean expression (without spike-ins)"
+    x = "Mean expression\n(with spike-ins)",
+    y = "Mean expression\n(without spike-ins)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(angle = 45, size = 8, hjust = 0.5, vjust = 0.5)
   )
-```
 
-```{r delta-spike-comp, fig.cap="Comparison of over-dispersion point estimates using spike-ins, and the same parameters estimated without using spike-ins."}
 delta_spikes <- displayChainBASiCS(chain_naive, Param = "delta")
 delta_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset, Param = "delta")
 
-ggplot() +
+g2 <- ggplot() +
   aes(colMedians(delta_spikes), colMedians(delta_nospikes)) +
-  geom_pointdensity() +
-  scale_colour_viridis() +
+  geom_pointdensity(alpha = 0.7) +
+  scale_colour_viridis(name = "Density") +
   scale_x_log10() +
   scale_y_log10() +
   geom_abline(
@@ -1793,10 +1823,16 @@ ggplot() +
     intercept = 0
   ) +
   labs(
-    x = "Over-dispersion (with spike-ins)",
-    y = "Over-dispersion (without spike-ins)"
+    x = "Over-dispersion\n(with spike-ins)",
+    y = "Over-dispersion\n(without spike-ins)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(angle = 45, size = 8, hjust = 0.5, vjust = 0.5)
   )
+g1 + g2 + plot_annotation(tag_levels = "A")
 ```
+
 
 # Discussion 
 
@@ -1804,7 +1840,7 @@ In this article, we have explored the research questions that
 `r Biocpkg("BASiCS")` seeks to 
 resolve --- chiefly, robustly quantifying average and variability in
 expression in cell populations. We have outlined the appropriate quality control
-and data visualisation steps to take when undertaking an analysis using 
+and data visualisation steps to apply when undertaking an analysis using 
 `r Biocpkg("BASiCS")`
 in order to ensure high quality input data.
 We have also outlined the steps needed to use `r Biocpkg("BASiCS")`
