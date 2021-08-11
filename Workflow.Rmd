@@ -99,7 +99,7 @@ capture these types of heterogeneity [@Kiselev2019; @Saelens2019].
 However, there is a limited availability of computational tools tailored 
 to study more subtle variability within seemingly homogeneous cell populations. 
 This variability can reflect deterministic or stochastic events that regulate 
-gene expression and, among other cases, has been seen to increase prior to 
+gene expression and, among other settings, has been seen to increase prior to 
 cell fate decisions [@Mojtahedi2016] and during ageing [@Martinez-jimenez2017]. 
 Transcriptional variability has also been observed to differ from gene to gene 
 and can be conserved across cell types and species [@Lin2019]. 
@@ -422,8 +422,10 @@ altExp(sce_cd4_all, "spike-ins") <- SummarizedExperiment(
 )
 ```
 
-Hereafter, our analysis focuses on naive and activated CD4^+^ T cells obtained 
-from young *Mus musculus domesticus* animals, purified using MACS-based cell sorting. 
+Hereafter, our analysis focuses on naive CD4^+^ T cells in the presence and
+absence of stimulation using plate-bound antibodies, obtained 
+from young *Mus musculus domesticus* animals, and purified using MACS-based cell
+sorting. 
 Thus, we subset the `SingleCellExperiment` object to these 
 `r sum(sce_cd4_all$Strain == "Mus musculus domesticus" & sce_cd4_all$Age == "Young" & sce_cd4_all$Celltype == "MACS-purified Naive")` cells.
 
@@ -477,7 +479,7 @@ object created above.
 rowdata <- data.frame(ensembl_gene_id = rownames(sce_naive_active))
 rowdata <- merge(rowdata, genenames, by = "ensembl_gene_id", all.x = TRUE)
 rownames(rowdata) <- rowdata$ensembl_gene_id 
-## Check if  order is correct after merge; add to he SingleCellExperiment object
+## Check if  order is correct after merge; add to the SingleCellExperiment object
 stopifnot(all(rownames(rowdata) == rownames(sce_naive_active)))
 rowData(sce_naive_active) <- rowdata
 ```
@@ -523,7 +525,7 @@ p_cell_qc2 <- plotColData(
   sce_naive_active, 
   x = "sum", 
   y = "altexps_spike-ins_sum") +
-  xlab("Total engogenous reads per cell") +
+  xlab("Total endogenous reads per cell") +
   ylab("Total spike-in reads per cell") +
   theme(axis.text.x = element_text(hjust = 1, angle = 45))
 
@@ -543,7 +545,7 @@ p_stimulus <- plotColData(
     y = "detected", 
     colour_by = "Stimulus"
   ) +
-  xlab("Total engogenous reads per cell") +
+  xlab("Total endogenous reads per cell") +
   ylab("Number of detected genes per cell") +
   theme(
     legend.position = "bottom",
@@ -555,7 +557,7 @@ p_batch <- plotColData(
     y = "detected", 
     colour_by = "Individuals"
   ) +
-  xlab("Total engogenous reads per cell") +
+  xlab("Total endogenous reads per cell") +
   ylab("Number of detected genes per cell") +
   theme(
     legend.position = "bottom",
@@ -758,7 +760,7 @@ The primary inputs for `BASiCS_MCMC` correspond to:
 - `Thin`: thining period for output storage
   (only the `Thin`-th MCMC draw is stored).
 - `Burn`: the initial number of MCMC iterations to be discarded.
-- `Regression`: if `TRUE` a join prior is assigned to $\mu_i$ and $\delta_i$ 
+- `Regression`: if `TRUE` a joint prior is assigned to $\mu_i$ and $\delta_i$ 
   [@Eling2018], and residual over-dispersion values $\epsilon_i$ are inferred. 
   Alternatively, independent log-normal priors are assigned to $\mu_i$ and 
   $\delta_i$ [@Vallejos2016]. 
@@ -900,7 +902,7 @@ Alternatively, more stringent quality control could be applied to the input
 data, as we have observed that genes with very low counts often suffer from 
 slow convergence.
 
-```{r convergence-naive, fig.cap="Trace plot, marginal histogram, and autocorrelation function for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior  without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
+```{r convergence-naive, fig.cap="Trace plot, marginal histogram, and autocorrelation function of the posterior distribution of the mean expression parameter for a gene in naive cells following MCMC sampling. Trace plots should explore the posterior  without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
 plot(chain_naive, Param = "mu", Gene = 1)
 ```
 
@@ -908,7 +910,7 @@ As `r Biocpkg("BASiCS")` infers thousands of parameters, it is
 impractical to assess these diagnostics separately for each parameter. 
 Thus, it is helpful to use numerical diagnostics that can be applied to multiple
 parameters simultaneously.
-Here, we illustrate usage for two of such metrics focusing using the MCMC
+Here, we illustrate usage for two such metrics focusing on the MCMC
 chain that was obtained for the naive CD4^+^T cells (similar results were 
 obtained for activated cells). 
 First, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995].
@@ -999,9 +1001,9 @@ global mean-variability trend (see *Methods*).
 These are derived using the DM approach [@Kolodziejczyk2015cell] and the
 residual over-dispersion parameters $\epsilon_i$ defined by [@Eling2018],
 respectively.
-For the naive CD4^+^ T data, both approaches led to strongly correlated 
+For the naive CD4^+^ T cell data, both approaches led to strongly correlated 
 estimates (Figure \@ref(fig:dispersion-vs-mean)D) and, as expected, neither DM 
-values or posterior estimates for $\epsilon_i$ are seen to be associated with
+values nor posterior estimates for $\epsilon_i$ are seen to be associated with
 mean expression (Figure \@ref(fig:dispersion-vs-mean)E-F). 
 However, unlike the DM method, the integrated approach implemented in 
 `r Biocpkg("BASiCS")` provides a direct measure of statistical uncertainty for 
@@ -1161,7 +1163,7 @@ ggplot(vg_table) +
   )
 ```
 
-For the naive CD4^+^ T data, we obtained *`r sum(hvg@Table$HVG, na.rm=TRUE)`* 
+For the naive CD4^+^ T cell data, we obtained *`r sum(hvg@Table$HVG, na.rm=TRUE)`* 
 HVG and *`r sum(lvg@Table$LVG, na.rm=TRUE)`* LVG.
 As shown in Figure \@ref(fig:plot-vg-naive), these genes are distributed across 
 a wide range of mean expression values. 
@@ -1588,7 +1590,7 @@ an important component of any analysis of differential variability, and should
 be undertaken with care.
 
 
-```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: three genes with higher residual over-dispersion in naive cells, and similar levels of detection in active and naive populations. B: three genes with higher residual over-dispersion in naive cells and different levels of detection in naive and active cells. C: three genes with higher residual over-dispersion in active cells and similar levels of detection in naive and active cells. D: three genes with higher residual over-dispersion in active cells and different levels of detection in naive and active cells."}
+```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Eight genes with higher residual over-dispersion in naive cells, and similar levels of detection in active and naive populations. B: Two genes with higher residual over-dispersion in naive cells and different levels of detection in naive and active cells. C: Six genes with higher residual over-dispersion in active cells and similar levels of detection in naive and active cells. D: Three genes with higher residual over-dispersion in active cells and different levels of detection in naive and active cells."}
 ## Use the tidyr package to reshape data into a "long" format for ggplot2
 library("tidyr")
 ## Utility function that plots logcounts of a set of genes defined by "ind_vg"
@@ -1777,7 +1779,7 @@ methods are highly correlated. There is a tail of non-expressed genes with
 very low mean expression level as inferred without spike-ins, comprising
 those genes with no measured expression across the entire population.
 
-```{r spike-comp, fig.cap="Comparison of point estimates using spike-ins, and the same parameters estimated without using spike-ins for mean expression (A) and over-dispersion (B). Genes with zero counts across all cells were excluded from the plot of mean expression parameters."}
+```{r spike-comp, fig.cap="Comparison of point estimates using spike-ins, and the same parameters estimated without using spike-ins for mean expression (A) and over-dispersion (B). A dashed red line indicates the identity line, $y=x$. Genes with zero counts across all cells were excluded from the plot of mean expression parameters."}
 mu_spikes <- displayChainBASiCS(chain_naive)
 mu_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset)
 
@@ -1850,7 +1852,7 @@ limited comparison of the results of these analyses using `r Biocpkg("BASiCS")`
 and the result of similar analyses using `r Biocpkg("scran")`.
 Furthermore, we have demonstrated functions within `r Biocpkg("BASiCS")`
 that allow users to ensure the MCMC used in `r Biocpkg("BASiCS")`
-has convergend and produced adequate sample sizes. Finally, we have 
+has converged and produced adequate sample sizes. Finally, we have 
 demonstrated the use of `r Biocpkg("BASiCS")` to robustly identify 
 differentially expressed genes, in terms of mean expression and in terms of 
 biological variability.
