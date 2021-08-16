@@ -32,7 +32,7 @@ abstract: |
   quantify expression variability within and between known groups of cells (such 
   as experimental conditions or cell types). BASiCS uses an integrated framework 
   for data normalisation, technical noise quantification and downstream 
-  analyses, whilst propagating statistical uncertainty across these steps. 
+  analyses, propagating statistical uncertainty across these steps. 
   Within a single seemingly homogeneous cell population, BASiCS can identify 
   highly variable genes that exhibit strong heterogeneity as well as lowly 
   variable genes with stable expression. BASiCS also uses a probabilistic 
@@ -230,13 +230,14 @@ The [*OSCA*](https://bioconductor.org/books/release/OSCA/) online book provides 
 overview on important aspects of how to perform QC of scRNA-seq data, including
 exploratory analyses [@Amezquita2019].
 
-Here, we use the `r Biocpkg("scater")` package [@McCarthy2017] to calculate 
+Here, we use the Bioconductor package `r Biocpkg("scater")`
+package [@McCarthy2017] to calculate 
 QC metrics for each cell (e.g. total read-count) and gene (e.g. percentage of 
 zeroes across all cells), respectively. 
-We also use the visualisation tools implemented in `r Biocpkg("scater")` to 
+We also use the visualisation tools implemented in the `r Biocpkg("scater")` to 
 explore the input dataset and its associated QC diagnostic metrics. 
-For further exploratory data analysis we use the `r Biocpkg("scran")` package 
-[@Lun2016].
+For further exploratory data analysis we use the Bioconductor package 
+`r Biocpkg("scran")` [@Lun2016].
 The latter can perform *global scaling* normalisation, calculating 
 cell-specific scaling factors that capture global differences in read-counts 
 across cells (e.g. due to sequencing depth and PCR amplification) 
@@ -260,8 +261,8 @@ testing) is precluded.
 library("BASiCS")
 ```
 
-The `r Biocpkg("BASiCS")` package uses a Bayesian hierarchical framework 
-that borrows information across all genes and cells to robustly quantify 
+The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
+framework that borrows information across all genes and cells to robustly quantify 
 transcriptional variability [@Vallejos2015BASiCS].
 Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
 infers cell-specific global scaling normalisation parameters. 
@@ -423,7 +424,7 @@ altExp(sce_cd4_all, "spike-ins") <- SummarizedExperiment(
 ```
 
 Hereafter, our analysis focuses on naive CD4^+^ T cells in the presence and
-absence of stimulation using plate-bound antibodies, obtained 
+absence of stimulation using plate-bound antibodies,+ obtained 
 from young *Mus musculus domesticus* animals, and purified using MACS-based cell
 sorting. 
 Thus, we subset the `SingleCellExperiment` object to these 
@@ -443,7 +444,7 @@ Input data was annotated using Ensembl gene identifiers.
 To facilitate interpretation, it is often useful to obtain a mapping from 
 Ensembl gene IDs to gene symbols using the BioMart suite
 ([http://www.biomart.org](http://www.biomart.org)) via the 
-`r Biocpkg("biomaRt")` package [@Durinck2009].
+Bioconductor package `r Biocpkg("biomaRt")` [@Durinck2009].
 This can also be used to obtain gene-pathways mappings and other
 metadata (e.g. gene length), useful for performing functional analysis
 of gene sets identified in downstream analyses.
@@ -645,7 +646,7 @@ sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
 ```
 
 Subsequently, we also require users to remove spike-in molecules that were not 
-captured through sequencing. We will do this separately for naive and active
+captured through sequencing. We do this separately for naive and active
 cells.
 
 ```{r spike-ins-present}
@@ -832,6 +833,7 @@ chain_active <- BASiCS_MCMC(
 This first of these samplers takes 129 minutes to complete on a 3.4 GHz Intel 
 Core i7 4770k procesor with 32GB RAM, while the second takes 116 minutes.
 For convenience, these can be obtained online at 
+TODO: ZENODO
 [https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
 
 ```{r download-chain-naive}
@@ -1013,7 +1015,7 @@ Note that the `BASiCS_ShowFit` function can be used to generate Figure
 demonstrate how users can extract this information from a `BASiCS_MCMC` object,
 and for visual consistency with the other panels.
 For each of the panels in Figure \@ref(fig:dispersion-vs-mean), 
-we use `r CRANpkg("ggpointdensity")` to visualise 
+we use the R package `r CRANpkg("ggpointdensity")` to visualise 
 the local density of genes along the axes of mean and variability.
 
  
@@ -1044,7 +1046,7 @@ parameter_df$DM <- DM(
 ind_not_na <- !(is.na(parameter_df$epsilon))
 
 plot_params <- list(
-  geom_pointdensity(size = 1),
+  geom_pointdensity(size = 0.6),
   scale_colour_viridis(name = "Density"),
   theme(
     text = element_text(size = rel(3)),
@@ -1300,8 +1302,10 @@ After running the test, it is important to visualise the results to facilitate
 interpretation and to identify systematic patterns among differentially
 expressed genes. It may also be useful to perform functional enrichment 
 analysis to identify biologically meaningful patterns among these genes. 
-For example, this could be performed using `r Biocpkg("goseq")` [@Young2010].
-We do not perform this here, but a relevant workflow is described by @Maksimovic2020.
+For example, this could be performed using the Bioconductor package
+`r Biocpkg("goseq")` [@Young2010].
+We do not perform this here, but a relevant workflow is described by
+@Maksimovic2020.
 
 We first focus on the differential mean expression test. MA-plots
 (log fold change M versus mean average A) and volcano plots (posterior 
@@ -1340,8 +1344,8 @@ dc_active <- BASiCS_DenoisedCounts(sce_active, chain_active, WithSpikes = FALSE)
 ```
 
 To visualise expression patterns for multiple genes at once, we use the 
-`r Biocpkg("ComplexHeatmap")` [@Gu2016] package, grouping genes
-according to the result of the differential mean expression test 
+Bioconductor package `r Biocpkg("ComplexHeatmap")` [@Gu2016] package, grouping
+genes according to the result of the differential mean expression test 
 (i.e. up-regulated in naive/active cells or non differentially expressed;
 see Figure \@ref(fig:heatmap-diffexp)). 
 For example, among the non DE group, we observe several genes encoding
@@ -1680,7 +1684,9 @@ spike-ins as a reference in order to aid normalisation,
 based on the assumption that the original quantity of spike-in molecules was
 approximately equal in each well. @Eling2018 introduced a novel method of
 inferring gene expression profiles using `r Biocpkg("BASiCS")` without
-relying on spike-ins to quantify technical noise.
+relying on spike-ins to quantify technical noise. This is useful
+for droplet-based scRNAseq protocols, given that it is not possible to ensure
+that each droplet contains a specified quantity of spike-in molecules.
 In this horizontal integration framework, technical variation is quantified
 using replication [@Carroll2005]. In the absence of true technical replicates,
 we assume that population-level characteristics of the cells are replicated
@@ -1898,28 +1904,20 @@ saveRDS(sce_naive, "rds/sce_naive.rds")
 saveRDS(sce_active, "rds/sce_active.rds")
 ```
 
-<!-- 
-
-# Software version
-
-**TODO: Versions of all main Bioconductor packages**  
-*I think sessionInfo suffices.*
- -->
-
 
 # Data availability
 
 The data used in this article are available for download
-on EBI ArrayExpress under accession number E-MTAB-4888.
+on EBI ArrayExpress under accession number
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
 
-**TODO: Links to data**
 **TODO: Links to MCMC chains**
 
 
 # Software availability
 
-**TODO: Software: All software used in this workflow is available as part of 
-Bioconductor X.Y**  
+**Software: All software used in this workflow is available as part of 
+Bioconductor 3.12**  
 **TODO: The source code of this workflow is available from: YYY**  
 **TODO: Link to Github release version, source code**  
 **TODO: License: ask Aaron** (creative commons attribution?)
@@ -1929,21 +1927,22 @@ Authors are asked to provide some initial information to assist the
 Editorial Office, as detailed below.
 
 1. URL link to where the software can be downloaded from or used by a non-coder
+  https://bioconductor.org/packages/3.12/bioc/html/BASiCS.html
   (AUTHOR TO PROVIDE; optional)
 2. URL link to the author's version control system repository containing the 
   source code (AUTHOR TO PROVIDE; required)
+  https://github.com/catavallejos/BASiCS/
 3. Link to source code as at time of publication (*F1000Research* TO GENERATE)
 4. Link to archived source code as at time of publication (*F1000Research* 
   TO GENERATE)
 5. Software license (AUTHOR TO PROVIDE; required)
-
+  GPL (>= 2)
 
 # Author information
 
-In order to give appropriate credit to each author of an article, the 
-individual contributions of each author to the manuscript should be detailed in 
-this section. We recommend using author initials and then stating briefly how 
-they contributed.
+NE and AOC authored the manuscript. CAV contributed substantive 
+edits to the manuscript. CAV and JCM provided reviews of the manuscript.
+
 
 # Competing interests
 
