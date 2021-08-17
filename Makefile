@@ -7,7 +7,7 @@ all: Workflow.pdf Supplements.pdf
 		-w /home/rstudio/mycode \
 		alanocallaghan/bocker \
 		/bin/bash \
-		-c 'Rscript -e "rmarkdown::render(\"$<\", output_format=\"all\")"'
+		-c 'Rscript -e "rmarkdown::render(\"$<\")"'
 
 
 run:

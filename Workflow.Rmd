@@ -452,7 +452,7 @@ of gene sets identified in downstream analyses.
 ```{r obtain-gene-symbols}
 library("biomaRt")
 
-if(!dir.exists("rds")) {
+if (!dir.exists("rds")) {
   dir.create("rds", showWarnings = FALSE)
 }
 if (!file.exists("rds/genenames.rds")) {
@@ -468,7 +468,7 @@ if (!file.exists("rds/genenames.rds")) {
   )
   rownames(genenames) <- genenames$ensembl_gene_id
   saveRDS(genenames, "rds/genenames.rds")
-} 
+}
 genenames <- readRDS("rds/genenames.rds")
 ```
 
@@ -479,9 +479,10 @@ object created above.
 ## Merge biomaRt annotation
 rowdata <- data.frame(ensembl_gene_id = rownames(sce_naive_active))
 rowdata <- merge(rowdata, genenames, by = "ensembl_gene_id", all.x = TRUE)
-rownames(rowdata) <- rowdata$ensembl_gene_id 
-## Check if  order is correct after merge; add to the SingleCellExperiment object
+rownames(rowdata) <- rowdata$ensembl_gene_id
+## Check if  order is correct after merge;
 stopifnot(all(rownames(rowdata) == rownames(sce_naive_active)))
+## add to the SingleCellExperiment object
 rowData(sce_naive_active) <- rowdata
 ```
 
@@ -516,15 +517,15 @@ spike-in counts and a low fraction of endogeneous counts
 ```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
 sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
 p_cell_qc1 <- plotColData(
-  sce_naive_active, 
-  x = "sum", 
+  sce_naive_active,
+  x = "sum",
   y = "detected") +
   xlab("Total endogenous reads per cell") +
   ylab("Number of detected genes per cell") +
   theme(axis.text.x = element_text(hjust = 1, angle = 45))
 p_cell_qc2 <- plotColData(
-  sce_naive_active, 
-  x = "sum", 
+  sce_naive_active,
+  x = "sum",
   y = "altexps_spike-ins_sum") +
   xlab("Total endogenous reads per cell") +
   ylab("Total spike-in reads per cell") +
@@ -543,7 +544,7 @@ from which cells were collected
 p_stimulus <- plotColData(
     sce_naive_active,
     x = "sum",
-    y = "detected", 
+    y = "detected",
     colour_by = "Stimulus"
   ) +
   xlab("Total endogenous reads per cell") +
@@ -555,7 +556,7 @@ p_stimulus <- plotColData(
 p_batch <- plotColData(
     sce_naive_active,
     x = "sum",
-    y = "detected", 
+    y = "detected",
     colour_by = "Individuals"
   ) +
   xlab("Total endogenous reads per cell") +
@@ -611,7 +612,7 @@ sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
 sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
 
 ## Transform "detected" into number of cells and define inclusion criteria
-rowData(sce_naive_active)$detected_cells <- 
+rowData(sce_naive_active)$detected_cells <-
   rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
 
 detected_threshold <- 20
@@ -713,7 +714,7 @@ if (!file.exists("downloads/spike_info.txt")) {
   download.file(
     paste0(website, file),
     destfile = "downloads/spike_info.txt"
-  )  
+  )
 }
 ERCC_conc <- read.table("downloads/spike_info.txt", sep = "\t", header = TRUE)
 ```
@@ -744,7 +745,7 @@ SpikeInput <- data.frame(
 )
 ## Exclude spike-ins not included in the input SingleCellExperiment objects
 SpikeInput <- SpikeInput[match(rownames(altExp(sce_naive)), SpikeInput$Names), ]
-## Add as metadata 
+## Add as metadata
 rowData(altExp(sce_naive)) <- SpikeInput
 rowData(altExp(sce_active)) <- SpikeInput
 ```
@@ -794,7 +795,8 @@ We recommend this setting as a default choice, as we have observed it to
 ensure good convergence across multiple datasets.
 However, fewer iterations may be sufficient for larger and less sparse datasets,
 and may be more feasible computationally for larger datasets.
-Practical guidance about MCMC convergence diagnostics is provided in the next section.
+Practical guidance about MCMC convergence diagnostics is provided in the next
+section.
 
 ```{r MCMC-run, eval = FALSE}
 ## MCMC results may vary slightly due to pseudorandom number generation.
@@ -830,8 +832,8 @@ chain_active <- BASiCS_MCMC(
 )
 ```
 
-This first of these samplers takes 129 minutes to complete on a 3.4 GHz Intel 
-Core i7 4770k procesor with 32GB RAM, while the second takes 116 minutes.
+This first of these samplers takes 84 minutes to complete on a 3.4 GHz Intel
+Core i7 4770k procesor with 32GB RAM, while the second takes 69 minutes.
 For convenience, these can be obtained online at 
 TODO: ZENODO
 [https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020](https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020).
@@ -845,13 +847,13 @@ if (!file.exists("rds/chain_naive.Rds")) {
   download.file(
     paste0(chains_website, "chain_naive.Rds"),
     destfile = "rds/chain_naive.Rds"
-  )  
+  )
 }
 if (!file.exists("rds/chain_active.Rds")) {
   download.file(
     paste0(chains_website, "chain_active.Rds"),
     destfile = "rds/chain_active.Rds"
-  )  
+  )
 }
 chain_naive <- readRDS("rds/chain_naive.Rds")
 chain_active <- readRDS("rds/chain_active.Rds")
@@ -1038,7 +1040,7 @@ parameter_df$mean_scran <- rowMeans(assay(sce_naive, "normcounts"))
 parameter_df$cv2_scran <- rowVars(assay(sce_naive, "normcounts")) /
   parameter_df$mean_scran^2
 parameter_df$DM <- DM(
-  mean = parameter_df$mean_scran, 
+  mean = parameter_df$mean_scran,
   cv2 = parameter_df$cv2_scran
 )
 
@@ -1100,7 +1102,7 @@ g6 <- ggplot(parameter_df[ind_not_na, ], aes(log10(mu), epsilon)) +
   xlab("BASiCS means (log10)") +
   ylab("BASiCS residual\nover-dispersion")
 
-(g1 + g2 + g3) / (g4 + g5 + g6) + 
+(g1 + g2 + g3) / (g4 + g5 + g6) +
   plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(size = 15))
 ```
 
@@ -1193,11 +1195,11 @@ vg_table <- merge(
 vg_table <- merge(
   vg_table,
   genenames,
-  by.x = "GeneName", by.y = "ensembl_gene_id", 
+  by.x = "GeneName", by.y = "ensembl_gene_id",
   sort = FALSE
 )
 
-## Select HVG/LVG genes with similar mean expression values  
+## Select HVG/LVG genes with similar mean expression values
 low_exp <- 2
 up_exp <- 3
 is_mid_exp <- log10(vg_table$Mu) > low_exp & log10(vg_table$Mu) < up_exp
@@ -1223,13 +1225,13 @@ plot_params <- list(
   ylab("log10(norm count + 1)"),
   xlab("Gene")
 )
-plot_hvg <- ggplot(melt(hvg_counts), aes(x = Var2, y = value)) + 
+plot_hvg <- ggplot(melt(hvg_counts), aes(x = Var2, y = value)) +
   plot_params + ggtitle("Example HVGs")
 
-plot_lvg <- ggplot(melt(lvg_counts), aes(x = Var2, y = value)) + 
+plot_lvg <- ggplot(melt(lvg_counts), aes(x = Var2, y = value)) +
   plot_params + ggtitle("Example LVGs")
   
-plot_hvg + plot_lvg + plot_annotation(tag_levels = "A") 
+plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
 ```
 
 ## Differential mean and variability testing using BASiCS
@@ -1317,8 +1319,8 @@ probability threshold is suitable.
 
 
 ```{r visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between naive and active cells. Log-fold changes of average expression in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
-p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA") 
-p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano") 
+p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
+p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano")
 p1 / p2
 ```
 
@@ -1382,11 +1384,11 @@ nai_counts_act <- select_top_n(table_de_mean, dc_naive, "Active+")
 act_counts_nai <- select_top_n(table_de_mean, dc_active, "Naive+")
 nai_counts_nai <- select_top_n(table_de_mean, dc_naive, "Naive+")
 
-## Active & naive count matrices for genes not differentially expressed 
+## Active & naive count matrices for genes not differentially expressed
 act_counts_nde <- select_top_n(table_de_mean, dc_active, "NoDiff",
-  decreasing=FALSE)
+  decreasing = FALSE)
 nai_counts_nde <- select_top_n(table_de_mean, dc_naive, "NoDiff",
-  decreasing=FALSE)
+  decreasing = FALSE)
 
 
 ## Combine count matrices by cell type
@@ -1422,7 +1424,7 @@ log_mu_naive <- log10(table_de_selected$Mean1)
 log_mu_active <- log10(table_de_selected$Mean2)
 mu_col <- colorRamp2(
   breaks = seq(0, max(c(log_mu_naive, log_mu_active)), length.out = 20),
-  colors = viridis(20, option="A", direction = 1)
+  colors = viridis(20, option = "A", direction = 1)
 )
 
 Heatmap(
@@ -1477,8 +1479,8 @@ conditions are marked as `NA` and are therefore not displayed.
 
 
 ```{r diff-res-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential residual over-dispersion test between naive and active cells. Differences of residual over-dispersion in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual over-dispersion in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
-p1 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "MA") 
-p2 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "Volcano") 
+p1 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "MA")
+p2 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "Volcano")
 p1 / p2
 ```
 
@@ -1532,7 +1534,9 @@ g1 <- ggplot(
   ylim(-15, 15) +
   scale_x_log10() +
   labs(x = "Mean expression", y = "log2 fold change") +
-  geom_abline(slope = 0, intercept = 0, colour = "firebrick", linetype = "dashed")
+  geom_abline(
+    slope = 0, intercept = 0, colour = "firebrick", linetype = "dashed"
+  )
 
 g2 <- ggplot(
     table_combined_de[table_combined_de$ResultDiffResDisp == "Active+", ]
@@ -1542,7 +1546,9 @@ g2 <- ggplot(
   ylim(-15, 15) +
   scale_x_log10() +
   labs(x = "Mean expression", y = "log2 fold change") +
-  geom_abline(slope = 0, intercept = 0, colour = "firebrick", linetype = "dashed")
+  geom_abline(
+    slope = 0, intercept = 0, colour = "firebrick", linetype = "dashed"
+  )
 
 g3 <- ggplot(
     table_combined_de[table_combined_de$ResultDiffResDisp == "Naive+", ]
@@ -1553,7 +1559,9 @@ g3 <- ggplot(
     x = "Proportion of cells\nexpressing (naive)",
     y = "Proportion of cells\nexpressing (active)"
   ) +
-  geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
+  geom_abline(
+    slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed"
+  )
 
 g4 <- ggplot(
     table_combined_de[table_combined_de$ResultDiffResDisp == "Active+", ]
@@ -1564,7 +1572,9 @@ g4 <- ggplot(
     x = "Proportion of cells\nexpressing (naive)",
     y = "Proportion of cells\nexpressing (active)"
   ) +
-  geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
+  geom_abline(
+    slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed"
+  )
 
 (g1 + g3) / (g2 + g4) + plot_annotation(tag_levels = "A")
 ```
@@ -1594,14 +1604,14 @@ an important component of any analysis of differential variability, and should
 be undertaken with care.
 
 
-```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Eight genes with higher residual over-dispersion in naive cells, and similar levels of detection in active and naive populations. B: Two genes with higher residual over-dispersion in naive cells and different levels of detection in naive and active cells. C: Six genes with higher residual over-dispersion in active cells and similar levels of detection in naive and active cells. D: Three genes with higher residual over-dispersion in active cells and different levels of detection in naive and active cells."}
+```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Nine genes with higher residual over-dispersion in naive cells, and similar levels of detection in active and naive populations. B: Two genes with higher residual over-dispersion in naive cells and different levels of detection in naive and active cells. C: Six genes with higher residual over-dispersion in active cells and similar levels of detection in naive and active cells. D: Six genes with higher residual over-dispersion in active cells and different levels of detection in naive and active cells."}
 ## Use the tidyr package to reshape data into a "long" format for ggplot2
 library("tidyr")
 ## Utility function that plots logcounts of a set of genes defined by "ind_vg"
 plot_vg <- function(ind_vg) {
   var_genes <- table_combined_de$GeneName[ind_vg]
-  var_naive <- dc_naive[var_genes, ]
-  var_active <- dc_active[var_genes, ]
+  var_naive <- dc_naive[var_genes, , drop = FALSE]
+  var_active <- dc_active[var_genes, , drop = FALSE]
   var_df <- rbind(
     data.frame(t(var_naive), Group = "Naive"),
     data.frame(t(var_active), Group = "Active")
@@ -1626,9 +1636,9 @@ plot_vg <- function(ind_vg) {
 ## with similar levels of dropout &
 ## expressed in c. 50% of cells
 ## ie, genes that are probably unimodal but with higher variance
-ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Naive+") & 
+ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Naive+") &
   table_combined_de$ResultDiffMean %in% c("NoDiff") &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) < 0.10 &
+  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) < 0.05 &
   (table_combined_de$ExpPropNaive + table_combined_de$ExpPropActive) > 1
 
 g1 <- plot_vg(ind_vg) +
@@ -1639,7 +1649,7 @@ g1 <- plot_vg(ind_vg) +
 ## with different levels of dropout &
 ## expressed in c. 50% of cells
 ## i.e., genes with more bursting pattern of expression
-ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Naive+") & 
+ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Naive+") &
   table_combined_de$ResultDiffMean %in% c("NoDiff") &
   abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.45 &
   (table_combined_de$ExpPropNaive + table_combined_de$ExpPropActive) > 1.1
@@ -1651,7 +1661,7 @@ g2 <- plot_vg(ind_vg)
 ## with similar levels of dropout &
 ## expressed in c. 50% of cells
 ## ie, genes that are probably unimodal but with higher variance
-ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Active+") & 
+ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Active+") &
   table_combined_de$ResultDiffMean %in% c("NoDiff") &
   abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) < 0.01 &
   (table_combined_de$ExpPropNaive + table_combined_de$ExpPropActive) > 1.4
@@ -1663,9 +1673,9 @@ g3 <- plot_vg(ind_vg) +
 ## with different levels of dropout &
 ## expressed in c. 50% of cells
 ## i.e., genes with more bursting pattern of expression
-ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Active+") & 
-  abs(table_combined_de$MeanLog2FC) < 1 &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.25 &
+ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Active+") &
+  abs(table_combined_de$MeanLog2FC) < 1.2 &
+  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.2 &
   (table_combined_de$ExpPropNaive + table_combined_de$ExpPropActive) > 1
 g4 <- plot_vg(ind_vg)
 
@@ -1713,7 +1723,7 @@ chain_naive_nospikes <- BASiCS_MCMC(
   PriorParam = prior_param_naive,
   Threads = 4,
   StoreChains = TRUE,
-  StoreDir = "rds/", 
+  StoreDir = "rds/",
   RunName = "naive_nospikes",
   WithSpikes = FALSE
 )
