@@ -5,7 +5,7 @@ all: Workflow.pdf Supplements.pdf
 %.pdf: %.Rmd
 	docker run -v $(shell pwd):/home/rstudio/mycode \
 		-w /home/rstudio/mycode \
-		alanocallaghan/bocker:0.1.0: \
+		alanocallaghan/bocker:0.1.0 \
 		/bin/bash \
 		-c 'Rscript -e "rmarkdown::render(\"$<\")"'
 
