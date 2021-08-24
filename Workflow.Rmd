@@ -1893,8 +1893,8 @@ The following software versions were used throughout this workflow:
   - BASiCS `r packageVersion("BASiCS")`
   - scran `r packageVersion("scran")`
   - scater `r packageVersion("scater")`  
-  Version 
-  numbers for all remaining packages is available at [Session Info](#session-info).
+  Version numbers for all remaining packages are available at
+  [Session Info](#session-info).
 
 A Docker image containing all software requirements is available at 
 [Docker hub](https://hub.docker.com/repository/docker/alanocallaghan/bocker).
@@ -1917,8 +1917,8 @@ saveRDS(sce_active, "rds/sce_active.rds")
 The data used in this article are available for download
 on EBI ArrayExpress under accession number
 [E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
-
-**TODO: Links to MCMC chains**
+The MCMC chains used to generate this article can be found in Zenodo
+under the DOI [10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
 
 
 # Software availability
