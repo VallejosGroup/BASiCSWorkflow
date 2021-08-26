@@ -1945,8 +1945,8 @@ Editorial Office, as detailed below.
 
 # Author information
 
-N.E. and A.OC. authored the manuscript. C.A.V. contributed substantive 
-edits to the manuscript. C.A.V. and J.C.M. provided reviews of the manuscript.
+N.E. and A.OC. made the primary contributions to the manuscript.
+C.A.V. and J.C.M. provided guidance and edited the manuscript.
 
 
 # Competing interests
@@ -1957,7 +1957,6 @@ No competing interests were disclosed.
 
 C.A.V. is a Chancellor’s Fellow funded by the University of Edinburgh.
 A.OC. was funded by the Chancellor's Fellowship granted to C.A.V.
-N.E. was funded by EMBO Long Term Fellowship no. 1194-2019 and the European
-Union’s Horizon 2020 research and innovation program under 
-Marie Sklodowska‐Curie Actions grant agreement No 892225.
-Work by J.C.M. was funded by grants from CRUK (C9545/A29580).
+N.E. was funded by the European Molecular Biology Laboratory International PhD
+Programme. Work by JCM was supported by CRUK (C9545/A29580) and by core support
+from EMBL.
