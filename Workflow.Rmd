@@ -754,7 +754,7 @@ rowData(altExp(sce_active)) <- SpikeInput
 ## Parameter estimation using BASiCS
 
 Parameter estimation is implemented in the `BASiCS_MCMC` function using an 
-adaptive Metropolis within Gibbs algorithm [@Roberts2009].
+adaptive Metropolis within Gibbs algorithm (see section 3 in [@Roberts2009]).
 The primary inputs for `BASiCS_MCMC` correspond to:
 
 - `Data`: a `SingleCellExperiment` object created as described in the 
@@ -883,7 +883,7 @@ quantitative convergence diagnostics have been proposed to assess the lack
 of convergence (e.g. [@CowlesCarlin1996; @BrooksGelman1998]). 
 Some advocate the use of multiple MCMC chains using different starting values in
 order to ensure that the algorithm consistently converges to the same 
-distribution.
+distribution and to avoid convergence to local modes.
 For `r Biocpkg("BASiCS")`, we have observed that using informed starting values 
 (e.g. based on `r Biocpkg("scran")` normalisation factors) and a sufficiently 
 large value for `N` and `Burn` generally leads to largely consistent estimates 
@@ -897,9 +897,9 @@ As mentioned above, significant departures from a horizontal trend suggest a
 lack of convergence.
 As illustrated in Figure \@ref(fig:convergence-naive), histograms can also be 
 used to display the marginal distribution for each parameter. 
-Users should expect these to follow a unimodal distribution. 
-Failure to satisfy these graphical diagnostics suggest that `N` and `Burn` must 
-be increased. 
+For `r Biocpkg("BASiCS")`, users should expect these to follow a unimodal 
+distribution. Failure to satisfy these graphical diagnostics suggest that `N` 
+and `Burn` must be increased. 
 Alternatively, more stringent quality control could be applied to the input 
 data, as we have observed that genes with very low counts often suffer from 
 slow convergence.
