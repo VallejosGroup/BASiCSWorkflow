@@ -1593,8 +1593,8 @@ Similarly to analysis of differential expression, it is useful to visualise
 the results of differential variability tests in order to appraise the quality 
 of the results, and to identify systematic patterns among the genes identified.
 Figure \@ref(fig:violin-diffresdisp) shows denoised counts for
-genes with higher residual over-dispersion, with each panel showing a different
-type of differential variability. Figure
+genes with significant differences in residual over-dispersion, with each panel 
+showing a different type of differential variability. Figure
 \@ref(fig:violin-diffresdisp)A and \@ref(fig:violin-diffresdisp)C
 show genes with similar levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in naive or active cells (A and C, 
@@ -1621,7 +1621,14 @@ be undertaken with care.
 library("tidyr")
 ## Utility function that plots logcounts of a set of genes defined by "ind_vg"
 plot_vg <- function(ind_vg) {
-  var_genes <- table_combined_de$GeneName[ind_vg]
+  table_combined_de_vg <- table_combined_de[ind_vg, ]
+  # If more than 4 genes, pick top 4 ranked by differences in residual over-dispersion
+  if(nrow(table_combined_de_vg) > 4) {
+    table_combined_de_vg <- table_combined_de_vg[
+      order(abs(table_combined_de_vg$ResDispDistance), decreasing = TRUE),]  
+    table_combined_de_vg <- table_combined_de_vg[1:4,]
+  }
+  var_genes <- table_combined_de_vg$GeneName
   var_naive <- dc_naive[var_genes, , drop = FALSE]
   var_active <- dc_active[var_genes, , drop = FALSE]
   var_df <- rbind(
@@ -1645,50 +1652,49 @@ plot_vg <- function(ind_vg) {
 
 ## genes more variable in naive   &
 ## not differentially expressed   &
-## with similar levels of dropout &
-## expressed in c. 50% of cells
-## ie, genes that are probably unimodal but with higher variance
+## with similar levels of non-zero expression &
+## expressed in at least 50% of cells within each group
+## ie, genes that are probably unimodal but with higher variance in naive cells
 ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Naive+") &
   table_combined_de$ResultDiffMean %in% c("NoDiff") &
   abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) < 0.05 &
-  (table_combined_de$ExpPropNaive + table_combined_de$ExpPropActive) > 1
-
+  pmin(table_combined_de$ExpPropNaive, table_combined_de$ExpPropActive) > 0.75
 g1 <- plot_vg(ind_vg) +
     theme(legend.position = "none")
 
 ## genes more variable in naive     &
 ## not differentially expressed     &
-## with different levels of dropout &
-## expressed in c. 50% of cells
+## with different levels of non-zero expression &
+## expressed in at least 50% of cells within one or more of the groups
 ## i.e., genes with more bursting pattern of expression
 ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Naive+") &
   table_combined_de$ResultDiffMean %in% c("NoDiff") &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.45 &
-  (table_combined_de$ExpPropNaive + table_combined_de$ExpPropActive) > 1.1
+  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.40 &
+  pmax(table_combined_de$ExpPropNaive, table_combined_de$ExpPropActive) > 0.75
 g2 <- plot_vg(ind_vg)
 
 
 ## genes more variable in Active   &
 ## not differentially expressed   &
-## with similar levels of dropout &
-## expressed in c. 50% of cells
+## with similar levels of non-zero expression &
+## expressed in at least 50% of cells within each group
 ## ie, genes that are probably unimodal but with higher variance
 ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Active+") &
   table_combined_de$ResultDiffMean %in% c("NoDiff") &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) < 0.01 &
-  (table_combined_de$ExpPropNaive + table_combined_de$ExpPropActive) > 1.4
+  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) < 0.05 &
+  pmin(table_combined_de$ExpPropNaive, table_combined_de$ExpPropActive) > 0.75
 g3 <- plot_vg(ind_vg) +
     theme(legend.position = "none")
 
 ## genes more variable in Active &
-## possibly but not necessarily differentially expressed &
+## not differentially expressed   &
 ## with different levels of dropout &
-## expressed in c. 50% of cells
+## expressed in at least 50% of cells within one or more of the groups
 ## i.e., genes with more bursting pattern of expression
 ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Active+") &
-  abs(table_combined_de$MeanLog2FC) < 1.2 &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.2 &
-  (table_combined_de$ExpPropNaive + table_combined_de$ExpPropActive) > 1
+  table_combined_de$ResultDiffMean %in% c("NoDiff") &
+  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.20 &
+  pmax(table_combined_de$ExpPropNaive, table_combined_de$ExpPropActive) > 0.50
 g4 <- plot_vg(ind_vg)
 
 (g1 + g2) / (g3 + g4) + plot_annotation(tag_levels = "A")
