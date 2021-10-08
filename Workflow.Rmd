@@ -76,7 +76,7 @@ if (knitr::is_html_output()) {
 }
 knitr::opts_chunk$set(
   warning = FALSE, message = FALSE, error = FALSE,
-  cache = 2, cache.path = "cache_main/",
+  cache = 0, cache.path = "cache_main/",
   # fig.pos = "h",
   fig.path = "figure/"
 )
@@ -842,6 +842,7 @@ For convenience, these can be obtained online at
 
 ```{r download-chain-naive}
 chains_website <- "https://zenodo.org/record/5243265/files/"
+options(timeout = 1000)
 if (!file.exists("rds/chain_naive.Rds")) {
   download.file(
     paste0(chains_website, "chain_naive.Rds"),
