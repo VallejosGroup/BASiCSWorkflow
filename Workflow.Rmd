@@ -1920,8 +1920,8 @@ The following software versions were used throughout this workflow:
   - BASiCS `r packageVersion("BASiCS")`
   - scran `r packageVersion("scran")`
   - scater `r packageVersion("scater")`  
-  Version numbers for all remaining packages are available at
-  [Session Info](#session-info).
+  Version numbers for all remaining packages are available in the
+  [Session Info](#session-info) section.
 
 A Docker image containing all software requirements is available at 
 [Docker hub](https://hub.docker.com/repository/docker/alanocallaghan/bocker).
