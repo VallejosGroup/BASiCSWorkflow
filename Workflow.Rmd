@@ -80,6 +80,7 @@ knitr::opts_chunk$set(
   # fig.pos = "h",
   fig.path = "figure/"
 )
+options(timeout=100)
 ```
 
 
@@ -1492,8 +1493,18 @@ that are not expressed in at least 2 cells in either condition.--->
 
 ```{r combine-results}
 table_de_combined <- merge(table_de_mean, table_de_resdisp)
+ggplot(table_combined_de) +
+  aes(MeanLog2FC, ResDispDistance) +
+  plot_params +
+  xlim(-15, 15) +
+  labs(x = "log2 fold change in mean expression", 
+       y = "Difference in residual over-dispersion") +
+  geom_hline(yintercept = 0, colour = "firebrick", linetype = "dashed") +
+  geom_vline(xintercept = 0, colour = "firebrick", linetype = "dashed")
 ```
 
+We can observe that changes in residual over-dispersion are not 
+confounded by changes in mean expression Figure \@ref(fig:combine-results). 
 While genes with significant changes in residual over-dispersion have similar
 levels of mean expression, as seen in Figure \@ref(fig:var-plots)A and C,
 they may have a different proportion of zero counts in the two cell populations.
@@ -1585,13 +1596,15 @@ genes with higher residual over-dispersion, with each panel showing a different
 type of differential variability. Figure
 \@ref(fig:violin-diffresdisp)A and \@ref(fig:violin-diffresdisp)C
 show genes with similar levels of detection in both populations, as well as 
-higher levels of residual over-dispersion in naive or active cells (A and C, respectively). These are genes with higher variability in one population that
+higher levels of residual over-dispersion in naive or active cells (A and C, 
+respectively). These are genes with higher variability in one population that
 is not driven by a higher proportion of zeros that may indicate more stochastic 
 expression patterns.
 
 Meanwhile, figure \@ref(fig:violin-diffresdisp)B and \@ref(fig:violin-diffresdisp)D
 show genes with differing levels of detection in both populations, as well as 
-higher levels of residual over-dispersion in naive or active cells (B and D, respectively). These are genes with higher variability in one population that
+higher levels of residual over-dispersion in naive or active cells (B and D, 
+respectively). These are genes with higher variability in one population that
 may be driven by more stochastic expression patterns. These may point to 
 differences in intrinsic sources of variability in expression, such as regulatory
 elements (e.g., transcription factors). They may also represent genes that
