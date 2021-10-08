@@ -1534,13 +1534,11 @@ levels of mean expression, as seen in Figure \@ref(fig:var-plots)A and C,
 they may have a different proportion of zero counts in the two cell populations.
 Figure \@ref(fig:var-plots)B and D show that many genes with higher residual
 over-dispersion in naive cells have a lower proportion of zeros in active cells,
-and vice versa. Thus, these genes may represent those with a more stochastic
+and vice versa. Thus, these genes may represent those with a more intermittent
 expression pattern in one population, or markers of a cell subpopulation that
 is more prevalent in one cell population relative to the other.
 
 ```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: log2 change in expression against against log mean expression for genes with higher residual over-dispersion in naive (A) cells and active (D) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in naive cells (B) and active (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
-
-
 g1 <- ggplot(
     table_combined_genes[table_combined_genes$ResultDiffResDisp == "Naive+", ]
   ) +
@@ -1603,15 +1601,16 @@ showing a different type of differential variability. Figure
 \@ref(fig:violin-diffresdisp)A and \@ref(fig:violin-diffresdisp)C
 show genes with similar levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in naive or active cells (A and C, 
-respectively). These are genes with higher variability in one population that
-is not driven by a higher proportion of zeros that may indicate more stochastic 
-expression patterns.
+respectively). These are genes with higher variability in one population
+than the other. Given that these genes have a similar proportion of zero counts
+in both populations, it is likely that this difference in variability
+is not driven by an more intermittent gene expression pattern.
 
 Meanwhile, figure \@ref(fig:violin-diffresdisp)B and \@ref(fig:violin-diffresdisp)D
 show genes with differing levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in naive or active cells (B and D, 
 respectively). These are genes with higher variability in one population that
-may be driven by more stochastic expression patterns. These may point to 
+may be driven by more intermittent expression patterns. These may point to 
 differences in intrinsic sources of variability in expression, such as regulatory
 elements (e.g., transcription factors). They may also represent genes that
 are markers of extrinsic variability, for example cell sub-populations that 
