@@ -1489,12 +1489,14 @@ residual over-dispersion, here, we want to highlight how to analyse
 changes in mean expression in parallel to changes in variability.
 For this, we will first combine the results of the differential mean expression 
 and the differential residual over-dispersion test.
+As expected, changes in residual over-dispersion are notconfounded by changes 
+in mean expression Figure \@ref(fig:combine-results). 
 <!---We will further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.---> 
 
 ```{r combine-results}
 table_de_combined <- merge(table_de_mean, table_de_resdisp)
-ggplot(table_combined_de) +
+ggplot(table_de_combined) +
   aes(MeanLog2FC, ResDispDistance) +
   plot_params +
   xlim(-15, 15) +
@@ -1504,9 +1506,7 @@ ggplot(table_combined_de) +
   geom_vline(xintercept = 0, colour = "firebrick", linetype = "dashed")
 ```
 
-We can observe that changes in residual over-dispersion are not 
-confounded by changes in mean expression Figure \@ref(fig:combine-results). 
-While genes with significant changes in residual over-dispersion have similar
+While genes with differences in residual over-dispersion have similar
 levels of mean expression, as seen in Figure \@ref(fig:var-plots)A and C,
 they may have a different proportion of zero counts in the two cell populations.
 Figure \@ref(fig:var-plots)B and D show that many genes with higher residual
@@ -1523,7 +1523,7 @@ gene_tests <- data.frame(
   "nExpPropNaive" = rowSums(dc_naive > 0),
   "nExpPropActive" = rowSums(dc_active > 0)
 )
-table_combined_de <- merge(table_de_combined, gene_tests)
+table_de_combined <- merge(table_de_combined, gene_tests)
 
 plot_params <- list(
   geom_pointdensity(),
@@ -1537,7 +1537,7 @@ plot_params <- list(
 )
 
 g1 <- ggplot(
-    table_combined_de[table_combined_de$ResultDiffResDisp == "Naive+", ]
+    table_de_combined[table_de_combined$ResultDiffResDisp == "Naive+", ]
   ) +
   aes(MeanOverall, MeanLog2FC) +
   plot_params +
@@ -1549,7 +1549,7 @@ g1 <- ggplot(
   )
 
 g2 <- ggplot(
-    table_combined_de[table_combined_de$ResultDiffResDisp == "Active+", ]
+    table_de_combined[table_de_combined$ResultDiffResDisp == "Active+", ]
   ) +
   aes(MeanOverall, MeanLog2FC) +
   plot_params +
@@ -1561,7 +1561,7 @@ g2 <- ggplot(
   )
 
 g3 <- ggplot(
-    table_combined_de[table_combined_de$ResultDiffResDisp == "Naive+", ]
+    table_de_combined[table_de_combined$ResultDiffResDisp == "Naive+", ]
   ) +
   aes(x = ExpPropNaive, y = ExpPropActive) +
   plot_params +
@@ -1574,7 +1574,7 @@ g3 <- ggplot(
   )
 
 g4 <- ggplot(
-    table_combined_de[table_combined_de$ResultDiffResDisp == "Active+", ]
+    table_de_combined[table_de_combined$ResultDiffResDisp == "Active+", ]
   ) +
   aes(x = ExpPropNaive, y = ExpPropActive) +
   plot_params +
@@ -1599,7 +1599,7 @@ showing a different type of differential variability. Figure
 show genes with similar levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in naive or active cells (A and C, 
 respectively). These are genes with higher variability in one population that
-is not driven by a higher proportion of zeros that may indicate more stochastic 
+is not driven by a higher proportion of zeros and may indicate more stochastic 
 expression patterns.
 
 Meanwhile, figure \@ref(fig:violin-diffresdisp)B and \@ref(fig:violin-diffresdisp)D
@@ -1621,14 +1621,14 @@ be undertaken with care.
 library("tidyr")
 ## Utility function that plots logcounts of a set of genes defined by "ind_vg"
 plot_vg <- function(ind_vg) {
-  table_combined_de_vg <- table_combined_de[ind_vg, ]
+  table_de_combined_vg <- table_de_combined[ind_vg, ]
   # If more than 4 genes, pick top 4 ranked by differences in residual over-dispersion
-  if(nrow(table_combined_de_vg) > 4) {
-    table_combined_de_vg <- table_combined_de_vg[
-      order(abs(table_combined_de_vg$ResDispDistance), decreasing = TRUE),]  
-    table_combined_de_vg <- table_combined_de_vg[1:4,]
+  if(nrow(table_de_combined_vg) > 4) {
+    table_de_combined_vg <- table_de_combined_vg[
+      order(abs(table_de_combined_vg$ResDispDistance), decreasing = TRUE),]  
+    table_de_combined_vg <- table_de_combined_vg[1:4,]
   }
-  var_genes <- table_combined_de_vg$GeneName
+  var_genes <- table_de_combined_vg$GeneName
   var_naive <- dc_naive[var_genes, , drop = FALSE]
   var_active <- dc_active[var_genes, , drop = FALSE]
   var_df <- rbind(
@@ -1655,10 +1655,10 @@ plot_vg <- function(ind_vg) {
 ## with similar levels of non-zero expression &
 ## expressed in at least 50% of cells within each group
 ## ie, genes that are probably unimodal but with higher variance in naive cells
-ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Naive+") &
-  table_combined_de$ResultDiffMean %in% c("NoDiff") &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) < 0.05 &
-  pmin(table_combined_de$ExpPropNaive, table_combined_de$ExpPropActive) > 0.75
+ind_vg <- table_de_combined$ResultDiffResDisp %in% c("Naive+") &
+  table_de_combined$ResultDiffMean %in% c("NoDiff") &
+  abs(table_de_combined$ExpPropNaive - table_de_combined$ExpPropActive) < 0.05 &
+  pmin(table_de_combined$ExpPropNaive, table_de_combined$ExpPropActive) > 0.75
 g1 <- plot_vg(ind_vg) +
     theme(legend.position = "none")
 
@@ -1667,10 +1667,10 @@ g1 <- plot_vg(ind_vg) +
 ## with different levels of non-zero expression &
 ## expressed in at least 50% of cells within one or more of the groups
 ## i.e., genes with more bursting pattern of expression
-ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Naive+") &
-  table_combined_de$ResultDiffMean %in% c("NoDiff") &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.40 &
-  pmax(table_combined_de$ExpPropNaive, table_combined_de$ExpPropActive) > 0.75
+ind_vg <- table_de_combined$ResultDiffResDisp %in% c("Naive+") &
+  table_de_combined$ResultDiffMean %in% c("NoDiff") &
+  abs(table_de_combined$ExpPropNaive - table_de_combined$ExpPropActive) > 0.40 &
+  pmax(table_de_combined$ExpPropNaive, table_de_combined$ExpPropActive) > 0.75
 g2 <- plot_vg(ind_vg)
 
 
@@ -1679,10 +1679,10 @@ g2 <- plot_vg(ind_vg)
 ## with similar levels of non-zero expression &
 ## expressed in at least 50% of cells within each group
 ## ie, genes that are probably unimodal but with higher variance
-ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Active+") &
-  table_combined_de$ResultDiffMean %in% c("NoDiff") &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) < 0.05 &
-  pmin(table_combined_de$ExpPropNaive, table_combined_de$ExpPropActive) > 0.75
+ind_vg <- table_de_combined$ResultDiffResDisp %in% c("Active+") &
+  table_de_combined$ResultDiffMean %in% c("NoDiff") &
+  abs(table_de_combined$ExpPropNaive - table_de_combined$ExpPropActive) < 0.05 &
+  pmin(table_de_combined$ExpPropNaive, table_de_combined$ExpPropActive) > 0.75
 g3 <- plot_vg(ind_vg) +
     theme(legend.position = "none")
 
@@ -1691,10 +1691,10 @@ g3 <- plot_vg(ind_vg) +
 ## with different levels of dropout &
 ## expressed in at least 50% of cells within one or more of the groups
 ## i.e., genes with more bursting pattern of expression
-ind_vg <- table_combined_de$ResultDiffResDisp %in% c("Active+") &
-  table_combined_de$ResultDiffMean %in% c("NoDiff") &
-  abs(table_combined_de$ExpPropNaive - table_combined_de$ExpPropActive) > 0.20 &
-  pmax(table_combined_de$ExpPropNaive, table_combined_de$ExpPropActive) > 0.50
+ind_vg <- table_de_combined$ResultDiffResDisp %in% c("Active+") &
+  table_de_combined$ResultDiffMean %in% c("NoDiff") &
+  abs(table_de_combined$ExpPropNaive - table_de_combined$ExpPropActive) > 0.20 &
+  pmax(table_de_combined$ExpPropNaive, table_de_combined$ExpPropActive) > 0.50
 g4 <- plot_vg(ind_vg)
 
 (g1 + g2) / (g3 + g4) + plot_annotation(tag_levels = "A")
