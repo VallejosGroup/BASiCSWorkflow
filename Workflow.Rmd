@@ -1489,6 +1489,8 @@ residual over-dispersion, here, we want to highlight how to analyse
 changes in mean expression in parallel to changes in variability.
 For this, we will first combine the results of the differential mean expression 
 and the differential residual over-dispersion test.
+As expected, changes in residual over-dispersion are notconfounded by changes 
+in mean expression Figure \@ref(fig:combine-results). 
 <!---We will further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.---> 
 
@@ -1602,9 +1604,10 @@ showing a different type of differential variability. Figure
 show genes with similar levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in naive or active cells (A and C, 
 respectively). These are genes with higher variability in one population
-than the other. Given that these genes have a similar proportion of zero counts
-in both populations, it is likely that this difference in variability
-is not driven by an more intermittent gene expression pattern.
+than the other, but which have a similar frequency of detection in each
+population. Given that these genes have a similar proportion of zero counts
+in both populations, it is likely that the differences in variability
+are not driven by a more intermittent gene expression pattern.
 
 Meanwhile, figure \@ref(fig:violin-diffresdisp)B and \@ref(fig:violin-diffresdisp)D
 show genes with differing levels of detection in both populations, as well as 
