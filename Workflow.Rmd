@@ -1484,13 +1484,14 @@ p2 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "Volcano")
 p1 / p2
 ```
 
-While one could focus on the genesets that show significant changes in
-residual over-dispersion, here, we want to highlight how to analyse 
+While one could focus on the sets of gene that show significant changes in
+residual over-dispersion, here we want to highlight how to analyse
 changes in mean expression in parallel to changes in variability.
 For this, we will first combine the results of the differential mean expression 
 and the differential residual over-dispersion test.
-As expected, changes in residual over-dispersion are notconfounded by changes 
-in mean expression Figure \@ref(fig:combine-results). 
+These are independent analyses, given that changes in residual
+over-dispersion are not confounded by changes
+in mean expression, as shown in Figure \@ref(fig:combine-results).
 <!---We will further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.---> 
 
@@ -1529,16 +1530,12 @@ ggplot(table_de_combined) +
   )
 ```
 
-We can observe that changes in residual over-dispersion are not 
-confounded by changes in mean expression Figure \@ref(fig:combine-results). 
-While genes with significant changes in residual over-dispersion have similar
+While genes with significant changes in residual over-dispersion often have similar
 levels of mean expression, as seen in Figure \@ref(fig:var-plots)A and C,
 they may have a different proportion of zero counts in the two cell populations.
 Figure \@ref(fig:var-plots)B and D show that many genes with higher residual
 over-dispersion in naive cells have a lower proportion of zeros in active cells,
-and vice versa. Thus, these genes may represent those with a more intermittent
-expression pattern in one population, or markers of a cell subpopulation that
-is more prevalent in one cell population relative to the other.
+and vice versa.
 
 ```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: log2 change in expression against against log mean expression for genes with higher residual over-dispersion in naive (A) cells and active (D) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in naive cells (B) and active (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
 g1 <- ggplot(
@@ -1595,8 +1592,11 @@ g4 <- ggplot(
 ```
 
 Similarly to analysis of differential expression, it is useful to visualise 
-the results of differential variability tests in order to appraise the quality 
-of the results, and to identify systematic patterns among the genes identified.
+the results of differential variability tests
+in order to appraise the quality
+of the results, and to identify systematic patterns among the genes identified. One useful
+way to do this is by examining the normalised counts on a
+gene-by-gene basis.
 Figure \@ref(fig:violin-diffresdisp) shows denoised counts for
 genes with significant differences in residual over-dispersion, with each panel 
 showing a different type of differential variability. Figure
@@ -1612,8 +1612,9 @@ are not driven by a more intermittent gene expression pattern.
 Meanwhile, figure \@ref(fig:violin-diffresdisp)B and \@ref(fig:violin-diffresdisp)D
 show genes with differing levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in naive or active cells (B and D, 
-respectively). These are genes with higher variability in one population that
-may be driven by more intermittent expression patterns. These may point to 
+respectively). These are genes with higher variability in one population and differing levels of detection; as mentioned above,
+these may represent genes with a more intermittent expression
+pattern in one cell population. These may point to
 differences in intrinsic sources of variability in expression, such as regulatory
 elements (e.g., transcription factors). They may also represent genes that
 are markers of extrinsic variability, for example cell sub-populations that 
@@ -1623,7 +1624,7 @@ an important component of any analysis of differential variability, and should
 be undertaken with care.
 
 
-```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Nine genes with higher residual over-dispersion in naive cells, and similar levels of detection in active and naive populations. B: Two genes with higher residual over-dispersion in naive cells and different levels of detection in naive and active cells. C: Six genes with higher residual over-dispersion in active cells and similar levels of detection in naive and active cells. D: Six genes with higher residual over-dispersion in active cells and different levels of detection in naive and active cells."}
+```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in naive cells, and similar levels of detection in active and naive populations. B: Four genes with higher residual over-dispersion in naive cells and different levels of detection in naive and active cells. C: Four genes with higher residual over-dispersion in active cells and similar levels of detection in naive and active cells. D: Three genes with higher residual over-dispersion in active cells and different levels of detection in naive and active cells."}
 ## Use the tidyr package to reshape data into a "long" format for ggplot2
 library("tidyr")
 ## Utility function that plots logcounts of a set of genes defined by "ind_vg"
