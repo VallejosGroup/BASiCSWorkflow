@@ -11,6 +11,8 @@ author:
     affiliation: 
     - &UZH Department of Quantitative Biomedicine, University of Zurich,
       Winterthurerstrasse 190, CH-8057, Zurich, Switzerland
+    - &ETH Institute for Molecular Health Sciences, ETH Zurich,
+      Otto-Stern Weg 7, 8093 Zurich, Switzerland
   - name: John C. Marioni
     affiliation: 
     - &EBI European Molecular Biology Laboratory, European Bioinformatics 
@@ -51,9 +53,9 @@ output:
   BiocWorkflowTools::f1000_article:
     fig_width: 6
     fig_height: 3.5
-  BiocStyle::html_document:
-    fig_width: 8
-    fig_height: 4.5
+  # BiocStyle::html_document:
+  #   fig_width: 8
+  #   fig_height: 4.5
 ---
 
 
@@ -1934,7 +1936,7 @@ A Docker image containing all software requirements is available at
 sessionInfo()
 ```
 
-```{r, echo = FALSE, eval = FALSE}
+```{r, echo = FALSE}
 saveRDS(sce_naive, "rds/sce_naive.rds")
 saveRDS(sce_active, "rds/sce_active.rds")
 ```

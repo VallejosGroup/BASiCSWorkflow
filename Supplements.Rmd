@@ -27,12 +27,13 @@ author:
 bibliography: Workflow.bib
 output:
   BiocWorkflowTools::f1000_article:
-    fig_width: 8
-    fig_height: 5
-#output:
+    fig_width: 6
+    fig_height: 3.5
 # BiocStyle::html_document:
-#   fig_caption: true
-#   self_contained: yes
+#    fig_width: 8
+#    fig_height: 4.5
+#    fig_caption: true
+#    self_contained: yes
 #vignette: >
 #  %\VignetteIndexEntry{A BASiCS workflow for expression variability analysis using scRNAseq data}
 #  %\VignetteEngine{knitr::rmarkdown}
@@ -41,15 +42,11 @@ output:
 
 
 ```{r setup_knitr, include = FALSE, cache = FALSE}
-library(BiocStyle)
-## Decide whether to display parts for BioC (TRUE) or F1000 (FALSE)
-#on.bioc <- TRUE
-library(knitr)
-# Use fig.width = 7 for html and fig.width = 6 for pdf
-#fig.width <- ifelse(on.bioc, 7, 6)
+library("BiocStyle")
+library("knitr")
 knitr::opts_chunk$set(
   message = FALSE, error = FALSE, warning = FALSE,
-  cache = 2, cache.path = "cache_supp/",
+  cache = 0, cache.path = "cache_supp/",
   fig.path = "figure_supp/"
 )
 ```
@@ -167,53 +164,18 @@ differential variability testing.
 
 # Trace plots
 
+First, we will load `r Biocpkg("BASiCS")` and read in each MCMC chain.
+While it is important to ensure the MCMC algorithm has converged and has
+produced an adequate number of independent samples from the posterior
+distribution, we will here assume this proceeds as in the MCMC diagnostics
+section of the main manuscript.
+
 ```{r load-chain-naive}
 library("BASiCS")
 MCMC_naive <- readRDS("rds/chain_naive.Rds")
-```
-
-```{r trace-naive}
-plot(MCMC_naive, Param = "mu", Gene = 1000)
-plot(MCMC_naive, Param = "delta", Gene = 100)
-plot(MCMC_naive, Param = "delta", Gene = 5000)
-plot(MCMC_naive, Param = "epsilon", Gene = 200)
-plot(MCMC_naive, Param = "epsilon", Gene = 6000)
-plot(MCMC_naive, Param = "s", Cell = 10)
-plot(MCMC_naive, Param = "s", Cell = 50)
-```
-
-
-```{r load-chain-active}
 MCMC_active <- readRDS("rds/chain_active.Rds")
-```
-
-```{r trace-active}
-plot(MCMC_active, Param = "mu", Gene = 1000)
-plot(MCMC_active, Param = "delta", Gene = 100)
-plot(MCMC_active, Param = "delta", Gene = 5000)
-plot(MCMC_active, Param = "epsilon", Gene = 200)
-plot(MCMC_active, Param = "epsilon", Gene = 6000)
-plot(MCMC_active, Param = "s", Cell = 10)
-plot(MCMC_active, Param = "s", Cell = 50)
-```
-
-
-```{r load-chain-naive-nospikes}
 MCMC_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
 ```
-
-```{r trace-naive-nospikes}
-plot(MCMC_naive_nospikes, Param = "mu", Gene = 1000)
-plot(MCMC_naive_nospikes, Param = "delta", Gene = 100)
-plot(MCMC_naive_nospikes, Param = "delta", Gene = 5000)
-plot(MCMC_naive_nospikes, Param = "epsilon", Gene = 200)
-plot(MCMC_naive_nospikes, Param = "epsilon", Gene = 6000)
-plot(MCMC_naive_nospikes, Param = "s", Cell = 10)
-plot(MCMC_naive_nospikes, Param = "s", Cell = 50)
-```
-
-
-
 
 ## Global scaling normalisation using BASiCS
 
@@ -234,11 +196,16 @@ $$
 where $x_{ij}$ denotes the observed expression count for gene $i$ in cell $j$.
 
 ```{r normalisation-naive}
+## to calculate normalised counts we need the original SCE objects
+## used to create the MCMC objects
+sce_naive <- readRDS("rds/sce_naive.rds")
+sce_active <- readRDS("rds/sce_active.rds")
+
 ## First remove global differences in scale for normalisation factors
-offset_corrected <- BASiCS_CorrectOffset(chain_active, chain_naive)
+offset_corrected <- BASiCS_CorrectOffset(MCMC_active, MCMC_naive)
 norm_basics_naive <- BASiCS_DenoisedCounts(
   Data = sce_naive,
-  Chain = chain_naive
+  Chain = MCMC_naive
 )
 norm_basics_active <- BASiCS_DenoisedCounts(
   Data = sce_active,
@@ -246,28 +213,31 @@ norm_basics_active <- BASiCS_DenoisedCounts(
 )
 ```
 
-
 As shown in Figure \@ref(fig:normalisation-vs-scran), the capture efficiency and 
 scaling factors ($\nu_j$ and $\phi_j$ respectively) inferred by 
 `r Biocpkg("BASiCS")` are highly correlated with the global scaling 
 normalisation factors inferred using the method of @Lun2016.
+We will load `r Biocpkg("scran")` to estimate these size factors.
 An advantage of jointly inferring normalisation and gene-specific expression
 parameters, rather than using pre-computed
 normalisation factors, is that in the former case, statistical uncertainty is 
 propagated from normalisation to all downstream analyses.
 
 ```{r normalisation-vs-scran, fig.width=4, fig.height=5, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
-sce_naive <- readRDS("rds/sce_naive.rds")
-sce_active <- readRDS("rds/sce_active.rds")
+## load scran to estimate size factors and ggplot2 to make graphs
+library("scran")
+library("ggplot2")
+## set default theme for plots
+theme_set(theme_bw())
 
 # BASiCS scaling factors within each group of samples
 basics_sf_naive <- colMedians(
-  displayChainBASiCS(chain_naive, "phi")
-  * displayChainBASiCS(chain_naive, "nu")
+  displayChainBASiCS(MCMC_naive, "phi")
+  * displayChainBASiCS(MCMC_naive, "nu")
 )
 basics_sf_active <- colMedians(
-  displayChainBASiCS(chain_active, "phi")
-  * displayChainBASiCS(chain_active, "nu")
+  displayChainBASiCS(MCMC_active, "phi")
+  * displayChainBASiCS(MCMC_active, "nu")
 )
 # scran scaling factors within each group of samples
 scran_sf_naive <- calculateSumFactors(sce_naive)
@@ -279,14 +249,14 @@ ggplot() +
   labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
   annotate(
     x = 14,
-    y = 0.4, 
+    y = 0.4,
     label = paste(
-      "Pearson's r = ", 
+      "Pearson's r = ",
       round(
         cor(basics_sf_naive, scran_sf_naive),
         digits = 2
       )
-    ), 
+    ),
     geom = "text",
     size = 4
   )
@@ -313,6 +283,7 @@ The full dataset is stored under the accession number E-MTAB-6153 on
 ArrayExpress and can be obtained via:
 
 ```{r load-droplet-data}
+options(timeout = 1000)
 if (!file.exists("downloads/rawCounts.tsv")) {
   website <- "https://www.ebi.ac.uk/"
   folder <- "arrayexpress/files/E-MTAB-6153/"
@@ -379,13 +350,13 @@ SingleCellExperiment object. The metadata will be stored in the `colData` slot.
 
 ```{r droplet-sce}
 droplet_sce <- SingleCellExperiment(
-  assays = list(counts = as(as.matrix(rawCounts), "dgCMatrix"))
+  assays = list(counts = as(as.matrix(rawCounts), "dgCMatrix")),
+  colData = DataFrame(
+    cluster_labels,
+    subCellType = sub("_.*", "", cluster_labels$cell)
+  )
 )
 rm(rawCounts)
-colData(droplet_sce) <- DataFrame(
-  cluster_labels,
-  subCellType = sub("_.*", "", cluster_labels$cell)
-)
 ```
 
 For further processing steps, we remove lowly expressed genes.
@@ -452,27 +423,15 @@ from mouse 1 and mouse 2 as replicates.
 ```{r BASiCS-droplet-data}
 # Presomitic mesoderm
 ind_presom <- colData(droplet_sce)[["Cell_type"]] == "PSM"
-cur_counts <- droplet_sce[, ind_presom]
-cur_batch <- round(colData(cur_counts)$sample, digits = 0)
+droplet_sce$batch <- round(colData(droplet_sce)$sample)
+PSM_Data <- droplet_sce[, ind_presom]
 
-PSM_Data <- newBASiCS_Data(
-  Counts = as.matrix(counts(cur_counts)),
-  Tech = rep(FALSE, nrow(droplet_sce)),
-  SpikeInfo = NULL,
-  BatchInfo = cur_batch
-)
+PSM_Data$BatchInfo <- factor(PSM_Data$batch)
 
 # Somitic mesoderm
 ind_som <- colData(droplet_sce)[["Cell_type"]] == "SM"
-cur_counts <- droplet_sce[, ind_som]
-cur_batch <- round(colData(cur_counts)$sample, digits = 0)
-
-SM_Data <- newBASiCS_Data(
-  Counts = as.matrix(counts(cur_counts)),
-  Tech = rep(FALSE, nrow(droplet_sce)),
-  SpikeInfo = NULL,
-  BatchInfo = cur_batch
-)
+SM_Data <- droplet_sce[, ind_som]
+SM_Data$BatchInfo <- factor(SM_Data$batch)
 ```
 
 ## Running the MCMC
