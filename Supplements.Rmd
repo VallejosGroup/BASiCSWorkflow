@@ -613,8 +613,6 @@ BASiCS_PlotDE(Droplet_Test, Parameter = "ResDisp", Plot = "MA")
 We can now list the genes that were detected as differentially expressed and 
 differentially variable ordered by their difference in mean 
 expression/variability.
-We first focus on genes that are differentially expressed between the two cell 
-types.
 
 ```{r gene-lists-mean}
 genenames <- readRDS("rds/genenames.rds")
@@ -630,3 +628,8 @@ PSM_mean <- Droplet_TableMean[ind_psm, ]
 PSM_mean <- PSM_mean[order(PSM_mean$MeanLog2FC, decreasing = TRUE), ]
 PSM_mean$Symbol <- genenames[PSM_mean$GeneName, 2]
 ```
+
+We could then analyse the differentially expressed genes as performed
+in the main text, or using
+functional enrichment analysis as with other differential expression analysis
+packages.
