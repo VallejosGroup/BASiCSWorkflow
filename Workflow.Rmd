@@ -53,9 +53,6 @@ output:
   BiocWorkflowTools::f1000_article:
     fig_width: 6
     fig_height: 3.5
-  # BiocStyle::html_document:
-  #   fig_width: 8
-  #   fig_height: 4.5
 ---
 
 
