@@ -1593,25 +1593,38 @@ g4 <- ggplot(
 Similarly to analysis of differential expression, it is useful to visualise 
 the results of differential variability tests
 in order to appraise the quality
-of the results, and to identify systematic patterns among the genes identified. One useful
-way to do this is by examining the normalised counts on a
+of the results, and to identify systematic patterns among the genes identified. 
+One useful way to do this is by examining the normalised counts on a
 gene-by-gene basis.
 Figure \@ref(fig:violin-diffresdisp) shows denoised counts for
 genes with significant differences in residual over-dispersion, with each panel 
-showing a different type of differential variability. Figure
+showing a different type of expression patterns. 
+Exploration of such patterns is important component of any analysis of 
+differential variability, and should be undertaken with care.
+Figure \@ref(fig:violin-diffresdisp)B and \@ref(fig:violin-diffresdisp)D
+show genes with differing levels of detection in both populations, as well as 
+higher levels of residual over-dispersion in naive or active cells (B and D, 
+respectively).
+Thus, these genes may represent those with a more bursty expression pattern in 
+one of the cell population. 
+They may also represent genes that are markers of extrinsic variability, 
+for example cell sub-populations that differ in abundance between the cell populations in question. 
+In contrast, Figure
 \@ref(fig:violin-diffresdisp)A and \@ref(fig:violin-diffresdisp)C
 show genes with similar levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in naive or active cells (A and C, 
-respectively). These are genes with higher variability in one population
+respectively). 
+These cases are likely driven by more tight regulation, rather than 
+transcriptional burst or sub-population structure. 
+
+
+<!---These are genes with higher variability in one population
 than the other, but which have a similar frequency of detection in each
 population. Given that these genes have a similar proportion of zero counts
 in both populations, it is likely that the differences in variability
 are not driven by a more intermittent gene expression pattern.
 
-Meanwhile, figure \@ref(fig:violin-diffresdisp)B and \@ref(fig:violin-diffresdisp)D
-show genes with differing levels of detection in both populations, as well as 
-higher levels of residual over-dispersion in naive or active cells (B and D, 
-respectively). These are genes with higher variability in one population and differing levels of detection; as mentioned above,
+These are genes with higher variability in one population and differing levels of detection; as mentioned above,
 these may represent genes with a more intermittent expression
 pattern in one cell population. These may point to
 differences in intrinsic sources of variability in expression, such as regulatory
@@ -1621,6 +1634,7 @@ differ in abundance between the cell populations in question. Disentangling
 intrinsic and extrinsic sources of variability when interpreting such genes is 
 an important component of any analysis of differential variability, and should
 be undertaken with care.
+--->
 
 
 ```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in naive cells, and similar levels of detection in active and naive populations. B: Four genes with higher residual over-dispersion in naive cells and different levels of detection in naive and active cells. C: Four genes with higher residual over-dispersion in active cells and similar levels of detection in naive and active cells. D: Three genes with higher residual over-dispersion in active cells and different levels of detection in naive and active cells."}
