@@ -2,10 +2,12 @@
 
 all: Workflow.pdf Supplements.pdf
 
+IMAGE=alanocallaghan/bocker:0.2.0
+
 %.pdf: %.Rmd
 	docker run -v $(shell pwd):/home/rstudio/mycode \
 		-w /home/rstudio/mycode \
-		alanocallaghan/bocker:0.1.0 \
+		$(IMAGE) \
 		/bin/bash \
 		-c 'Rscript -e "rmarkdown::render(\"$<\")"'
 
@@ -16,7 +18,7 @@ run:
 		-v /tmp/.X11-unix:/tmp/.X11-unix:ro \
 		-e DISPLAY=${DISPLAY} \
 		-u rstudio \
-		-it alanocallaghan/bocker:0.1.0 \
+		-it $(IMAGE) \
 		/bin/bash
 
 server:
