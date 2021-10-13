@@ -3,7 +3,7 @@ title: "Supplementary material for: A BASiCS workflow for expression variability
 author: 
   - name: Alan O'Callaghan
     affiliation: 
-    - &MRC MRC Human Genetics Unit, Institute of Genetics \& Molecular Medicine, 
+    - &MRC MRC Human Genetics Unit, Institute of Genetics \& Cancer, 
       University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
       EH4 2XU, UK
     email: "a.b.o'callaghan@sms.ed.ac.uk"
