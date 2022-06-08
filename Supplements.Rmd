@@ -208,7 +208,7 @@ parameters, rather than using pre-computed
 normalisation factors, is that in the former case, statistical uncertainty is 
 propagated from normalisation to all downstream analyses.
 
-```{r normalisation-vs-scran, fig.width=4, fig.height=5, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
+```{r normalisation-vs-scran, fig.width=4, fig.height=4, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
 ## load scran to estimate size factors and ggplot2 to make graphs
 library("scran")
 library("ggplot2")
