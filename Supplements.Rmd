@@ -484,6 +484,69 @@ detected_spikes <- detected_spikes_naive & detected_spikes_active
 altExp(sce_naive_active) <- altExp(sce_naive_active)[detected_spikes, ]
 ```
 
+## Spike-in concentrations
+
+If spike-ins will be used to aid data normalisation and technical noise 
+quantification, `r Biocpkg("BASiCS")` also requires the number of spike-in 
+molecules that were added to each well. 
+For each spike-in $i$, this corresponds to:
+
+$$ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
+\times V \times D \hspace{0.5cm} \mbox{where,} $$
+
+- $C_i$ is the concentration for the spike-in $i$ (measured in $aM\mu{}l^{-1}$),
+- $V$ is the volume added into each well (measure in $nl$) and
+- $D$ is a dilution factor. 
+
+The remaining factors in the equation above are unit conversion constants
+(e.g. from moles to molecules). 
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC 
+spike-in mix 1 and a volume of $9nl$ was added into each well (see [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9)).
+Finally, input concentrations $C_i$ can be downloaded from 
+[https://assets.thermofisher.com/TFS-Assets/LSG/manuals](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt).
+
+```{r spike-in_download}
+if (!file.exists("downloads/spike_info.txt")) {
+  website <- "https://assets.thermofisher.com/TFS-Assets/LSG/manuals/"
+  file <- "cms_095046.txt"
+  download.file(
+    paste0(website, file),
+    destfile = "downloads/spike_info.txt"
+  )
+}
+ERCC_conc <- read.table("downloads/spike_info.txt", sep = "\t", header = TRUE)
+```
+
+Based on this information, the calculation above proceeds as follows
+
+```{r, ercc-mul}
+## Moles per micro litre
+ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
+## Molecule count per microL (1 mole comprises 6.02214076 x 10^{23} molecules)
+ERCC_countmul <- ERCC_mmul * (6.02214076 * (10^23))
+## Application of the dilution factor (1:50,000)
+ERCC_count <- ERCC_countmul / 50000
+## Multiplying by the volume added into each well
+ERCC_count_final <- ERCC_count * 0.009
+```
+
+To update the `sce_naive` and `sce_active` objects, the user must create a 
+`data.frame` whose first column contains the spike-in labels (e.g. ERCC-00130) 
+and whose second column contains the number of molecules calculated above.
+We add this as row metadata for `altExp(sce_naive)` and 
+`altExp(sce_active)`. 
+
+```{r spike-info}
+SpikeInput <- data.frame(
+  Names = ERCC_conc$ERCC.ID,
+  count = ERCC_count_final
+)
+## Exclude spike-ins not included in the input SingleCellExperiment objects
+SpikeInput <- SpikeInput[match(rownames(altExp(sce_naive_active)), SpikeInput$Names), ]
+## Add as metadata
+rowData(altExp(sce_naive_active)) <- SpikeInput
+```
+
 The final dataset used in subsequent analyses contains 
 `r ncol(sce_naive_active)` cells, `r nrow(sce_naive_active)` genes and 
 `r nrow(altExp(sce_naive_active))` spike-ins.
@@ -497,6 +560,8 @@ ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
 sce_naive <- sce_naive_active[, ind_naive]
 sce_active <- sce_naive_active[, ind_active]
 ```
+
+
 
 
 ## BASiCS with and without spike-ins
@@ -939,16 +1004,16 @@ from mouse 1 and mouse 2 as replicates.
 ## Presomitic mesoderm
 ind_presom <- colData(droplet_sce)[["Cell_type"]] == "PSM"
 droplet_sce$batch <- round(colData(droplet_sce)$sample)
-PSM_Data <- droplet_sce[, ind_presom]
+sce_psm <- droplet_sce[, ind_presom]
 
-PSM_Data$BatchInfo <- factor(PSM_Data$batch)
+sce_psm$BatchInfo <- factor(sce_psm$batch)
 
 ## Somitic mesoderm
 ind_som <- colData(droplet_sce)[["Cell_type"]] == "SM"
-SM_Data <- droplet_sce[, ind_som]
-SM_Data$BatchInfo <- factor(SM_Data$batch)
-saveRDS(PSM_Data, "rds/PSM_Data.rds")
-saveRDS(SM_Data, "rds/SM_Data.rds")
+sce_sm <- droplet_sce[, ind_som]
+sce_sm$BatchInfo <- factor(sce_sm$batch)
+saveRDS(sce_psm, "rds/sce_psm.rds")
+saveRDS(sce_sm, "rds/sce_sm.rds")
 ```
 
 ## Running the MCMC
@@ -956,44 +1021,58 @@ saveRDS(SM_Data, "rds/SM_Data.rds")
 We next estimate model parameters by running the MCMC cell-type specifically. 
 Due to the high cell number (1150 for the pre-somitic mesoderm and 739 for the 
 somitic mesoderm), we set the number of iterations to 20000. 
-In this case, we used the regression BASiCS model to additionally estimate residual 
-over-dispersion parameters.
 
 ```{r run-mcmc, eval = FALSE}
-## Presomitic mesoderm cells
-PSM_MCMC <- BASiCS_MCMC(
-  PSM_Data,
+set.seed(42)
+chain_sm <- BASiCS_MCMC(
+  Data = sce_sm,
   N = 20000,
   Thin = 10,
   Burn = 10000,
-  Regression = TRUE
+  Regression = TRUE,
+  WithSpikes = FALSE,
+  PriorParam = BASiCS_PriorParam(sce_sm, PriorMu = "EmpiricalBayes"),
+  Threads = 4,
+  StoreChains = TRUE,
+  StoreDir = "rds/",
+  RunName = "SM"
 )
-## Somitic mesoderm cells
-SM_MCMC <- BASiCS_MCMC(
-  SM_Data,
+set.seed(43)
+chain_psm <- BASiCS_MCMC(
+  Data = sce_psm,
   N = 20000,
   Thin = 10,
   Burn = 10000,
-  Regression = TRUE
+  Regression = TRUE,
+  WithSpikes = FALSE,
+  PriorParam = BASiCS_PriorParam(sce_psm, PriorMu = "EmpiricalBayes"),
+  Threads = 4,
+  StoreChains = TRUE,
+  StoreDir = "rds/",
+  RunName = "PSM"
 )
 ```
 
-Running these MCMC will take around 8-12 hours on a standard PC (2.6 GHz i5,
-8 GB RAM, using 1 core). Here, we provide these chains to download from:
+These chains took between 2.5 and 3 hours using an Intel 4770k (3.9 GHz,
+32 GB RAM, using 4 threads). Here, we provide these chains to download from:
 
 ```{r droplet-chain-download}
-website <- "https://git.ecdf.ed.ac.uk/"
-folder <- "vallejosgroup/basicsworkflow2020/raw/master/"
-PSM_MCMC <- readRDS(
-  file = url(
-    paste0(website, folder, "PSM_MCMC.rds")
+chains_website <- "https://zenodo.org/record/5243265/files/"
+options(timeout = 1000)
+if (!file.exists("rds/chain_SM.Rds")) {
+  download.file(
+    paste0(chains_website, "chain_SM.Rds"),
+    destfile = "rds/chain_SM.Rds"
   )
-)
-SM_MCMC <- readRDS(
-  file = url(
-    paste0(website, folder, "SM_MCMC.rds")
+}
+if (!file.exists("rds/chain_PSM.Rds")) {
+  download.file(
+    paste0(chains_website, "chain_PSM.Rds"),
+    destfile = "rds/chain_PSM.Rds"
   )
-)
+}
+chain_sm <- readRDS("rds/chain_SM.Rds")
+chain_psm <- readRDS("rds/chain_PSM.Rds")
 ```
 
 ## Validating the model fit
@@ -1006,21 +1085,21 @@ The `plot` function allows us to generate trace, posterior density,
 and autocorrelation plots for different parameters.
 
 ```{r psm-chain-convergence, fig.cap = "Trace plot, marginal density, and autocorrelation function for mean expression of an example gene; presomatic cells."}
-plot(PSM_MCMC, Param = "mu", Gene = 120)
+plot(chain_psm, Param = "mu", Gene = 120)
 ```
 
 ```{r sm-chain-convergence, fig.cap = "Trace plot, marginal density, and autocorrelation function for mean expression of an example gene; somatic cells."}
-plot(SM_MCMC, Param = "mu", Gene = 120)
+plot(chain_sm, Param = "mu", Gene = 120)
 ```
 
 
 ```{r diag-psm, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; presomatic cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
-diag_p1 <- BASiCS_DiagPlot(PSM_MCMC, Measure = "geweke")
+diag_p1 <- BASiCS_DiagPlot(chain_psm, Measure = "geweke")
 diag_p1 <- diag_p1 +
   geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
   theme(legend.position = "none")
 
-diag_p2 <- BASiCS_DiagPlot(PSM_MCMC, Measure = "ess")
+diag_p2 <- BASiCS_DiagPlot(chain_psm, Measure = "ess")
 diag_p2 <- diag_p2 +
   geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed") +
   theme(legend.position = "none")
@@ -1030,12 +1109,12 @@ diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
 
 
 ```{r diag-sm, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; somatic cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
-diag_p1 <- BASiCS_DiagPlot(SM_MCMC, Measure = "geweke")
+diag_p1 <- BASiCS_DiagPlot(chain_sm, Measure = "geweke")
 diag_p1 <- diag_p1 +
   geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
   theme(legend.position = "none")
 
-diag_p2 <- BASiCS_DiagPlot(SM_MCMC, Measure = "ess")
+diag_p2 <- BASiCS_DiagPlot(chain_sm, Measure = "ess")
 diag_p2 <- diag_p2 +
   geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed") +
   theme(legend.position = "none")
@@ -1050,8 +1129,8 @@ against posterior estimates of mean expression parameters $\mu_i$.
 For this, the `BASiCS_ShowFit` function can be used.
 
 ```{r droplet-regression-trend-psm, fig.cap="Over-dispersion is plotted against mean expression for all genes in pre-somitic mesoderm cells (A) and somitic mesoderm cells (B), on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95\\% credible interval."}
-a <- BASiCS_ShowFit(PSM_MCMC)
-b <- BASiCS_ShowFit(SM_MCMC)
+a <- BASiCS_ShowFit(chain_psm)
+b <- BASiCS_ShowFit(chain_sm)
 
 a + b + plot_annotation(tag_levels = "A")
 ```
@@ -1070,8 +1149,8 @@ similarly expressed in both conditions.
 
 ```{r drop_testde_lfc0}
 Droplet_Test_logFC0 <- BASiCS_TestDE(
-  Chain1 = PSM_MCMC,
-  Chain2 = SM_MCMC,
+  Chain1 = chain_psm,
+  Chain2 = chain_sm,
   EpsilonM = 0,
   GroupLabel1 = "PSM",
   GroupLabel2 = "SM",
@@ -1109,8 +1188,8 @@ testing.
 
 ```{r droplet-gene-specific-testing, fig.cap="Fold changes of average expression in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
 Droplet_Test <- BASiCS_TestDE(
-  Chain1 = PSM_MCMC,
-  Chain2 = SM_MCMC,
+  Chain1 = chain_psm,
+  Chain2 = chain_sm,
   EpsilonM = 1,
   GroupLabel1 = "PSM",
   GroupLabel2 = "SM",
