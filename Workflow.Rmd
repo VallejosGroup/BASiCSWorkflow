@@ -75,7 +75,7 @@ if (knitr::is_html_output()) {
 }
 knitr::opts_chunk$set(
   warning = FALSE, message = FALSE, error = FALSE,
-  cache = 0, cache.path = "cache_main/",
+  cache = 2, cache.path = "cache_main/",
   # fig.pos = "h",
   fig.path = "figure/"
 )
@@ -201,6 +201,19 @@ knitr::include_graphics("figure/Overview.png")
 
 ```{r}
 library("SingleCellExperiment")
+library("scater")
+library("scran")
+library("BASiCS")
+library("coda")
+library("ggplot2")
+library("ggpointdensity")
+library("patchwork")
+library("viridis")
+library("reshape2")
+library("ComplexHeatmap")
+library("circlize")
+library("RColorBrewer")
+library("tidyr")
 ```
 
 We use the Bioconductor package `r Biocpkg("SingleCellExperiment")` to convert 
@@ -214,11 +227,6 @@ scRNA-seq analyses is the interoperability across a large number of
 Bioconductor packages [@Amezquita2019]. 
 
 ## QC and exploratory data analysis
-
-```{r}
-library("scater")
-library("scran")
-```
 
 A critical step in scRNA-seq analyses is QC, removing low quality samples that 
 may distort downstream analyses. 
@@ -257,9 +265,6 @@ testing) is precluded.
 
 ## BASiCS - Bayesian Analysis of Single Cell Sequencing data
 
-```{r}
-library("BASiCS")
-```
 
 The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 framework that borrows information across all genes and cells to robustly quantify 
@@ -338,341 +343,33 @@ External ERCC spike-in RNA [@Rna2005] was added to aid the quantification of
 technical variability across all cells and all experiments were performed in 
 replicates (hereafter also referred to as batches).
 
-## Downloading the data
+We provide detailed descriptions of the data pre-processing
+and quality control steps in TODO: reference. The final dataset after all
+pre-processing
 
-The matrix with raw read counts can be obtained from ArrayExpress under the 
-accession number 
-[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
-In the matrix, column names contain library identifiers and row names
-display Ensembl gene identifiers.
-
-```{r naive-data}
-if (!file.exists("downloads/"))
-  dir.create("downloads", showWarnings = FALSE)
-if (!file.exists("downloads/raw_data.txt")) {
-  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
-  file <- "E-MTAB-4888.processed.1.zip"
-  download.file(
-    paste0(website, file),
-    destfile = "downloads/raw_data.txt.zip"
-  )
-  unzip("downloads/raw_data.txt.zip", exdir = "downloads")
-  file.remove("downloads/raw_data.txt.zip")
-}
-
-cd4_raw <- read.table("downloads/raw_data.txt", header = TRUE, sep = "\t")
-cd4_raw <- as.matrix(cd4_raw)
-```
-
-The input matrix contains data for `r format(ncol(cd4_raw), big.mark=",")`
-cells and `r format(nrow(cd4_raw), big.mark=",")`
-genes, including `r sum(grepl("ERCC", rownames(cd4_raw)))` ERCC spike-ins.
-
-Information about experimental conditions and other metadata is available 
-under the same accession number. 
-
-```{r selecting-serum-cells}
-if (!file.exists("downloads/metadata_file.txt")) {
-  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
-  file <- "E-MTAB-4888.additional.1.zip"
-  download.file(
-    paste0(website, file),
-    destfile = "downloads/metadata.txt.zip"
-  )
-  unzip("downloads/metadata.txt.zip", exdir = "downloads")
-  file.remove("downloads/metadata.txt.zip")
-}
-
-cd4_metadata <- read.table(
-  "downloads/metadata_file.txt",
-  header = TRUE,
-  sep = "\t"
-)
-
-## Save sample identifiers as rownames
-rownames(cd4_metadata) <- cd4_metadata$X
-```
-
-The columns in the metadata file contain library identifiers (`X`), strain 
-information (`Strain`; *Mus musculus castaneus* or *Mus musculus domesticus*), 
-the age of the animals (`Age`; young or old), stimulation state of the cells 
-(`Stimulus`; naive or activated), batch information (`Individuals`; associated 
-to different mice), and cell type information (`Celltype`; via FACS or MACS 
-purification). 
-
-Here, we convert the data and metadata described above into a 
-`SingleCellExperiment` object. 
-For this purpose, we first separate the input matrix of expression counts into
-two matrices associated to intrinsic genes and external spike-ins, respectively. 
-Within the `SingleCellExperiment` object, the latter is stored separately
-as an *alternative experiment*. For more details on the alternative experiment
-slot, see `help("altExp")`.
-
-```{r CD4-SCE-object}
-## Separate intrinsic from ERCC counts
-bio_counts <- cd4_raw[!grepl("ERCC", rownames(cd4_raw)), ]
-spike_counts <- cd4_raw[grepl("ERCC", rownames(cd4_raw)), ]
-## Generate the SingleCellExperiment object
-sce_cd4_all <- SingleCellExperiment(
-  assays = list(counts = bio_counts),
-  colData = cd4_metadata[colnames(cd4_raw), ]
-)
-## Add read-counts for spike-ins as an alternative experiment
-altExp(sce_cd4_all, "spike-ins") <- SummarizedExperiment(
-  assays = list(counts = spike_counts)
-)
-```
-
-Hereafter, our analysis focuses on naive CD4^+^ T cells in the presence and
-absence of stimulation using plate-bound antibodies,+ obtained 
-from young *Mus musculus domesticus* animals, and purified using MACS-based cell
-sorting. 
-Thus, we subset the `SingleCellExperiment` object to these 
-`r sum(sce_cd4_all$Strain == "Mus musculus domesticus" & sce_cd4_all$Age == "Young" & sce_cd4_all$Celltype == "MACS-purified Naive")` cells.
-
-```{r naive-activated-CD4-SCE-object}
-ind_select <- sce_cd4_all$Strain == "Mus musculus domesticus" &
-  sce_cd4_all$Age == "Young" &
-  sce_cd4_all$Celltype == "MACS-purified Naive"
-sce_naive_active <- sce_cd4_all[, ind_select]
-sce_naive_active
-```
-
-## Annotation
-
-Input data was annotated using Ensembl gene identifiers. 
-To facilitate interpretation, it is often useful to obtain a mapping from 
-Ensembl gene IDs to gene symbols using the BioMart suite
-([http://www.biomart.org](http://www.biomart.org)) via the 
-Bioconductor package `r Biocpkg("biomaRt")` [@Durinck2009].
-This can also be used to obtain gene-pathways mappings and other
-metadata (e.g. gene length), useful for performing functional analysis
-of gene sets identified in downstream analyses.
-
-```{r obtain-gene-symbols}
-library("biomaRt")
-
-if (!dir.exists("rds")) {
-  dir.create("rds", showWarnings = FALSE)
-}
-if (!file.exists("rds/genenames.rds")) {
-  # Initialize mart and dataset
-  ensembl <- useEnsembl(
-    biomart = "genes",
-    version = 104,
-    dataset = "mmusculus_gene_ensembl"
-  )
-  # Select gene ID and gene name
-  genenames <- getBM(
-    attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
-    mart = ensembl
-  )
-  rownames(genenames) <- genenames$ensembl_gene_id
-  saveRDS(genenames, "rds/genenames.rds")
-}
-genenames <- readRDS("rds/genenames.rds")
-```
-
-We add this information as `rowData` within the `SingleCellExperiment` 
-object created above. 
-
-```{r}
-## Merge biomaRt annotation
-rowdata <- data.frame(ensembl_gene_id = rownames(sce_naive_active))
-rowdata <- merge(rowdata, genenames, by = "ensembl_gene_id", all.x = TRUE)
-rownames(rowdata) <- rowdata$ensembl_gene_id
-## Check if  order is correct after merge;
-stopifnot(all(rownames(rowdata) == rownames(sce_naive_active)))
-## add to the SingleCellExperiment object
-rowData(sce_naive_active) <- rowdata
-```
-
-For the remaining analysis, we will only focus on the 
-`r format(sum(rowData(sce_naive_active)$gene_biotype == "protein_coding", na.rm=TRUE), big.mark=",")`
-protein coding genes that are contained in the data. These are selected below. 
-
-```{r}
-protein_coding <- which(
-  rowData(sce_naive_active)$gene_biotype == "protein_coding"
-)
-sce_naive_active <- sce_naive_active[protein_coding, ]
-```
-
-## QC and exploratory data analysis
-
-The data available at 
-[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/) have
-been already filtered to remove poor quality samples.
-The QC applied in [@Martinez-jimenez2017] removed cells with: (i) fewer 
-than 1,000,000 total reads, (ii) less than 20% of reads mapped to 
-endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and 
-(iv) more than 10% or fewer than 0.5% of reads mapped to mitochondrial genes.
-We include visualisations of these measures here; we also include another 
-widely used QC diagnostic plot that compares the total 
-number (or fraction) of spike-in counts versus the total number (or fraction) of 
-endogeneous counts.
-In such a plot, low quality samples are characterised by a high fraction of 
-spike-in counts and a low fraction of endogeneous counts 
-(see Figure \@ref(fig:PerCellQC)).
-
-```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
-sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
-p_cell_qc1 <- plotColData(
-  sce_naive_active,
-  x = "sum",
-  y = "detected") +
-  xlab("Total endogenous reads per cell") +
-  ylab("Number of detected genes per cell") +
-  theme(axis.text.x = element_text(hjust = 1, angle = 45))
-p_cell_qc2 <- plotColData(
-  sce_naive_active,
-  x = "sum",
-  y = "altexps_spike-ins_sum") +
-  xlab("Total endogenous reads per cell") +
-  ylab("Total spike-in reads per cell") +
-  theme(axis.text.x = element_text(hjust = 1, angle = 45))
-
-library("patchwork")
-p_cell_qc1 + p_cell_qc2
-```
-
-We can also visualise these metrics with respect to cell-level metadata, such
-as the experimental conditions (active vs unstimulated) and the different mice 
-from which cells were collected 
-(see Figure \@ref(fig:experimental-condition-batch)). 
-
-```{r experimental-condition-batch, fig.cap="Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
-p_stimulus <- plotColData(
-    sce_naive_active,
-    x = "sum",
-    y = "detected",
-    colour_by = "Stimulus"
-  ) +
-  xlab("Total endogenous reads per cell") +
-  ylab("Number of detected genes per cell") +
-  theme(
-    legend.position = "bottom",
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-p_batch <- plotColData(
-    sce_naive_active,
-    x = "sum",
-    y = "detected",
-    colour_by = "Individuals"
-  ) +
-  xlab("Total endogenous reads per cell") +
-  ylab("Number of detected genes per cell") +
-  theme(
-    legend.position = "bottom",
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-p_stimulus + p_batch
-```
-
-To further explore the underlying structure of the data, we perform global
-scaling normalisation using `r Biocpkg("scran")` and
-principal component analysis (PCA) of log-transformed normalised expression 
-counts using `r Biocpkg("scater")`.
-As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
-suggests the absence of strong batch effects.
-It should be noted that the estimation of global scaling normalisation factors 
-using `r Biocpkg("scran")` is not strictly necessary in the 
-`r Biocpkg("BASiCS")` workflow. 
-Here, we only use it as part of the exploratory data analysis. 
-Moreover, count-based models for dimensionality reduction 
-(e.g. [@Townes2019;@Lopez2018]) could be used as an alternative to PCA, 
-removing the need for log normalisation.
-
-```{r pca-visualisation-stimulus-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
-## Global scaling normalisation + log tranformation + PCA
-sce_naive_active <- computeSumFactors(sce_naive_active)
-sce_naive_active <- logNormCounts(sce_naive_active)
-sce_naive_active <- runPCA(sce_naive_active)
-p_stimulus <- plotPCA(sce_naive_active, colour_by = "Stimulus") +
-  theme(legend.position = "bottom")
-p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
-  theme(legend.position = "bottom")
-p_stimulus + p_batch
-```
-
-In addition to cell-specific QC, we also recommend a gene filtering 
-step prior to using `r Biocpkg("BASiCS")`. 
-The purpose of this filter is to remove lowly expressed genes that were largely
-undetected through sequencing, making reliable variability estimates difficult
-to obtain.
-Here, we remove genes that are not detected in at least 20 cells across both
-conditions, or that have an average read count below 1. 
-These thresholds can vary across datasets and should be 
-informed by gene-specific QC metrics such as those shown in
-Figure \@ref(fig:gene-selection) as well as prior knowledge about the cell types
-and conditions being studied, where available.
-
-```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
-sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
-## Remove genes with zero total counts across all cells
-sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
-
-## Transform "detected" into number of cells and define inclusion criteria
-rowData(sce_naive_active)$detected_cells <-
-  rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
-
-detected_threshold <- 20
-mean_threshold <- 1
-include_gene <- rowData(sce_naive_active)$mean >= mean_threshold &
-  rowData(sce_naive_active)$detected_cells >= detected_threshold
-rowData(sce_naive_active)$include_gene <- include_gene
-plotRowData(
-    sce_naive_active,
-    x = "detected_cells",
-    y = "mean",
-    colour_by = "include_gene"
-  ) +
-  xlab("Number of cells in which expression was detected") +
-  ylab("Average number of read counts across all cells") +
-  scale_x_log10() +
-  scale_y_log10() +
-  theme(legend.position = "bottom") +
-  geom_vline(
-    xintercept = detected_threshold,
-    linetype = "dashed",
-    col = "grey60"
-  ) +
-  geom_hline(
-    yintercept = mean_threshold,
-    linetype = "dashed",
-    col = "grey60"
-  )
-
-## Apply gene filter
-sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
-```
-
-Subsequently, we also require users to remove spike-in molecules that were not 
-captured through sequencing. We do this separately for naive and active
-cells.
-
-```{r spike-ins-present}
-ind_active <- sce_naive_active$Stimulus == "Active"
-ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
-spikes <- assay(altExp(sce_naive_active))
-detected_spikes_active <- rowSums(spikes[, ind_active] > 0) > 0
-detected_spikes_naive <- rowSums(spikes[, ind_naive] > 0) > 0
-detected_spikes <- detected_spikes_naive & detected_spikes_active
-altExp(sce_naive_active) <- altExp(sce_naive_active)[detected_spikes, ]
-```
-
-The final dataset used in subsequent analyses contains 
-`r ncol(sce_naive_active)` cells, `r nrow(sce_naive_active)` genes and 
-`r nrow(altExp(sce_naive_active))` spike-ins.
 
 ## Input data for BASiCS
+
+While quality control and pre-processing is an important topic in scRNAseq
+analysis, we feel that it has been covered in detail in other articles.
+We have included quality control, pre-processing and exploratory data analysis
+in the supplementary material TODO: XXX. For simplicity, we will proceed
+by loading this pre-processed data for the current analysis.
+
+```{r SCE-load}
+sce_naive_active <- readRDS("rds/sce_naive_active.rds")
+```
 
 Here, we apply `r Biocpkg("BASiCS")` separately to cells from each
 experimental condition (`r sum(sce_naive_active$Stimulus == "Unstimulated")` 
 naive and `r sum(sce_naive_active$Stimulus == "Active")` activated cells). 
 We create separate `SingleCellExperiment` objects for each group of cells. 
 
+
 ```{r SCE-separation}
+ind_active <- sce_naive_active$Stimulus == "Active"
+ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
+
 sce_naive <- sce_naive_active[, ind_naive]
 sce_active <- sce_naive_active[, ind_active]
 ```
@@ -750,6 +447,9 @@ SpikeInput <- SpikeInput[match(rownames(altExp(sce_naive)), SpikeInput$Names), ]
 rowData(altExp(sce_naive)) <- SpikeInput
 rowData(altExp(sce_active)) <- SpikeInput
 ```
+
+
+
 
 ## Parameter estimation using BASiCS
 
@@ -963,10 +663,6 @@ model. These issues can often be addressed by more stringent
 filtering of genes and cells before performing inference.
 
 ```{r mcmc-diag, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; naive CD4+ T cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
-library("coda")
-library("ggplot2")
-library("viridis")
-
 diag_p1 <- BASiCS_DiagPlot(chain_naive, Measure = "geweke")
 diag_p1 <- diag_p1 +
   geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
@@ -1022,9 +718,6 @@ the local density of genes along the axes of mean and variability.
  
 ```{r dispersion-vs-mean, fig.width=6, fig.height=6, fig.cap="Comparison of gene-specific transcriptional variability estimates and mean expression estimates obtained for each gene using BASiCS and scran. For this analysis, we exclude genes that are not expressed in at least 2 cells. BASiCS estimates for each gene are defined by the posterior median of the associated parameter. scran estimates for each gene are derived after applying the pooling normalisation strategy proposed by Lun et al. Points are coloured according to the local density of genes along the x- and y- axis. A: scran squared CV estimates versus BASiCS estimates for over-dispersion parameters. B: scran estimates for mean expression and the squared CV. C: BASiCS estimates for mean expression and over-dispersion parameters. D: BASiCS estimates for residual over-dispersion parameters versus DM values estimated by scran. E: scran estimates for mean expression and DM values. F: BASiCS estimates for mean expression and residual over-dispersion parameters. Dashed red lines in panels A and D represent the line given by x=y. "}
 
-library("ggpointdensity")
-library("viridis")
-
 ## Get BASiCS posterior estimates for mean and variability - naive cells
 summary_naive <- Summary(chain_naive)
 parameter_df <- data.frame(
@@ -1047,7 +740,7 @@ parameter_df$DM <- DM(
 ind_not_na <- !(is.na(parameter_df$epsilon))
 
 plot_params <- list(
-  geom_pointdensity(size = 0.6),
+  geom_pointdensity(size = 0.6, na.rm = TRUE),
   scale_colour_viridis(name = "Density"),
   theme(
     text = element_text(size = rel(3)),
@@ -1179,7 +872,7 @@ Instead, LVG tend to have more narrow and unimodal distributions
 (Figure \@ref(fig:plot-example-vg-naive)B).
 
 ```{r plot-example-vg-naive, fig.cap = "BASiCS denoised counts for example HVG and LVG with similar overall levels of expression."}
-library("reshape2")
+genenames <- readRDS("rds/genenames.rds")
 
 ## Obtain normalised expression values
 dc_naive <- BASiCS_DenoisedCounts(sce_naive, chain_naive)
@@ -1358,9 +1051,6 @@ Such visualisations may aid in the interpretation of such stable or
 population.
 
 ```{r heatmap-diffexp, fig.width = 7, fig.height = 6, fig.cap="Heatmap displays normalised expression values (log10(x + 1) scale) for naive and active cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in naive or active cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
-library("ComplexHeatmap")
-library("circlize")
-library("RColorBrewer")
 
 
 ## Add gene symbol to table
@@ -1509,7 +1199,7 @@ gene_tests <- data.frame(
 table_combined_genes <- merge(table_de_combined, gene_tests)
 ## create list of generic plot parameters to use across a few plots
 plot_params <- list(
-  geom_pointdensity(),
+  geom_pointdensity(na.rm = TRUE),
   scale_colour_viridis(name = "Density"),
   theme(
     # text = element_text(size = rel(3)),
@@ -1638,8 +1328,6 @@ be undertaken with care.
 
 
 ```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in naive cells, and similar levels of detection in active and naive populations. B: Four genes with higher residual over-dispersion in naive cells and different levels of detection in naive and active cells. C: Four genes with higher residual over-dispersion in active cells and similar levels of detection in naive and active cells. D: Three genes with higher residual over-dispersion in active cells and different levels of detection in naive and active cells."}
-## Use the tidyr package to reshape data into a "long" format for ggplot2
-library("tidyr")
 ## Utility function that plots logcounts of a set of genes defined by "ind_vg"
 plot_vg <- function(ind_vg) {
   table_combined_genes_vg <- table_combined_genes[ind_vg, ]
@@ -1739,172 +1427,6 @@ g4 <- plot_vg(ind_vg)
 ```
 
 
-## Using BASiCS without spike-ins
-
-### Inference using BASiCS without spike-ins
-
-
-`r Biocpkg("BASiCS")`, when using spike-in molecules, uses
-spike-ins as a reference in order to aid normalisation,
-based on the assumption that the original quantity of spike-in molecules was
-approximately equal in each well. @Eling2018 introduced a novel method of
-inferring gene expression profiles using `r Biocpkg("BASiCS")` without
-relying on spike-ins to quantify technical noise. This is useful
-for droplet-based scRNAseq protocols, given that it is not possible to ensure
-that each droplet contains a specified quantity of spike-in molecules.
-In this horizontal integration framework, technical variation is quantified
-using replication [@Carroll2005]. In the absence of true technical replicates,
-we assume that population-level characteristics of the cells are replicated
-using appropriate experimental design. This requires that cells from the same
-population have been randomly allocated to different batches. Given appropriate
-experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
-are shared across batches, while technical variation leads to spurious
-differences between cells in different batches.
-
-Using `r Biocpkg("BASiCS")` without spike-ins is very similar to using it
-with spike-ins. We will demonstrate using the
-naive cells. However, first, we must ensure that a `BatchInfo` field is present
-in the `SingleCellExperiment` used as input. In this case we use individual
-of origin as the batch vector.
-
-```{r MCMC-naive-nospikes, eval = FALSE}
-set.seed(42)
-chain_naive_nospikes <- BASiCS_MCMC(
-  Data = sce_naive,
-  PrintProgress = TRUE,
-  N = 40000,
-  Thin = 20,
-  Burn = 20000,
-  Regression = TRUE,
-  PriorParam = prior_param_naive,
-  Threads = 4,
-  StoreChains = TRUE,
-  StoreDir = "rds/",
-  RunName = "naive_nospikes",
-  WithSpikes = FALSE
-)
-```
-
-As before, for convenience we provide a completed version of this chain at
-[https://doi.org/10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
-
-```{r download-chain-naive-nospikes}
-if (!file.exists("rds/chain_naive_nospikes.Rds")) {
-  download.file(
-    paste0(chains_website, "/chain_naive_nospikes.Rds"),
-    destfile = "rds/chain_naive_nospikes.Rds"
-  )
-}
-chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
-```
-
-The resulting `BASiCS_Chain` object produced using this horizontal integration
-framework is functionally similar to one produced using the vertical integration
-framework. It can be used in place of the `BASiCS_Chain` objects produced using
-the vertical integration approach, as described above.
-
-```{r diag-plot-naive-nospikes, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters using the horizontal integration approach. Colour indicates local density, with lighter colours representing higher density.", eval = FALSE, echo = FALSE}
-As discussed previously, it is important to ensure that an adequate effective
-sample size has been generated using MCMC.
-Figure \@ref(fig:diag-plot-naive-nospikes) shows that the sampler has generated
-a large effective sample size for most parameters, similar to the case when we 
- included spike-in molecules.
-mu_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "mu") +
-  theme(legend.position = "bottom")
-delta_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "delta") +
-  theme(legend.position = "bottom")
-multiplot(mu_ess2, delta_ess2, cols = 2)
-```
-
-### Comparison of parameter estimates with and without spike-ins
-
-Under the horizontal integration approach described above,
-the scale of mean expression parameters and global scaling factors is not 
-jointly identifiable, in that a global shift in mean expression parameters 
-could be exactly offset by an equivalent shift in cell-specific normalisation
-parameters. Therefore, the geometric mean of the mean expression parameters
-is fixed to a constant value. Relative expression level estimates are broadly 
-consistent between the horizontal and vertical integration approaches; 
-however there may be a global difference in mean expression estimates, as shown
-in Figure \@ref(fig:offset). It is important to remove this global scale offset
-before performing comparative analyses. This is performed by default in
-`BASiCS_TestDE`, but can be performed manually using `BASiCS_CorrectOffset`.
-
-```{r offset, fig.cap="Distribution of mean expression values before and after correcting the global difference in scale."}
-BASiCS_PlotOffset(chain_naive_nospikes, chain_naive,
-  GroupLabel1 = "No spike-ins", GroupLabel2 = "Spike-ins",
-  Type = "before-after")
-offset <- BASiCS_CorrectOffset(chain_naive_nospikes, chain_naive)
-chain_naive_nospikes_offset <- offset$Chain
-chain_naive_nospikes_offset
-```
-
-A number of genes have very low expression estimates in the naive population,
-due to the fact that they each have zero read counts across the entire naive
-population; we therefore remove these genes before making a comparison.
-Following removal of the global offset, the mean expression 
-and over-dispersion estimates obtained from each method are directly comparable.
-As seen in Figures \@ref(fig:spike-comp)A and 
-\@ref(fig:spike-comp)B, parameter point estimates from the two 
-methods are highly correlated. There is a tail of non-expressed genes with
-very low mean expression level as inferred without spike-ins, comprising
-those genes with no measured expression across the entire population.
-
-```{r spike-comp, fig.cap="Comparison of point estimates using spike-ins, and the same parameters estimated without using spike-ins for mean expression (A) and over-dispersion (B). A dashed red line indicates the identity line, $y=x$. Genes with zero counts across all cells were excluded from the plot of mean expression parameters."}
-mu_spikes <- displayChainBASiCS(chain_naive)
-mu_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset)
-
-# Remove genes with zero counts across all cells and calculate medians
-ind_nonzero <- rowSums(counts(sce_naive)) != 0
-mu_spikes <- colMedians(mu_spikes[, ind_nonzero])
-mu_nospikes <- colMedians(mu_nospikes[, ind_nonzero])
-
-g1 <- ggplot() +
-  aes(mu_spikes, mu_nospikes) +
-  geom_pointdensity(alpha = 0.7) +
-  scale_colour_viridis(name = "Density") +
-  scale_x_log10() +
-  scale_y_log10() +
-  geom_abline(
-    colour = "firebrick",
-    linetype = "dashed",
-    slope = 1,
-    intercept = 0
-  ) +
-  labs(
-    x = "Mean expression\n(with spike-ins)",
-    y = "Mean expression\n(without spike-ins)"
-  ) +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(angle = 45, size = 8, hjust = 0.5, vjust = 0.5)
-  )
-
-delta_spikes <- displayChainBASiCS(chain_naive, Param = "delta")
-delta_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset, Param = "delta")
-
-g2 <- ggplot() +
-  aes(colMedians(delta_spikes), colMedians(delta_nospikes)) +
-  geom_pointdensity(alpha = 0.7) +
-  scale_colour_viridis(name = "Density") +
-  scale_x_log10() +
-  scale_y_log10() +
-  geom_abline(
-    colour = "firebrick",
-    linetype = "dashed",
-    slope = 1,
-    intercept = 0
-  ) +
-  labs(
-    x = "Over-dispersion\n(with spike-ins)",
-    y = "Over-dispersion\n(without spike-ins)"
-  ) +
-  theme(
-    legend.position = "bottom",
-    legend.text = element_text(angle = 45, size = 8, hjust = 0.5, vjust = 0.5)
-  )
-g1 + g2 + plot_annotation(tag_levels = "A")
-```
 
 
 # Discussion 

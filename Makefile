@@ -1,8 +1,8 @@
 .PHONY: run server
 
-all: Workflow.pdf Supplements.pdf
+all: Supplements.pdf Workflow.pdf
 
-IMAGE=alanocallaghan/bocker:0.2.0
+IMAGE=alanocallaghan/bocker:0.3.0
 
 %.pdf: %.Rmd
 	docker run -v $(shell pwd):/home/rstudio/mycode \
@@ -10,7 +10,6 @@ IMAGE=alanocallaghan/bocker:0.2.0
 		$(IMAGE) \
 		/bin/bash \
 		-c 'Rscript -e "rmarkdown::render(\"$<\")"'
-
 
 run:
 	docker run -v $(shell pwd):/home/rstudio/mycode \
@@ -22,6 +21,4 @@ run:
 		/bin/bash
 
 server:
-	docker run -p 8787:8787 -v $(shell pwd):/home/rstudio/mycode -e PASSWORD=bioc alanocallaghan/bocker:0.1.0
-
-#	r -e 'rmarkdown::render("Workflow.Rmd", output_format="all")'
+	docker run -p 8787:8787 -v $(shell pwd):/home/rstudio/mycode -e PASSWORD=bioc $(IMAGE)
