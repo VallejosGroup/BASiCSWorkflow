@@ -29,7 +29,7 @@ abstract: |
   Cell-to-cell gene expression variability is an inherent feature of complex 
   biological systems, such as immunity and development. Single-cell RNA 
   sequencing is a powerful tool to quantify this heterogeneity, but it is prone 
-  to strong technical noise. In this article, we describe a step-by-step 
+  to technical noise. In this article, we describe a step-by-step 
   computational workflow that uses the BASiCS Bioconductor package to robustly 
   quantify expression variability within and between known groups of cells (such 
   as experimental conditions or cell types). BASiCS uses an integrated framework 
@@ -911,7 +911,8 @@ probability threshold is suitable.
 
 ```{r visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between somitic and pre-somitic cells. Log-fold changes of average expression in somitic cells relative to pre-somitic cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in somitic cells relative to pre-somitic mesoderm cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
-p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano")
+p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano",
+    TransLogit = TRUE)
 p1 / p2
 ```
 
@@ -949,7 +950,7 @@ Such visualisations may aid in the interpretation of such stable or
 "housekeeping" genes, as well as genes which are up- or down-regulated in each
 population.
 
-```{r heatmap-diffexp, fig.width = 7, fig.height = 6, fig.cap="Heatmap displays normalised expression values (log10(x + 1) scale) for somitic and pre-somitic cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in somitic or pre-somitic cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
+```{r heatmap-diffexp, fig.width = 7, fig.height = 6, fig.cap="Heatmap displays normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in somitic or pre-somitic cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 
 ## Add gene symbol to table
 table_de_mean$Symbol <- genenames[table_de_mean$GeneName, 2]
@@ -1025,8 +1026,8 @@ Heatmap(
   cluster_rows = FALSE,
   split = split,
   right_annotation = rowAnnotation(
-    log_mu = log_mu_sm,
-    col = list(log_mu = mu_col)
+    `log(mu)` = log_mu_sm,
+    col = list(`log(mu)` = mu_col)
   ),
   col = col) +
   Heatmap(
@@ -1040,8 +1041,8 @@ Heatmap(
     split = split,
     show_heatmap_legend = FALSE,
     right_annotation = rowAnnotation(
-      log_mu = log_mu_psm,
-      col = list(log_mu = mu_col)
+      `log(mu)` = log_mu_psm,
+      col = list(`log(mu)` = mu_col)
     ),
     cluster_rows = FALSE,
     col = col)
@@ -1080,7 +1081,7 @@ in mean expression, as shown in Figure \@ref(fig:combine-results).
 <!---We will further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.---> 
 
-```{r combine-results, fig.cap="Difference in residual over-dispersion against log2 fold change in mean expression."}
+```{r combine-results, fig.cap="Difference in residual over-dispersion against $\log_2$ fold change in mean expression."}
 ## combine results of differential mean and residual over-dispersion tests
 table_de_combined <- merge(table_de_mean, table_de_resdisp)
 
@@ -1122,7 +1123,7 @@ Figure \@ref(fig:var-plots)B and D show that many genes with higher residual
 over-dispersion in somitic cells have a lower proportion of zeros in pre-somitic mesoderm cells,
 and vice versa.
 
-```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: log2 change in expression against against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (D) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
+```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: $\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
 g1 <- ggplot(
     table_combined_genes[table_combined_genes$ResultDiffResDisp == "SM+", ]
   ) +

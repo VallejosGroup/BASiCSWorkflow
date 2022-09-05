@@ -250,7 +250,7 @@ altExp(sce_cd4_all, "spike-ins") <- SummarizedExperiment(
 ```
 
 Hereafter, our analysis focuses on naive CD4^+^ T cells in the presence and
-absence of stimulation using plate-bound antibodies,+ obtained 
+absence of stimulation using plate-bound antibodies, obtained 
 from young *Mus musculus domesticus* animals, and purified using MACS-based cell
 sorting. 
 Thus, we subset the `SingleCellExperiment` object to these 
@@ -521,9 +521,10 @@ Based on this information, the calculation above proceeds as follows
 
 ```{r, ercc-mul}
 ## Moles per micro litre
-ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * (10^(-18))
-## Molecule count per microL (1 mole comprises 6.02214076 x 10^{23} molecules)
-ERCC_countmul <- ERCC_mmul * (6.02214076 * (10^23))
+ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * 1e-18
+## Molecule count per microL
+## (1 mole comprises 6.02214076 x 10^{23} molecules)
+ERCC_countmul <- ERCC_mmul * (6.02214076 * (1e23))
 ## Application of the dilution factor (1:50,000)
 ERCC_count <- ERCC_countmul / 50000
 ## Multiplying by the volume added into each well
@@ -560,8 +561,6 @@ ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
 sce_naive <- sce_naive_active[, ind_naive]
 sce_active <- sce_naive_active[, ind_active]
 ```
-
-
 
 
 ## BASiCS with and without spike-ins
