@@ -2,7 +2,7 @@
 
 all: Supplements.pdf Workflow.pdf
 
-IMAGE=alanocallaghan/bocker:0.3.0
+IMAGE=alanocallaghan/bocker:0.3.1
 
 %.pdf: %.Rmd
 	docker run -v $(shell pwd):/home/rstudio/mycode \
