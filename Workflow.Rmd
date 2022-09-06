@@ -206,6 +206,7 @@ library("ComplexHeatmap")
 library("circlize")
 library("RColorBrewer")
 library("tidyr")
+library("sparseMatrixStats")
 ```
 
 We use the Bioconductor package `r Biocpkg("SingleCellExperiment")` to convert 
@@ -733,12 +734,35 @@ to select the those with the highest or the lowest residual over-dispersion,
 which can be performed using the `PercentileThreshold` parameter; see 
 `help("BASiCS_DetectVG")` for more details.
 
-```{r plot-vg-SM, fig.cap="HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
+```{r det-vg-SM, message=TRUE, fig.cap="HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
 ## Highly variable genes
 hvg <- BASiCS_DetectHVG(chain_sm, EpsilonThreshold = log(2))
 ## Lowly variable genes
 lvg <- BASiCS_DetectLVG(chain_sm, EpsilonThreshold = -log(2))
+```
 
+Performing HVG and LVG detection involves identifying a posterior probability
+threshold that matches a target EFDR; for the HVG detection in this case,
+we are unable to identify a suitable probability threshold; therefore the
+default minimum probability threshold of $\frac{2}{3}$ is used. 
+This minimum threshold value can be changed using the `ProbThreshold` to
+`BASiCS_DetectHVG` and `BASiCS_DetectLVG`.
+This can be seen in \@ref(fig:efdr-plot-vg-SM), where in
+panel A the chosen probability threshold matches the target EFDR of 0.1, whereas
+in panel B the chosen probability threshold has a slightly higher EFDR than
+the target value of 0.1.
+
+```{r efdr-plot-vg-SM, fig.cap = "Lines representing the EFDR and EFNR for a range of posterior probability thresholds for the HVG (A) and LVG (B) detection tasks. The target EFDR is indicated by dashed horizontal lines, while the chosen posterior probability threshold is indicated by a vertical dashed line."}
+p1 <- BASiCS_PlotVG(hvg, Plot = "Grid")
+p2 <- BASiCS_PlotVG(lvg, Plot = "Grid") 
+
+p1 + p2 +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+```
+
+```{r plot-vg-SM, fig.cap="HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
 vg_table <- merge(
   as.data.frame(hvg, Filter = FALSE),
   as.data.frame(lvg, Filter = FALSE),
@@ -1081,7 +1105,7 @@ in mean expression, as shown in Figure \@ref(fig:combine-results).
 <!---We will further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.---> 
 
-```{r combine-results, fig.cap="Difference in residual over-dispersion against $\log_2$ fold change in mean expression."}
+```{r combine-results, fig.cap="Difference in residual over-dispersion against $\\log_2$ fold change in mean expression."}
 ## combine results of differential mean and residual over-dispersion tests
 table_de_combined <- merge(table_de_mean, table_de_resdisp)
 
@@ -1123,7 +1147,7 @@ Figure \@ref(fig:var-plots)B and D show that many genes with higher residual
 over-dispersion in somitic cells have a lower proportion of zeros in pre-somitic mesoderm cells,
 and vice versa.
 
-```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: $\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
+```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: $\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
 g1 <- ggplot(
     table_combined_genes[table_combined_genes$ResultDiffResDisp == "SM+", ]
   ) +
