@@ -118,7 +118,10 @@ Cell-to-cell gene expression variability estimates derived from scRNA-seq data
 capture a combination of these effects, as well as deterministic regulatory 
 mechanisms [@Eling2019]. 
 Moreover, these variability estimates can also be inflated by the technical 
-noise that is typically observed in scRNA-seq data [@Brennecke2013].
+noise that is typically observed in scRNA-seq data [@Brennecke2013]. This 
+technical noise relates to systematic differences between cells that may be 
+introduced by the data generating process (e.g.~due to differences in dilution 
+or sequencing depth) @Vallejos2017. 
 
 <!--- Experimental strategies to tackle technical noise --->
 Different strategies have been incorporated into scRNA-seq protocols to control 
