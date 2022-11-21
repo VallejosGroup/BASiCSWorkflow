@@ -531,11 +531,11 @@ ERCC_count <- ERCC_countmul / 50000
 ERCC_count_final <- ERCC_count * 0.009
 ```
 
-To update the `sce_naive` and `sce_active` objects, the user must create a 
-`data.frame` whose first column contains the spike-in labels (e.g. ERCC-00130) 
-and whose second column contains the number of molecules calculated above.
-We add this as row metadata for `altExp(sce_naive)` and 
-`altExp(sce_active)`. 
+To add this information to the existing `sce_naive` and `sce_active` objects, 
+the user must create a `data.frame` whose first column contains the spike-in 
+labels (e.g. ERCC-00130) and whose second column contains the number of 
+molecules calculated above. We add this as row metadata for `altExp(sce_naive)` 
+and `altExp(sce_active)`. 
 
 ```{r spike-info}
 SpikeInput <- data.frame(
