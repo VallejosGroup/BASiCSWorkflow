@@ -138,7 +138,8 @@ attenuating technical variability associated to cell-to-cell differences
 in amplification and sequencing depth (these technical biases are not fully 
 removed unless sequencing to saturation [@Vallejos2017]). 
 However, despite the benefits associated to the use of spike-ins and UMIs, 
-these are not available for all scRNA-seq protocols [@Haque2017].
+these are not routinely available for all scRNA-seq protocols [@Haque2017]. 
+[**EXPAND to provide reasons why**]
 
 <!--- Introduce BASiCS --->
 The Bioconductor package `r Biocpkg("BASiCS")` implements a Bayesian 
@@ -230,9 +231,9 @@ In this step, we use QC diagnostics to identify and remove samples that
 correspond to broken cells, that are empty, or that contain multiple cells 
 [@Ilicic2016]. We  also typically remove lowly expressed genes that represent 
 less reliable information.
-The [*OSCA*](https://bioconductor.org/books/release/OSCA/) online book provides an extensive
-overview on important aspects of how to perform QC of scRNA-seq data, including
-exploratory analyses [@Amezquita2019].
+The [*OSCA*](https://bioconductor.org/books/release/OSCA/) online book provides 
+an extensive overview on important aspects of how to perform QC of scRNA-seq 
+data, including exploratory analyses [@Amezquita2019].
 
 Here, we use the Bioconductor package `r Biocpkg("scater")`
 package [@McCarthy2017] to calculate 
@@ -277,7 +278,13 @@ spike-ins are not available [@Eling2018].
 `r Biocpkg("BASiCS")` summarises the expression pattern for each gene through 
 gene-specific *mean* and *over-dispersion* parameters. 
 Mean parameters $\mu_i$ quantify the overall expression for each gene $i$
-across the cell population under study.
+across the cell population under study. This could correspond to a group that
+is set *a priori* by the experimental design (e.g. naive or stimulated 
+CD4^+^ T cells in [@Martinez-jimenez2017]) or to groups of cells that were 
+computationally identified through clustering (note that `r Biocpkg("BASiCS")`
+does not account for issues associated to post-selection inference 
+[@Lahnemann2020] in this case, but this is an inherent limitation of most 
+differential expression tools). 
 In contrast, $\delta_i$ captures the excess of variability that is observed with 
 respect to what would be expected in a homogeneous cell population, beyond 
 technical noise. 
