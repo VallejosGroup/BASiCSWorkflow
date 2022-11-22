@@ -146,7 +146,7 @@ The Bioconductor package `r Biocpkg("BASiCS")` implements a Bayesian
 hierarchical framework that accounts for both technical and biological sources 
 of noise in scRNA-seq datasets [@Vallejos2015; @Vallejos2016; @Eling2017]. The
 model was motivated by supervised experimental designs in which experimental 
-conditions corresponds to groups of cells defined *a priori* (e.g. selected 
+conditions correspond to groups of cells defined *a priori* (e.g. selected 
 cell types obtained through FACS sorting). However, the approach can also be
 used in cases where the groups of cells of interest are computationally 
 identified through clustering. In such case, the model implemented in 
@@ -1389,10 +1389,14 @@ demonstrated the use of `r Biocpkg("BASiCS")` to robustly identify
 differentially expressed genes, in terms of mean expression and in terms of 
 biological variability.
 
-Further challenges exist in analysing scRNAseq data [@Eling2019;@Lahnemann2020].
-For `r Biocpkg("BASiCS")`, the primary challenge currently is computational 
-efficiency. The number of cells profiled in scRNAseq experiments has scaled 
-exponentially since the development of the technology [@Svensson2018].
+Further challenges exist in analysing scRNAseq data [@Eling2019;@Lahnemann2020]. 
+One area for future work is to study how post-selection inference may affect the 
+performance of `r Biocpkg("BASiCS")`. For example, [@Gao2022Selective] has shown 
+type I errors to be inflated when studying differences in means between groups 
+of cells identified via hierarchical clustering. Another important challenge 
+for `r Biocpkg("BASiCS")` is computational efficiency. The number of cells 
+profiled in scRNAseq experiments has scaled exponentially since the development 
+of the technology [@Svensson2018].
 Given that `r Biocpkg("BASiCS")` requires computationally intensive
 MCMC sampling to estimate the posterior distribution, it becomes computationally
 intractable to analyse data from very large numbers of cells.
