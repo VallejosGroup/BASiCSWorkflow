@@ -1399,9 +1399,17 @@ profiled in scRNAseq experiments has scaled exponentially since the development
 of the technology [@Svensson2018].
 Given that `r Biocpkg("BASiCS")` requires computationally intensive
 MCMC sampling to estimate the posterior distribution, it becomes computationally
-intractable to analyse data from very large numbers of cells.
-We intend to update this workflow as the field evolves, and as we adress the 
-issues and challenges outlined here.
+intractable to analyse data from very large numbers of cells. 
+Finally, we also anticipate potential extensions of `r Biocpkg("BASiCS")` to 
+account for the more complex experimental designs. For example, in cohort 
+studies where cells are extracted from multiple individuals, the hierarchical 
+model could be expanded to quantify both for intra- and inter-individual 
+transcriptional variability. As spatial transcriptomic technologies mature 
+[@Marx2021], Bayesian hierarchical models such as the one implemented in 
+`r Biocpkg("BASiCS")` could also be designed to incorporate spatial (and, 
+potentially, temporal) structure (e.g. [@Aijo2019]). 
+We intend to update this workflow as the field evolves, and as we address the 
+issues and challenges outlined here. 
 
 # Reproducibility
 
