@@ -148,7 +148,7 @@ of noise in scRNA-seq datasets [@Vallejos2015; @Vallejos2016; @Eling2017]. The
 model was motivated by supervised experimental designs in which experimental 
 conditions corresponds to groups of cells defined *a priori* (e.g. selected 
 cell types obtained through FACS sorting). However, the approach can also be
-used in cases were the groups of cells of interest are computationally 
+used in cases where the groups of cells of interest are computationally 
 identified through clustering. In such case, the model implemented in 
 `r Biocpkg("BASiCS")` does not account for issues associated to post-selection 
 inference, where the same data is analysed twice: first to perform clustering
