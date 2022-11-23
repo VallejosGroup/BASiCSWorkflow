@@ -42,6 +42,7 @@ knitr::opts_chunk$set(
   cache = 2, cache.path = "cache_supp/",
   fig.path = "figure_supp/"
 )
+theme_set(theme_bw())
 ```
 
 # Methods
@@ -411,9 +412,9 @@ removing the need for log normalisation.
 sce_naive_active <- computeSumFactors(sce_naive_active)
 sce_naive_active <- logNormCounts(sce_naive_active)
 sce_naive_active <- runPCA(sce_naive_active)
-p_stimulus <- plotPCA(sce_naive_active, colour_by = "Stimulus") +
+p_stimulus <- plotPCA(sce_naive_active, ncomponents = c(2, 1), colour_by = "Stimulus") +
   theme(legend.position = "bottom")
-p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
+p_batch <- plotPCA(sce_naive_active, ncomponents = c(2, 1), colour_by = "Individuals") +
   theme(legend.position = "bottom")
 p_stimulus + p_batch
 ```
@@ -425,10 +426,7 @@ undetected through sequencing, making reliable variability estimates difficult
 to obtain.
 Here, we remove genes that are not detected in at least 20 cells across both
 conditions, or that have an average read count below 1. 
-These thresholds can vary across datasets and should be 
-informed by gene-specific QC metrics such as those shown in
-Figure \@ref(fig:gene-selection) as well as prior knowledge about the cell types
-and conditions being studied, where available.
+
 
 ```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
 sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")

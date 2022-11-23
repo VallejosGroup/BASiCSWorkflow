@@ -35,20 +35,22 @@ title = {{SAMstrt: Statistical test for differential expression in single-cell t
 volume = {29},
 year = {2013}
 }
-@article{Robinson2009,
-abstract = {Summary: It is expected that emerging digital gene expression (DGE) technologies will overtake microarray technologies in the near future for many functional genomics applications. One of the fundamental data analysis tasks, especially for gene expression studies, involves determining whether there is evidence that counts for a transcript or exon are significantly different across experimental conditions. edgeR is a Bioconductor software package for examining differential expression of replicated count data. An over-dispersed Poisson model is used to account for both biological and technical variability. Empirical Bayes methods are used to moderate the degree of over-dispersion across transcripts, improving the reliability of inference. The methodology can be used even with the most minimal levels of replication, provided at least one phenotype or experimental condition is replicated. The software may have other applications beyond sequencing data, such as proteome peptide count data. Availability: The package is freely available under the LGPL licence from the Bioconductor web site (http://bioconductor.org). Contact: mrobinson@wehi.edu.au},
-author = {Robinson, Mark D. and McCarthy, Davis J. and Smyth, Gordon K.},
-doi = {10.1093/bioinformatics/btp616},
-file = {:Users/nils/Documents/Mendeley Desktop/Robinson, McCarthy, Smyth - 2009 - edgeR A Bioconductor package for differential expression analysis of digital gene expression data.pdf:pdf},
-isbn = {1367-4811 (Electronic)$\backslash$n1367-4803 (Linking)},
-issn = {13674803},
-journal = {Bioinformatics},
-number = {1},
-pages = {139--140},
-pmid = {19910308},
-title = {{edgeR: A Bioconductor package for differential expression analysis of digital gene expression data}},
-volume = {26},
-year = {2009}
+
+@article{Robinson2010,
+  title = {{{edgeR}}: A {{Bioconductor}} Package for Differential Expression Analysis of Digital Gene Expression Data},
+  shorttitle = {{{edgeR}}},
+  author = {Robinson, M. D. and McCarthy, D. J. and Smyth, G. K.},
+  year = {2010},
+  month = jan,
+  journal = {Bioinformatics},
+  volume = {26},
+  number = {1},
+  pages = {139--140},
+  issn = {1367-4803, 1460-2059},
+  doi = {10.1093/bioinformatics/btp616},
+  abstract = {Summary: It is expected that emerging digital gene expression (DGE) technologies will overtake microarray technologies in the near future for many functional genomics applications. One of the fundamental data analysis tasks, especially for gene expression studies, involves determining whether there is evidence that counts for a transcript or exon are significantly different across experimental conditions. edgeR is a Bioconductor software package for examining differential expression of replicated count data. An overdispersed Poisson model is used to account for both biological and technical variability. Empirical Bayes methods are used to moderate the degree of overdispersion across transcripts, improving the reliability of inference. The methodology can be used even with the most minimal levels of replication, provided at least one phenotype or experimental condition is replicated. The software may have other applications beyond sequencing data, such as proteome peptide count data.},
+  langid = {english},
+  file = {/home/alan/Documents/Papers/Robinson et al. - 2010 - edgeR a Bioconductor package for differential exp.pdf}
 }
 @article{Delmans2016,
 abstract = {BACKGROUND The advent of high throughput RNA-seq at the single-cell level has opened up new opportunities to elucidate the heterogeneity of gene expression. One of the most widespread applications of RNA-seq is to identify genes which are differentially expressed between two experimental conditions. RESULTS We present a discrete, distributional method for differential gene expression (D(3)E), a novel algorithm specifically designed for single-cell RNA-seq data. We use synthetic data to evaluate D(3)E, demonstrating that it can detect changes in expression, even when the mean level remains unchanged. Since D(3)E is based on an analytically tractable stochastic model, it provides additional biological insights by quantifying biologically meaningful properties, such as the average burst size and frequency. We use D(3)E to investigate experimental data, and with the help of the underlying model, we directly test hypotheses about the driving mechanism behind changes in gene expression. CONCLUSION Evaluation using synthetic data shows that D(3)E performs better than other methods for identifying differentially expressed genes since it is designed to take full advantage of the information available from single-cell RNA-seq experiments. Moreover, the analytical model underlying D(3)E makes it possible to gain additional biological insights.},
@@ -1454,4 +1456,63 @@ keywords = {variance estimation, spectral analysis, simulation, confidence inter
   file = {/home/alan/Zotero/storage/2TFBGKG2/Casella - 1985 - An Introduction to Empirical Bayes Data Analysis.pdf},
   journal = {The American Statistician},
   number = {2}
+}
+
+@misc{Neufeld2022,
+  title = {Inference after Latent Variable Estimation for Single-Cell {{RNA}} Sequencing Data},
+  author = {Neufeld, Anna and Gao, Lucy L. and Popp, Joshua and Battle, Alexis and Witten, Daniela},
+  year = {2022},
+  month = jul,
+  number = {arXiv:2207.00554},
+  eprint = {2207.00554},
+  eprinttype = {arxiv},
+  primaryclass = {stat},
+  publisher = {{arXiv}},
+  abstract = {In the analysis of single-cell RNA sequencing data, researchers often characterize the variation between cells by estimating a latent variable, such as cell type or pseudotime, representing some aspect of the individual cell's state. They then test each gene for association with the estimated latent variable. If the same data are used for both of these steps, then standard methods for computing p-values and confidence intervals in the second step will fail to achieve statistical guarantees such as Type 1 error control. Furthermore, approaches such as sample splitting that can be applied to solve similar problems in other settings are not applicable in this context. In this paper, we introduce count splitting, a flexible framework that allows us to carry out valid inference in this setting, for virtually any latent variable estimation technique and inference approach, under a Poisson assumption. We demonstrate the Type 1 error control and power of count splitting in a simulation study, and apply count splitting to a dataset of pluripotent stem cells differentiating to cardiomyocytes.},
+  archiveprefix = {arXiv},
+  langid = {english},
+  keywords = {Statistics - Applications,Statistics - Methodology},
+  file = {/home/alan/Zotero/storage/Z434AAIK/Neufeld et al. - 2022 - Inference after latent variable estimation for sin.pdf}
+}
+
+@article{Benjamini1995,
+  title = {Controlling the {{False Discovery Rate}}: {{A Practical}} and {{Powerful Approach}} to {{Multiple Testing}}},
+  author = {Benjamini, Yoav and Hochberg, Yosef},
+  year = {1995},
+  journal = {Journal of the Royal Statistical Society. Series B (Methodological)},
+  volume = {57},
+  number = {1},
+  pages = {289--300},
+  abstract = {The commonapproach to the multiplicityproblemcalls forcontrollingthe familywise errorrate(FWER). Thisapproach,though,has faults,and we pointout a few.A different approachto problemsof multiplesignificancetestingis presented.It calls forcontrolling theexpectedproportionof falselyrejectedhypothese-sthe falsediscoveryrate.Thiserror rateis equivalentto theFWER whenall hypotheseasretruebutis smallerotherwiseT. herefore,in problemswherethe controlof the false discoveryrate ratherthan thatof the FWER is desired,thereis potentialfora gain in power.A simplesequentialBonferronitypeprocedureis provedto controlthefalsediscoveryrateforindependenteststatistics, and a simulationstudyshows thatthe gain in poweris substantial.The use of the new procedureand theappropriatenessof thecriterionare illustratedwithexamples.},
+  langid = {english},
+  file = {/home/alan/Zotero/storage/D5NPYHK8/Benjamini and Hochberg - 1995 - Controlling the False Discovery Rate A Practical .pdf}
+}
+
+@article{Marx2021,
+  title = {Method of the {{Year}}: Spatially Resolved Transcriptomics},
+  shorttitle = {Method of the {{Year}}},
+  author = {Marx, Vivien},
+  year = {2021},
+  month = jan,
+  journal = {Nature Methods},
+  volume = {18},
+  number = {1},
+  pages = {9--14},
+  issn = {1548-7091, 1548-7105},
+  doi = {10.1038/s41592-020-01033-y},
+  langid = {english},
+  file = {/home/alan/Zotero/storage/4UT58BEI/Marx - 2021 - Method of the Year spatially resolved transcripto.pdf}
+}
+
+@techreport{Aijo2019,
+  type = {Preprint},
+  title = {Splotch: {{Robust}} Estimation of Aligned Spatial Temporal Gene Expression Data},
+  shorttitle = {Splotch},
+  author = {{\"A}ij{\"o}, Tarmo and Maniatis, Silas and Vickovic, Sanja and Kang, Kristy and Cuevas, Miguel and Braine, Catherine and Phatnani, Hemali and Lundeberg, Joakim and Bonneau, Richard},
+  year = {2019},
+  month = sep,
+  institution = {{Bioinformatics}},
+  doi = {10.1101/757096},
+  abstract = {Abstract           Spatial genomics technologies enable new approaches to study how cells interact and function in intact multicellular environments but present a host of technical and computational challenges. Here we describe Splotch, a novel computational framework for the analysis of spatially resolved transcriptomics data. Splotch aligns transcriptomics data from multiple tissue sections and timepoints to generate improved posterior estimates of gene expression. We demonstrate alignment of a large corpus of single-cell RNA-seq data into an automatically generated spatial-temporal coordinate and study optimal design for spatial transcriptomics experiments.},
+  langid = {english}
 }
