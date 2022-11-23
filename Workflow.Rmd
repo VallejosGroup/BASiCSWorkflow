@@ -122,7 +122,7 @@ Moreover, these variability estimates can also be inflated by the technical
 noise that is typically observed in scRNA-seq data [@Brennecke2013]. This 
 technical noise relates to systematic differences between cells that may be 
 introduced by the data generating process (e.g.~due to differences in dilution 
-or sequencing depth) @Vallejos2017. 
+or sequencing depth) [@Vallejos2017]. 
 
 <!--- Experimental strategies to tackle technical noise --->
 Different strategies have been incorporated into scRNA-seq protocols to control 
@@ -148,14 +148,15 @@ and the exact quantity in each droplet necessarily remains unknown.
 The Bioconductor package `r Biocpkg("BASiCS")` implements a Bayesian 
 hierarchical framework that accounts for both technical and biological sources 
 of noise in scRNA-seq datasets [@Vallejos2015; @Vallejos2016; @Eling2017]. The
-model was motivated by supervised experimental designs in which experimental 
-conditions correspond to groups of cells defined *a priori* (e.g. selected 
-cell types obtained through FACS sorting). However, the approach can also be
-used in cases where the groups of cells of interest are computationally 
-identified through clustering. In such case, the model implemented in 
-`r Biocpkg("BASiCS")` does not account for issues associated to post-selection 
-inference, where the same data is analysed twice: first to perform clustering
-and then to compare expression profiles between clusters [@Lahnemann2020]. 
+model was initially motivated by supervised experimental designs in which 
+experimental conditions correspond to groups of cells defined *a priori* (e.g. 
+selected cell types obtained through FACS sorting). However, the approach can 
+also be used in cases where the groups of cells of interest are computationally 
+identified through clustering. In such cases, the model implemented in 
+`r Biocpkg("BASiCS")` does not currently address issues associated to 
+post-selection inference, where the same data is analysed twice: first to 
+perform clustering and then to compare expression profiles between clusters 
+[@Lahnemann2020]. 
 
 `r Biocpkg("BASiCS")` jointly performs data normalisation, technical noise 
 quantification and downstream analyses, whilst propagating statistical 
