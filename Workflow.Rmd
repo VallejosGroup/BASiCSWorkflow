@@ -387,8 +387,8 @@ colData(sce_sm)$BatchInfo <- factor(sce_sm$batch)
 If spike-ins will be used to aid data normalisation and technical noise 
 quantification, `r Biocpkg("BASiCS")` also requires the number of spike-in 
 molecules that were added to each well. For this analysis, we do
-not use spike-ins; however, we include an example of using spike-in data
-in TODO: Supplementary.
+not use spike-ins; however, we include an example of using data generated
+using spike-ins in TODO: Supplementary.
 
 ## Parameter estimation using BASiCS
 

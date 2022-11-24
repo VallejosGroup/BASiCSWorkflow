@@ -42,7 +42,6 @@ knitr::opts_chunk$set(
   cache = 2, cache.path = "cache_supp/",
   fig.path = "figure_supp/"
 )
-theme_set(theme_bw())
 ```
 
 # Methods
@@ -162,6 +161,8 @@ library("ggpointdensity")
 library("biomaRt")
 library("patchwork")
 library("viridis")
+## set default theme for plots
+theme_set(theme_bw())
 ```
 
 ## Downloading the data
@@ -425,7 +426,10 @@ The purpose of this filter is to remove lowly expressed genes that were largely
 undetected through sequencing, making reliable variability estimates difficult
 to obtain.
 Here, we remove genes that are not detected in at least 20 cells across both
-conditions, or that have an average read count below 1. 
+conditions, or that have an average read count below 1. This is to ensure a
+reliable estimate of variability, roughly in line with the sample size
+requirements for the negative binomial distribution outlined in
+@Lloyd-Smith2007.
 
 
 ```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
@@ -804,9 +808,6 @@ normalisation factors, is that in the former case, statistical uncertainty is
 propagated from normalisation to all downstream analyses.
 
 ```{r normalisation-vs-scran, fig.width=4, fig.height=4, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
-## set default theme for plots
-theme_set(theme_bw())
-
 ## BASiCS scaling factors within each group of samples
 basics_sf_naive <- colMedians(
   displayChainBASiCS(chain_naive, "phi")
