@@ -279,10 +279,13 @@ testing) is precluded.
 
 The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 framework that shares information between all genes and cells to robustly
-quantify transcriptional variability [@Vallejos2015BASiCS].
-This information-sharing approach is conceptually similar to that performed by
-@Love2014 and others, where sparse data is pooled to provide more reliable
-estimates.
+quantify transcriptional variability [@Vallejos2015BASiCS]. 
+For example, as described below, instead of modelling expression patterns for 
+each gene separately we pool information across genes with similar expression 
+levels to obtain more reliable parameter estimates. The latter is particularly 
+helpful for lowly expressed genes and sparse datasets, where the data contains 
+less information. 
+
 Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
 infers cell-specific global scaling normalisation parameters. 
 However, instead of inferring these as a pre-processing step, 
@@ -312,7 +315,13 @@ variability.
 To account for the strong relationship that is typically observed 
 between gene-specific mean expression and over-dispersion estimates, 
 Eling *et al.*  [@Eling2018] introduced a joint prior specification for 
-these parameters. 
+these parameters. For genes with similar mean expression ($\mu_i$), this prior
+helps to shrink over-dispersion parameters $\delta_i$ towards similar values. 
+This information-sharing approach is conceptually similar to that performed by 
+@Love2014 and others, where [WIP]
+
+
+sparse data is pooled to provide more reliable estimates.
 This joint prior has been observed to improve posterior inference
 when the data is less informative (e.g. small sample size, lowly expressed 
 genes), borrowing information across all genes (and cells) to infer an overall 
