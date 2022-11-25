@@ -277,14 +277,14 @@ testing) is precluded.
 
 ## BASiCS - Bayesian Analysis of Single Cell Sequencing data
 
-The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
+Instead of modelling expression patterns for each gene separately, the 
+`r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 framework that shares information between all genes and cells to robustly
 quantify transcriptional variability [@Vallejos2015BASiCS]. 
-For example, as described below, instead of modelling expression patterns for 
-each gene separately we pool information across genes with similar expression 
-levels to obtain more reliable parameter estimates. The latter is particularly 
-helpful for lowly expressed genes and sparse datasets, where the data contains 
-less information. 
+For example, as described below, we pool information across genes with similar 
+expression levels to obtain more reliable parameter estimates. The latter is 
+particularly helpful for lowly expressed genes and sparse datasets, where less 
+information is available. 
 
 Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
 infers cell-specific global scaling normalisation parameters. 
@@ -314,22 +314,20 @@ technical noise.
 variability.
 To account for the strong relationship that is typically observed 
 between gene-specific mean expression and over-dispersion estimates, 
-Eling *et al.*  [@Eling2018] introduced a joint prior specification for 
-these parameters. For genes with similar mean expression ($\mu_i$), this prior
-helps to shrink over-dispersion parameters $\delta_i$ towards similar values. 
+Eling *et al.*  [@Eling2018] introduced a *joint prior* specification for 
+these parameters. This joint prior assumes that genes with similar mean 
+expression ($\mu_i$) have similar over-dispersion parameters $\delta_i$. 
+Effectively, this shrinks over-dispersion estimates towards a global trend
+that captures the relationship between mean and over-dispersion (Figure XX). 
+This improves posterior inference for over-dispersion parameters when the data 
+is less informative (e.g. small sample size, lowly expressed genes) [@Eling2018].
 This information-sharing approach is conceptually similar to that performed by 
-@Love2014 and others, where [WIP]
-
-
-sparse data is pooled to provide more reliable estimates.
-This joint prior has been observed to improve posterior inference
-when the data is less informative (e.g. small sample size, lowly expressed 
-genes), borrowing information across all genes (and cells) to infer an overall 
-trend that captures the relationship between mean and over-dispersion.
-The trend is then used to derive gene-specific *residual over-dispersion* 
+@Love2014 and others, where sparse data is pooled to obtain more reliable 
+estimates.
+The global trend is then used to derive gene-specific *residual over-dispersion* 
 parameters $\epsilon_i$ that are not confounded by mean expression. 
 Similar to the DM values implemented in `r Biocpkg("scran")`, these are defined 
-as deviations with respect to the overall trend.
+as deviations with respect to the overall trend (Figure XX).
 
 Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
 observed variability in expression measurements into technical and biological 
