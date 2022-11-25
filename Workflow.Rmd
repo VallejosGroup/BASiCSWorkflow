@@ -162,11 +162,11 @@ perform clustering and then to compare expression profiles between clusters
 quantification and downstream analyses, whilst propagating statistical 
 uncertainty across these steps. 
 These features are implemented within a probabilistic model that builds upon a
-negative binomial framework, a widely used distribution in the context of bulk 
-and scRNA-seq experiments [@Svensson2020;@Townes2020;@Townes2019]. 
-The negative binomial framework we use is commonly used to model count
-data with more complex variability patterns than a simple Poisson model,
-and has been used broadly for bulk sequencing data [@Roberts2009;@Love2014]
+negative binomial distribution, a widely used statistical model in the context 
+of bulk and scRNA-seq experiments [@Love2014;@Svensson2020;@Townes2020;@Townes2019]. 
+The negative binomial distribution is commonly used to model count
+data when the observed variability exceeds what can be captured by a simpler
+Poisson model --- this is typically referred to as *over-dispersion*. 
 <!--- emphasis, this is critical ---> 
 Critically, `r Biocpkg("BASiCS")` enables the quantification of transcriptional
 variability within a population of cells, while accounting for the overall 
