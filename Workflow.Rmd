@@ -581,7 +581,7 @@ Alternatively, more stringent quality control could be applied to the input
 data, as we have observed that genes with very low counts often suffer from 
 slow convergence.
 
-```{r convergence-SM, fig.cap="Trace plot, marginal histogram, and autocorrelation function of the posterior distribution of the mean expression parameter for a gene in somitic mesoderm cells following MCMC sampling. Trace plots should explore the posterior  without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
+```{r convergence-SM, fig.cap="Trace plot, marginal histogram, and autocorrelation function of the posterior distribution of the mean expression parameter for a gene in somitic mesoderm cells following MCMC sampling. Trace plots should explore the posterior without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
 plot(chain_sm, Param = "mu", Gene = 1)
 ```
 
