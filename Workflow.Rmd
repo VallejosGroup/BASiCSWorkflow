@@ -501,8 +501,13 @@ For convenience, these can be obtained online at
 [https://doi.org/10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
 
 ```{r download-chain-SM}
+# Website were the files are located
 chains_website <- "https://zenodo.org/record/5243265/files/"
+# To avoid timeout issues as we are downloading large files
 options(timeout = 1000)
+# File download
+## The code below uses `file.exists` to check if files were previously downloaded
+## After download, files are then stored in an `rds` sub-folder 
 if (!file.exists("rds/chain_SM.Rds")) {
   download.file(
     paste0(chains_website, "chain_SM.Rds"),
@@ -515,6 +520,7 @@ if (!file.exists("rds/chain_PSM.Rds")) {
     destfile = "rds/chain_PSM.Rds"
   )
 }
+## Loads files after download
 chain_sm <- readRDS("rds/chain_SM.Rds")
 chain_psm <- readRDS("rds/chain_PSM.Rds")
 ```
@@ -524,7 +530,7 @@ draws associated to all model parameters. Given that
 `N` = 40,000, `Thin` = 20 and `Burn` = 20,000, the object contains 1,000 
 draws for each parameter.
 These can be accessed using the `displayChainBASiCS` function.
-For example, the following code displays the first 6 draws for mean
+For example, the following code displays the first 2 MCMC draws for mean
 expression parameters $\mu_i$ associated to the first 3 genes.
 
 ```{r displayChainBASiCS}
