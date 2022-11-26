@@ -588,7 +588,8 @@ plot(chain_sm, Param = "mu", Gene = 1)
 As `r Biocpkg("BASiCS")` infers thousands of parameters, it is 
 impractical to assess these diagnostics separately for each parameter. 
 Thus, it is helpful to use numerical diagnostics that can be applied to multiple
-parameters simultaneously.
+parameters simultaneously. 
+The `BASiCS_DiagPlot()` can be used to visualise such diagnostic metrics. 
 Here, we illustrate usage for two such metrics focusing on the MCMC
 chain that was obtained for the somitic mesoderm cells (similar results were 
 obtained for pre-somitic mesoderm cells). 
@@ -603,6 +604,7 @@ For the somitic and pre-somitic mesoderm datasets, most Z-scores associated to m
 expression parameters $\mu_i$ were small in absolute value 
 (see Figure \@ref(fig:mcmc-diag)A), suggesting that the algorithm has 
 largely converged.
+
 
 As well as assessing MCMC convergence, it is important to ensure that the MCMC 
 algorithm has efficiently explored the parameter space. 
@@ -639,11 +641,11 @@ model. These issues can often be addressed by more stringent
 filtering of genes and cells before performing inference.
 
 ```{r mcmc-diag, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; somitic mesoderm cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
-diag_p1 <- BASiCS_DiagPlot(chain_sm, Measure = "geweke")
+diag_p1 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "geweke")
 diag_p1 <- diag_p1 +
   geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
   theme(legend.position = "none")
-diag_p2 <- BASiCS_DiagPlot(chain_sm, Measure = "ess")
+diag_p2 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "ess")
 diag_p2 <- diag_p2 +
   geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed") +
   theme(legend.position = "none")
