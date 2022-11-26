@@ -441,7 +441,6 @@ in the next section.
 ## MCMC results may vary slightly due to pseudorandom number generation.
 ## We fix a random seed for exact reproducibility,
 ## but this is not strictly required
-t0 <- proc.time()
 set.seed(42)
 chain_sm <- BASiCS_MCMC(
   Data = sce_sm,
@@ -456,7 +455,6 @@ chain_sm <- BASiCS_MCMC(
   StoreDir = "rds/",
   RunName = "SM"
 )
-t1 <- proc.time()
 set.seed(43)
 chain_psm <- BASiCS_MCMC(
   Data = sce_psm,
@@ -471,7 +469,6 @@ chain_psm <- BASiCS_MCMC(
   StoreDir = "rds/",
   RunName = "PSM"
 )
-t2 <- proc.time()
 ```
 
 This first of these chains takes 84 minutes to complete on a 3.4 GHz Intel
