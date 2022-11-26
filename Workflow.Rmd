@@ -209,25 +209,42 @@ and its main components are described below.
 knitr::include_graphics("figure/Overview.png")
 ```
 
-### Input data
+Here, we load all the libraries that will be used throughout this workflow.
+First, we load Bioconductor libraries included in Figure \@ref(fig:overview). 
+We will provide further explanation about their function in the following sections.
 
 ```{r}
 library("SingleCellExperiment")
 library("scater")
 library("scran")
 library("BASiCS")
-library("coda")
+```
+
+Next, we load other general purpose libraries used for data visualisation (e.g.
+`r CRANpkg("ggplot2")`), data manipulation (e.g. `r CRANpkg("reshape2")`) and
+other libraries required to calculate some summary statistics 
+(`r Biocpkg("sparseMatrixStats")`) and to assess the convergence of the 
+algorithm implemented in `r Biocpkg("BASiCS")` (e.g. `r CRANpkg("coda")`). 
+
+```{r}
+# Data visualisation
 library("ggplot2")
 library("ggpointdensity")
 library("patchwork")
 library("viridis")
-library("reshape2")
 library("ComplexHeatmap")
 library("circlize")
 library("RColorBrewer")
+# Data manipulation
+library("reshape2")
 library("tidyr")
+# To obtain summary statistics
 library("sparseMatrixStats")
+# To assess convergence of the algorithm implemented in BASiCS
+library("coda")
 ```
+
+### Input data
 
 We use the Bioconductor package `r Biocpkg("SingleCellExperiment")` to convert 
 an input matrix of raw read counts (molecule counts for UMI-based protocols) 
