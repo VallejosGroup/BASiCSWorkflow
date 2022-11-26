@@ -162,11 +162,11 @@ perform clustering and then to compare expression profiles between clusters
 quantification and downstream analyses, whilst propagating statistical 
 uncertainty across these steps. 
 These features are implemented within a probabilistic model that builds upon a
-negative binomial framework, a widely used distribution in the context of bulk 
-and scRNA-seq experiments [@Svensson2020;@Townes2020;@Townes2019]. 
-The negative binomial framework we use is commonly used to model count
-data with more complex variability patterns than a simple Poisson model,
-and has been used broadly for bulk sequencing data [@Roberts2009;@Love2014]
+negative binomial distribution, a widely used statistical model in the context 
+of bulk and scRNA-seq experiments [@Love2014;@Svensson2020;@Townes2020;@Townes2019]. 
+The negative binomial distribution is commonly used to model count
+data when the observed variability exceeds what can be captured by a simpler
+Poisson model --- this is typically referred to as *over-dispersion*. 
 <!--- emphasis, this is critical ---> 
 Critically, `r Biocpkg("BASiCS")` enables the quantification of transcriptional
 variability within a population of cells, while accounting for the overall 
@@ -209,25 +209,42 @@ and its main components are described below.
 knitr::include_graphics("figure/Overview.png")
 ```
 
-### Input data
+Here, we load all the libraries that will be used throughout this workflow.
+First, we load Bioconductor libraries included in Figure \@ref(fig:overview). 
+We will provide further explanation about their function in the following sections.
 
 ```{r}
 library("SingleCellExperiment")
 library("scater")
 library("scran")
 library("BASiCS")
-library("coda")
+```
+
+Next, we load other general purpose libraries used for data visualisation (e.g.
+`r CRANpkg("ggplot2")`), data manipulation (e.g. `r CRANpkg("reshape2")`) and
+other libraries required to calculate some summary statistics 
+(`r Biocpkg("sparseMatrixStats")`) and to assess the convergence of the 
+algorithm implemented in `r Biocpkg("BASiCS")` (e.g. `r CRANpkg("coda")`). 
+
+```{r}
+# Data visualisation
 library("ggplot2")
 library("ggpointdensity")
 library("patchwork")
 library("viridis")
-library("reshape2")
 library("ComplexHeatmap")
 library("circlize")
 library("RColorBrewer")
+# Data manipulation
+library("reshape2")
 library("tidyr")
+# To obtain summary statistics
 library("sparseMatrixStats")
+# To assess convergence of the algorithm implemented in BASiCS
+library("coda")
 ```
+
+### Input data
 
 We use the Bioconductor package `r Biocpkg("SingleCellExperiment")` to convert 
 an input matrix of raw read counts (molecule counts for UMI-based protocols) 
@@ -277,12 +294,15 @@ testing) is precluded.
 
 ## BASiCS - Bayesian Analysis of Single Cell Sequencing data
 
-The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
+Instead of modelling expression patterns for each gene separately, the 
+`r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 framework that shares information between all genes and cells to robustly
-quantify transcriptional variability [@Vallejos2015BASiCS].
-This information-sharing approach is conceptually similar to that performed by
-@Love2014 and others, where sparse data is pooled to provide more reliable
-estimates.
+quantify transcriptional variability [@Vallejos2015BASiCS]. 
+For example, as described below, we pool information across genes with similar 
+expression levels to obtain more reliable parameter estimates. The latter is 
+particularly helpful for lowly expressed genes and sparse datasets, where less 
+information is available. 
+
 Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
 infers cell-specific global scaling normalisation parameters. 
 However, instead of inferring these as a pre-processing step, 
@@ -311,16 +331,20 @@ technical noise.
 variability.
 To account for the strong relationship that is typically observed 
 between gene-specific mean expression and over-dispersion estimates, 
-Eling *et al.*  [@Eling2018] introduced a joint prior specification for 
-these parameters. 
-This joint prior has been observed to improve posterior inference
-when the data is less informative (e.g. small sample size, lowly expressed 
-genes), borrowing information across all genes (and cells) to infer an overall 
-trend that captures the relationship between mean and over-dispersion.
-The trend is then used to derive gene-specific *residual over-dispersion* 
+Eling *et al.*  [@Eling2018] introduced a *joint prior* specification for 
+these parameters. This joint prior assumes that genes with similar mean 
+expression ($\mu_i$) have similar over-dispersion parameters $\delta_i$. 
+Effectively, this shrinks over-dispersion estimates towards a global trend
+that captures the relationship between mean and over-dispersion (Figure XX). 
+This improves posterior inference for over-dispersion parameters when the data 
+is less informative (e.g. small sample size, lowly expressed genes) [@Eling2018].
+This information-sharing approach is conceptually similar to that performed by 
+@Love2014 and others, where sparse data is pooled to obtain more reliable 
+estimates.
+The global trend is then used to derive gene-specific *residual over-dispersion* 
 parameters $\epsilon_i$ that are not confounded by mean expression. 
 Similar to the DM values implemented in `r Biocpkg("scran")`, these are defined 
-as deviations with respect to the overall trend.
+as deviations with respect to the overall trend (Figure XX).
 
 Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
 observed variability in expression measurements into technical and biological 
