@@ -900,6 +900,13 @@ We then load the raw read counts.
 raw_counts <- read.delim("downloads/rawCounts.tsv", header = TRUE)
 ```
 
+Prior to using BASiCS, it is important to perform quality control to remove 
+poor quality cells and to control for potential heterogeneous substructure 
+within the population of cells under study. In this case, [@Ibarra-Soria2018]
+has already characterised population structure using clustering techniques. 
+Here, we will use such information in order to define the cell populations to
+be use as the input for BASiCS. 
+
 The cluster labels identified in the original publication are then loaded:
 
 ```{r cluster-labels-droplet}
@@ -911,63 +918,72 @@ The data contains the `r length(unique(cluster_labels$cellType))` cell types
 identified by the authors. The number of cells per cluster is displayed below:
 
 ```{r table-cluster-labels-droplet}
-table(cluster_labels$cellType)
+table(cluster_labels$cellType, useNA = "ifany")
 ```
+
+Note that cluster labels are not available for 
+`r sum(is.na(cluster_labels$cellType))` cells. 
 
 ## Select populations of interest
 
-We select the somitic and pre-somitic mesoderm cells to perform differential 
-testing. This is an arbitrary choice for illustration purposes only. The steps
+We selected the somitic 
+($n = $ `r sum(cluster_labels$cellType == "somiticMesoderm", na.rm = TRUE)`) and 
+pre-somitic mesoderm 
+($n = $ `r sum(cluster_labels$cellType == "presomiticMesoderm", na.rm = TRUE)`)
+cells. This is an arbitrary choice for illustration purposes only. The steps
 of this workflow could be applied to any other pair of cell types. 
 
 ```{r droplet-cell-selection}
-ind_som <- which(cluster_labels$cellType == "presomiticMesoderm" |
-  cluster_labels$cellType == "somiticMesoderm")
+# Identifies which cells are in the groups of interest
+ind_som <- which(cluster_labels$cellType == "somiticMesoderm" |
+                 cluster_labels$cellType == "presomiticMesoderm")
+# Selects the cells of interest from the raw counts and cluster-label metadata
 raw_counts <- raw_counts[, ind_som]
 cluster_labels <- cluster_labels[ind_som, ]
 ```
 
-Prior to running the MCMC, we want to control for outlying cells and 
-potential heterogeneous substructure in both cell populations. 
-
-In particular, we note that the authors identified some sub-structure within
-pre-somitic mesoderm cells
+Note that the authors identified some sub-structure within pre-somitic mesoderm 
+cells
 
 ```{r table-subclusters}
-
-table(cluster_labels$cell)
+cluster_labels$subCellType <- sub("_.*", "", cluster_labels$cell)
+table(cluster_labels$subCellType, cluster_labels$cellType)
 ```
 
 ## Generating SingleCellExperiment object and quality control
 
 For pre-processing and visualisation purposes, we load the data into a 
-SingleCellExperiment object. The metadata will be stored in the `colData` slot.
+`SingleCellExperiment` object. The metadata will be stored in the `colData` slot.
 
 ```{r droplet-sce}
 droplet_sce <- SingleCellExperiment(
   assays = list(counts = as(as.matrix(raw_counts), "dgCMatrix")),
-  colData = DataFrame(
-    cluster_labels,
-    subCellType = sub("_.*", "", cluster_labels$cell)
+  colData = cluster_labels
   )
-)
+# Delete the original table of raw expression counts as no longer needed
 rm(raw_counts)
 ```
 
-For further processing steps, we remove lowly expressed genes.
+For further processing steps, we remove lowly expressed genes captured in less
+than 10\% of cells. 
 
 ```{r filter-drop}
 ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
 droplet_sce <- droplet_sce[ind_expressed, ]
 ```
 
+After this filtering step, `r nrow(droplet_sce)` remain in the data. 
+
 To visualise possible sub-structure in the data, we normalise both cell 
-populations using the `scran` package.
+populations using the `scran` package. Log-normalised counts ($\log(x+1)$) 
+will be used for visualisation purposes. 
 
 ```{r norm-drop}
+# Calculate scran size factors
 droplet_sce <- computeSumFactors(droplet_sce,
   clusters = colData(droplet_sce)$subCellType
 )
+# Calculate log-normalised expression counts
 droplet_sce <- logNormCounts(droplet_sce)
 ```
 
@@ -977,12 +993,16 @@ Next, we compute a PCA using the `scater` package.
 droplet_sce <- runPCA(droplet_sce)
 ```
 
+Note: by default, `runPCA()` uses log-normalised counts as input.
+
 We can now visualise the different factors stored in the `colData` slot.
 
 ```{r drop-pca-plot, fig.cap="Principal component plot of pre-somitic and somitic mesoderm cells. Colour indicates cell type."}
 ## Cell types identified by clustering
 plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") 
 ```
+
+
 
 The first PC separates the two different cell types while the second PC captures
 outlying cells.
