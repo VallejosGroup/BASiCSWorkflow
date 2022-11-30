@@ -921,19 +921,8 @@ testing. This is an arbitrary choice for illustration purposes only. The steps
 of this workflow could be applied to any other pair of cell types. 
 
 ```{r droplet-cell-selection}
-cluster_labels[["Cell_type"]] <- cluster_labels$cellType
-cluster_labels[["Cell_type"]] <- sub(
-  "presomiticMesoderm",
-  "PSM",
-  cluster_labels[["Cell_type"]]
-)
-cluster_labels[["Cell_type"]] <- sub("somiticMesoderm",
-  "SM",
-  cluster_labels[["Cell_type"]]
-)
-
-ind_som <- which(cluster_labels[["Cell_type"]] == "PSM" |
-  cluster_labels[["Cell_type"]] == "SM")
+ind_som <- which(cluster_labels$cellType == "presomiticMesoderm" |
+  cluster_labels$cellType == "somiticMesoderm")
 raw_counts <- raw_counts[, ind_som]
 cluster_labels <- cluster_labels[ind_som, ]
 ```
