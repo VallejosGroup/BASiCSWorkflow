@@ -858,49 +858,67 @@ using droplet-based scRNA-seq data [@Ibarra-Soria2018].
 ## Obtaining the data
 
 The full dataset is stored under the accession number E-MTAB-6153 on 
-ArrayExpress and can be obtained via:
+ArrayExpress and can be obtained from [here](https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-6153#). 
+This workflows uses the *processed* data which consists of 3 files: 
 
-```{r load-droplet-data}
+- `rawCounts.tsv`: matrix of raw expression counts (UMI-based) for all genes
+and cells.
+- `cellAnnotation.tsv`: cell type labels identified by [@Ibarra-Soria2018].
+- `normalisedCounts.tsv`: normalised expression counts obtained by 
+[@Ibarra-Soria2018]. This file is **not** used in this workflow. 
+
+*Of note:* The `.zip` file is 65 MB in size while the unzipped, raw counts 
+measure 873 MB in size.
+
+The code below downloads these as a compressed `.zip` file in the `downloads`
+sub-folder. This is decompressed in order to access the individual `.tsv` files. 
+After decompression, the `.zip` can be deleted as it is no longer required. 
+
+```{r download-droplet-data}
 options(timeout = 1000)
+# Check whether the data was downloaded already
 if (!file.exists("downloads/rawCounts.tsv")) {
+  # Specifies data location
   website <- "https://www.ebi.ac.uk/"
   folder <- "arrayexpress/files/E-MTAB-6153/"
   file <- "E-MTAB-6153.processed.2.zip"
+  # Data is downloaded in a `downloads` sub-folder
   download.file(
     paste0(website, folder, file),
     destfile = "downloads/rawCounts.zip"
   )
+  # Un-compress the downloaded zip file 
   unzip(zipfile = "downloads/rawCounts.zip", exdir = "downloads")
+  # Delete zip file as not longer required
   file.remove("downloads/rawCounts.zip")
 }
+```
+
+We then load the raw read counts. 
+
+```{r load-droplet-data-raw}
 raw_counts <- read.delim("downloads/rawCounts.tsv", header = TRUE)
 ```
 
-*Of note:* The zip file is 65 MB in size while the unzipped, raw counts measure
-873 MB in size. The cluster labels of the original publication ca be obtained 
-via:
+The cluster labels identified in the original publication are then loaded:
 
 ```{r cluster-labels-droplet}
-if (!file.exists("downloads/cellAnnotation.tsv")) {
-  website <- "https://www.ebi.ac.uk/"
-  folder <- "arrayexpress/files/E-MTAB-6153/"
-  file <- "E-MTAB-6153.processed.3.zip"
-  download.file(
-    paste0(website, folder, file),
-    destfile = "cluster_labels.zip"
-  )
-  unzip(zipfile = "cluster_labels.zip", exdir = "downloads")
-}
-
 cluster_labels <- read.table("downloads/cellAnnotation.tsv",
   sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+```
+
+The data contains the `r length(unique(cluster_labels$cellType))` cell types
+identified by the authors. The number of cells per cluster is displayed below:
+
+```{r table-cluster-labels-droplet}
+table(cluster_labels$cellType)
 ```
 
 ## Select populations of interest
 
 We select the somitic and pre-somitic mesoderm cells to perform differential 
-testing. Prior to running the MCMC, we want to control for outlying cells and 
-heterogeneous substructure in both cell populations. 
+testing. This is an arbitrary choice for illustration purposes only. The steps
+of this workflow could be applied to any other pair of cell types. 
 
 ```{r droplet-cell-selection}
 cluster_labels[["Cell_type"]] <- cluster_labels$cellType
@@ -918,6 +936,17 @@ ind_som <- which(cluster_labels[["Cell_type"]] == "PSM" |
   cluster_labels[["Cell_type"]] == "SM")
 raw_counts <- raw_counts[, ind_som]
 cluster_labels <- cluster_labels[ind_som, ]
+```
+
+Prior to running the MCMC, we want to control for outlying cells and 
+potential heterogeneous substructure in both cell populations. 
+
+In particular, we note that the authors identified some sub-structure within
+pre-somitic mesoderm cells
+
+```{r table-subclusters}
+
+table(cluster_labels$cell)
 ```
 
 ## Generating SingleCellExperiment object and quality control
@@ -963,11 +992,7 @@ We can now visualise the different factors stored in the `colData` slot.
 
 ```{r drop-pca-plot, fig.cap="Principal component plot of pre-somitic and somitic mesoderm cells. Colour indicates cell type."}
 ## Cell types identified by clustering
-plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
-  scale_fill_manual(
-    name = "cellType",
-    values = c("coral4", "steelblue", "limegreen")
-  )
+plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") 
 ```
 
 The first PC separates the two different cell types while the second PC captures
