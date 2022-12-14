@@ -484,7 +484,6 @@ The final dataset used in subsequent analyses contains
 saveRDS(droplet_sce, "rds/droplet_sce.rds")
 ```
 
-
 ## Generating the input data for BASiCS
 
 Since droplet-based scRNA-seq data are generated without including technical 

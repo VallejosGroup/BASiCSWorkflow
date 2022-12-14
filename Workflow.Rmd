@@ -468,9 +468,9 @@ in the next section.
 set.seed(42)
 chain_sm <- BASiCS_MCMC(
   Data = sce_sm,
-  N = 20000,
-  Thin = 10,
-  Burn = 10000,
+  N = 30000,
+  Thin = 15,
+  Burn = 15000,
   Regression = TRUE,
   WithSpikes = FALSE,
   PriorParam = BASiCS_PriorParam(sce_sm, PriorMu = "EmpiricalBayes"),
@@ -482,9 +482,9 @@ chain_sm <- BASiCS_MCMC(
 set.seed(43)
 chain_psm <- BASiCS_MCMC(
   Data = sce_psm,
-  N = 20000,
-  Thin = 10,
-  Burn = 10000,
+  N = 30000,
+  Thin = 15,
+  Burn = 15000,
   Regression = TRUE,
   WithSpikes = FALSE,
   PriorParam = BASiCS_PriorParam(sce_psm, PriorMu = "EmpiricalBayes"),
@@ -651,6 +651,30 @@ diag_p2 <- diag_p2 +
   theme(legend.position = "none")
 diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
 ```
+```{r}
+diag_p1 <- BASiCS_DiagPlot(chain_psm, Param = "mu", Measure = "geweke")
+diag_p1 <- diag_p1 +
+  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
+  theme(legend.position = "none")
+diag_p2 <- BASiCS_DiagPlot(chain_psm, Param = "mu", Measure = "ess")
+diag_p2 <- diag_p2 +
+  geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed") +
+  theme(legend.position = "none")
+diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
+```
+
+```{r}
+diag_p1 <- BASiCS_DiagPlot(chain_sm, Param = "delta", Measure = "geweke")
+diag_p1 <- diag_p1 +
+  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
+  theme(legend.position = "none")
+diag_p2 <- BASiCS_DiagPlot(chain_sm, Param = "delta", Measure = "ess")
+diag_p2 <- diag_p2 +
+  geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed") +
+  theme(legend.position = "none")
+diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
+```
+
 
 ## Quantifying transcriptional variability using BASiCS
 
