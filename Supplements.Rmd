@@ -531,50 +531,26 @@ We can also directly visualise point estimates and their associated 95\% HPD:
 plot(summary_psm, Param = "mu", Genes = 1:5)
 ```
 
-## Validating the model fit
+## MCMC convergence diagnostics pre-somatic mesoderm cells
 
-Next, we visualise the results of the MCMC sampler by visualizing the 
-different chains and by plotting the regression trend.
+Here, we provide MCMC convergence diagnostics for the chains generated for the
+pre-somatic mesoderm cell population.
 To assess whether the chains converged, we will visualise trace plots for some 
 of the parameters. 
-The `plot` function allows us to generate trace, posterior density,
-and autocorrelation plots for different parameters.
 
 ```{r psm-chain-convergence, fig.cap = "Trace plot, marginal density, and autocorrelation function for mean expression of an example gene; presomatic cells."}
-plot(chain_psm, Param = "mu", Gene = 120)
+plot(chain_psm, Param = "mu", Gene = 1)
 ```
-
-```{r sm-chain-convergence, fig.cap = "Trace plot, marginal density, and autocorrelation function for mean expression of an example gene; somatic cells."}
-plot(chain_sm, Param = "mu", Gene = 120)
-```
-
 
 ```{r diag-psm, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; presomatic cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
 diag_p1 <- BASiCS_DiagPlot(chain_psm, Measure = "geweke")
 diag_p1 <- diag_p1 +
   geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
   theme(legend.position = "none")
-
 diag_p2 <- BASiCS_DiagPlot(chain_psm, Measure = "ess")
 diag_p2 <- diag_p2 +
   geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed") +
   theme(legend.position = "none")
-
-diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
-```
-
-
-```{r diag-sm, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; somatic cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
-diag_p1 <- BASiCS_DiagPlot(chain_sm, Measure = "geweke")
-diag_p1 <- diag_p1 +
-  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
-  theme(legend.position = "none")
-
-diag_p2 <- BASiCS_DiagPlot(chain_sm, Measure = "ess")
-diag_p2 <- diag_p2 +
-  geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed") +
-  theme(legend.position = "none")
-
 diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
 ```
 
