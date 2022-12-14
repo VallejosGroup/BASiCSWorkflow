@@ -504,14 +504,13 @@ Extra parameters can be used to store the output
 algorithm (`PrintProgress`).
 
 Here, we run the MCMC sampler separately for somitic and pre-somitic mesoderm
-cells. We use 20,000 iterations (`N`), discarding the initial 10,000 iterations
-as burn-in, (`Burn`), and saving parameter values only once in each 10 
+cells. We use 30,000 iterations (`N`), discarding the initial 15,000 iterations
+as burn-in, (`Burn`), and saving parameter values only once in each 15 
 iterations (`Thin`).
 We recommend this setting for large datasets, as it generally produces reliable
-and reproducible results. However, where computational resources allow, these
-settings can each be doubled to ensure accurate quantification of the posterior
-distribution. Practical guidance about MCMC convergence diagnostics is provided
-in the next section.
+and reproducible results. However, specific datasets may require a larger number
+of iterations to achieve convergence. Practical guidance about MCMC convergence 
+diagnostics is provided in the next section.
 
 ```{r MCMC-run, eval = FALSE}
 ## MCMC results may vary slightly due to pseudorandom number generation.
@@ -572,14 +571,15 @@ if (!file.exists("rds/chain_PSM.Rds")) {
     destfile = "rds/chain_PSM.Rds"
   )
 }
+
 ## Loads files after download
-chain_sm <- readRDS("rds/chain_SM.Rds")
-chain_psm <- readRDS("rds/chain_PSM.Rds")
+chain_sm <- readRDS("rds/chain_SM_v1.Rds")
+chain_psm <- readRDS("rds/chain_PSM_v1.Rds")
 ```
 
 The output from `BASiCS_MCMC` is a `BASiCS_Chain` object that contains the 
 draws associated to all model parameters. Given that 
-`N` = 40,000, `Thin` = 20 and `Burn` = 20,000, the object contains 1,000 
+`N` = 30,000, `Thin` = 15 and `Burn` = 15,000, the object contains 1,000 
 draws for each parameter.
 These can be accessed using the `displayChainBASiCS` function.
 For example, the following code displays the first 2 MCMC draws for mean
@@ -588,6 +588,9 @@ expression parameters $\mu_i$ associated to the first 3 genes.
 ```{r displayChainBASiCS}
 displayChainBASiCS(chain_sm, Param = "mu")[1:2, 1:3]
 ```
+
+See Section [ADD-REF] in the supplementary material for further examples on
+how to explore the posterior distribution. 
 
 ## MCMC diagnostics
 

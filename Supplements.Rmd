@@ -236,6 +236,7 @@ Cluster labels are not available for `r sum(is.na(cluster_labels$cellType))` cel
 Note that the authors also identified some sub-structure within these main clusters:
 
 ```{r table-subclusters}
+# Extract sub-type cell labels (sample sub-index is removed)
 cluster_labels$subCellType <- sub("_.*", "", cluster_labels$cell)
 table(cluster_labels$subCellType, cluster_labels$cellType)
 ```
@@ -296,6 +297,7 @@ metadata (e.g. gene length), useful for performing functional analysis
 of gene sets identified in downstream analyses.
 
 ```{r obtain-gene-symbols}
+# Check if data storage folder exists and create it if needed
 if (!dir.exists("rds")) {
   dir.create("rds", showWarnings = FALSE)
 }
@@ -312,8 +314,10 @@ if (!file.exists("rds/genenames.rds")) {
     mart = ensembl
   )
   rownames(genenames) <- genenames$ensembl_gene_id
+  # Store information for future use
   saveRDS(genenames, "rds/genenames.rds")
 }
+# Load pre-downloaded gene annotation information
 genenames <- readRDS("rds/genenames.rds")
 ```
 
@@ -338,10 +342,7 @@ For the remaining analysis, we will only focus on the
 protein coding genes that are contained in the data. These are selected below. 
 
 ```{r}
-protein_coding <- which(
-  rowData(droplet_sce)$gene_biotype == "protein_coding"
-)
-droplet_sce <- droplet_sce[protein_coding, ]
+droplet_sce <- droplet_sce[rowData(droplet_sce)$gene_biotype == "protein_coding", ]
 ```
 
 ## QC and exploratory data analysis
@@ -349,7 +350,8 @@ droplet_sce <- droplet_sce[protein_coding, ]
 In order to perform quality control (QC), we calculate some cell-specific
 summary statistics: the total number of counts per cell (`sum`) and the total 
 number of detected genes per cell (`detected`). These will be added in the
-`colData` slot. 
+`colData` slot using the `addPerCellQC()` function from the `r Biocpkg("scater")`
+package. 
 
 ```{r cellqc-metrics}
 droplet_sce <- addPerCellQC(droplet_sce)
@@ -360,7 +362,6 @@ The distribution of these metrics per each cluster can be visualised as follows:
 ```{r cellqc-metrics, fig.cap="Cell-level QC metrics. For each cell cluster: distribution of the total number of UMIs per cell (left) and the total number of detected genes per cell (right)."}
 p_cell_qc1 <- plotColData(droplet_sce, y = "sum", x = "subCellType") 
 p_cell_qc2 <- plotColData(droplet_sce, y = "detected", x = "subCellType")
-
 p_cell_qc1 + p_cell_qc2
 ```
 As seen in Figure \ref(fig:cellqc-metrics), the  `presomiticMesoderm.b` cluster 
@@ -401,10 +402,13 @@ Moreover, count-based models for dimensionality reduction
 removing the need for log normalisation.
 
 ```{r pca-visualisation-mesoderm-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left), the number of detected genes (middle) and animal of origin (right) for each cell."}
-## Global scaling normalisation + log tranformation + PCA
+## Global scaling normalisation 
 droplet_sce <- computeSumFactors(droplet_sce, colData(droplet_sce)$subCellType)
+## Obtain log-normalised expression counts
 droplet_sce <- logNormCounts(droplet_sce)
+## Run PCA
 droplet_sce <- runPCA(droplet_sce)
+## Plot first two PCs colour-coded according to cell-level metadata
 p_type <- plotPCA(droplet_sce, ncomponents = c(2, 1), colour_by = "subCellType") +
   theme(legend.position = "bottom")
 p_detected <- plotPCA(droplet_sce, ncomponents = c(2, 1), colour_by = "detected") +
@@ -433,6 +437,7 @@ outlined in @Lloyd-Smith2007.
 
 
 ```{r gene-selection, fig.cap="Average UMI-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
+## Calculate gene-level QC metrics using scater
 droplet_sce <- addPerFeatureQC(droplet_sce, exprs_values = "counts")
 ## Remove genes with zero total counts across all cells
 droplet_sce <- droplet_sce[rowData(droplet_sce)$detected != 0, ]
@@ -441,11 +446,13 @@ droplet_sce <- droplet_sce[rowData(droplet_sce)$detected != 0, ]
 rowData(droplet_sce)$detected_cells <-
   rowData(droplet_sce)$detected * ncol(droplet_sce) / 100
 
+## Set detection threshold to detecting expression in at least 20 cells
 detected_threshold <- 20
 rowData(droplet_sce)$include_gene <- 
   rowData(droplet_sce)$detected_cells >= detected_threshold
-plotRowData(
-    droplet_sce,
+
+## Plot gene-level metrics, highlighting those included for our analysis
+plotRowData(droplet_sce,
     x = "detected_cells",
     y = "mean",
     colour_by = "include_gene"
@@ -472,82 +479,56 @@ The final dataset used in subsequent analyses contains
 saveRDS(droplet_sce, "rds/droplet_sce.rds")
 ```
 
-## Generating the input data for BASiCS
+# Exploring the posterior distribution for BASiCS model parameters
 
-Since droplet-based scRNA-seq data are generated without including technical 
-spike-in genes, BASiCS uses measurement error models to quantify technical 
-variation through replication [@Carroll1998].
-Here, it is crucial to provide batch information to the BASiCS model.
-In the case of the somitic and pre-somoitic mesoderm cells, embryos of two mice 
-have been used to generate the data. 
-Cells isolated from the first embryo were split into two batches and processed 
-independently. These three different groups of cells are used as batches. 
+Here we explore the posterior distribution for the `r Biocpkg("BASiCS")` model
+parameters estimated for the pre-somitic mesoderm cells. First, we load the 
+saved MCMC chains:
 
-To enable BASiCS to use this information, this should be stored as `BatchInfo`
-within the `colData` slot. 
-
-```{r BASiCS-droplet-data}
-colData(droplet_sce)$BatchInfo  <- colData(droplet_sce)$sample
-```
-
-
-## Running the MCMC
-
-We next estimate model parameters by running the MCMC cell-type specifically. 
-Due to the high cell number ('r ncol(sce_psm)` for the pre-somitic mesoderm and 
-'r ncol(sce_sm)` for the somitic mesoderm), we set the number of iterations to 20000. 
-
-```{r run-mcmc, eval = FALSE}
-set.seed(42)
-chain_sm <- BASiCS_MCMC(
-  Data = sce_sm,
-  N = 20000,
-  Thin = 10,
-  Burn = 10000,
-  Regression = TRUE,
-  WithSpikes = FALSE,
-  PriorParam = BASiCS_PriorParam(sce_sm, PriorMu = "EmpiricalBayes"),
-  Threads = 4,
-  StoreChains = TRUE,
-  StoreDir = "rds/",
-  RunName = "SM"
-)
-set.seed(43)
-chain_psm <- BASiCS_MCMC(
-  Data = sce_psm,
-  N = 20000,
-  Thin = 10,
-  Burn = 10000,
-  Regression = TRUE,
-  WithSpikes = FALSE,
-  PriorParam = BASiCS_PriorParam(sce_psm, PriorMu = "EmpiricalBayes"),
-  Threads = 4,
-  StoreChains = TRUE,
-  StoreDir = "rds/",
-  RunName = "PSM"
-)
-```
-
-These chains took between 2.5 and 3 hours using an Intel 4770k (3.9 GHz,
-32 GB RAM, using 4 threads). Here, we provide these chains to download from:
-
-```{r droplet-chain-download}
-chains_website <- "https://zenodo.org/record/5243265/files/"
-options(timeout = 1000)
-if (!file.exists("rds/chain_SM.Rds")) {
-  download.file(
-    paste0(chains_website, "chain_SM.Rds"),
-    destfile = "rds/chain_SM.Rds"
-  )
-}
-if (!file.exists("rds/chain_PSM.Rds")) {
-  download.file(
-    paste0(chains_website, "chain_PSM.Rds"),
-    destfile = "rds/chain_PSM.Rds"
-  )
-}
-chain_sm <- readRDS("rds/chain_SM.Rds")
+```{r load-droplet-chain}
 chain_psm <- readRDS("rds/chain_PSM.Rds")
+```
+
+MCMC chains for specific model parameters can be extracted using the 
+`displayChainBASiCS()` function. For example, the following code will return
+all MCMC samples for gene-specific mean expression parameters across all genes 
+(other parameters can be obtained by varying the value of `Param`):
+
+```{r display-mu}
+chain_mu <- displayChainBASiCS(chain_psm, Param = "mu")
+```
+
+`chain_mu` is a matrix with `r nrow(chain_mu)` rows (1 per each stored MCMC
+iteration) and `r ncol(chain_mu)` (1 per each gene). The following code can
+be used to visualise the univariate posterior density for the mean expression
+parameter associated to a specific gene. 
+
+```{r}
+plot(density(chain_mu[,"ENSMUSG00000025902"]))
+```
+
+Point estimates (posterior medians) and their corresponding 95\% Highest 
+Posterior Density (HPD) interval for each model parameter can be obtained 
+using the `Summary()` method:
+
+```{r summary-droplet}
+summary_psm <- Summary(chain_psm)
+```
+
+To access posterior estimates associated to specific model parameters, we use
+the `displaySummaryBASiCS()` function. For example, here we display these 
+estimates for mean expression parameters estimated for 5 different genes:
+
+```{r summary-droplet-display}
+summary_mu <- displaySummaryBASiCS(summary_psm, Param = "mu")
+summary_mu[1:5,]
+```
+
+We can also directly visualise point estimates and their associated 95\% HPD:
+
+```{r summary-droplet-plot}
+# Genes denote the gene-index (row) in which the gene appears in the input data
+plot(summary_psm, Param = "mu", Genes = 1:5)
 ```
 
 ## Validating the model fit
