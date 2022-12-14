@@ -147,19 +147,7 @@ The posterior probability threshold $\alpha_R$ is chosen to control the EFDR
 we exclude genes that are not expressed in at least 2 cells per condition from
 differential variability testing.
 
-# Pre-processing and quality control steps for the mouse organogenesis dataset
-
-The development of droplet-based scRNA-seq [@Klein2015;@Macosko2015] 
-lead to a large increase in the number of cells that can be profiled per 
-experiment at a fixed cost.
-With this, large-scale scRNA-seq datasets have been generated to study 
-development across multiple time-points and capturing multiple tissues 
-[@Ibarra-Soria2018;@Kernfeld2018]. 
-Here we describe the computational analysis of changes in mean expression 
-and transcriptional variability when data are sparse and technical spike-in 
-genes are missing. 
-For this, we compare cells of the presomitic mesoderm and somitic mesoderm 
-using droplet-based scRNA-seq data [@Ibarra-Soria2018].
+# Pre-processing and quality control steps for the presomitic and somitic mesoderm cells
 
 ## Loading necessary libraries
 
@@ -502,17 +490,6 @@ within the `colData` slot.
 colData(droplet_sce)$BatchInfo  <- colData(droplet_sce)$sample
 ```
 
-Before running the MCMC, we now separate cells into two groups: presomitic
-mesoderm (PSM) and somitic mesoderm (SM)
-
-
-```{r }  
-sce_psm <- droplet_sce[, colData(droplet_sce)$cellType == "presomiticMesoderm",]
-sce_sm <- droplet_sce[, colData(droplet_sce)$cellType == "somiticMesoderm",]
-
-saveRDS(sce_psm, "rds/sce_psm.rds")
-saveRDS(sce_sm, "rds/sce_sm.rds")
-```
 
 ## Running the MCMC
 
