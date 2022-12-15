@@ -573,8 +573,8 @@ if (!file.exists("rds/chain_PSM.Rds")) {
 }
 
 ## Loads files after download
-chain_sm <- readRDS("rds/chain_SM_v1.Rds")
-chain_psm <- readRDS("rds/chain_PSM_v1.Rds")
+chain_sm <- readRDS("rds/chain_SM.Rds")
+chain_psm <- readRDS("rds/chain_PSM.Rds")
 ```
 
 The output from `BASiCS_MCMC` is a `BASiCS_Chain` object that contains the 
@@ -712,7 +712,6 @@ diag_p2 <- diag_p2 +
 diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
 ```
 
-
 ## Quantifying transcriptional variability using BASiCS
 
 Studying gene-level transcriptional variability can provide insights about the 
@@ -725,45 +724,30 @@ For example, we can obtain CV^2^ estimates for each gene using
 `r Biocpkg("scran")` normalised counts as input. 
 In contrast, `r Biocpkg("BASiCS")` infers transcriptional variability using 
 gene-specific over-dispersion parameters $\delta_i$ (see *Methods*).
-Here, we compare these approaches, focusing on somitic mesoderm cells (repeating 
-this analysis for pre-somitic mesoderm cells led to similar results). 
-
-As seen in Figure \@ref(fig:dispersion-vs-mean)A, CV^2^ and posterior estimates 
-for $\delta_i$ are highly correlated. 
-Moreover, both variability metrics are confounded by differences in mean 
-expression, i.e. highly expressed genes tend to exhibit lower variability
-(Figures \@ref(fig:dispersion-vs-mean)B-C). 
-To remove this confounding, `r Biocpkg("scran")` and `r Biocpkg("BASiCS")`
-derive *residual variability* estimates as deviations with respect to an
-global mean-variability trend (see *Methods*).
-These are derived using the DM approach [@Kolodziejczyk2015cell] and the
-residual over-dispersion parameters $\epsilon_i$ defined by [@Eling2018],
-respectively.
-For the somitic mesoderm cell data, both approaches led to strongly correlated 
-estimates (Figure \@ref(fig:dispersion-vs-mean)D) and, as expected, neither DM 
-values nor posterior estimates for $\epsilon_i$ are seen to be associated with
-mean expression (Figure \@ref(fig:dispersion-vs-mean)E-F). 
-However, unlike the DM method, the integrated approach implemented in 
-`r Biocpkg("BASiCS")` provides a direct measure of statistical uncertainty for 
-these estimates via posterior variance. 
-Note that the `BASiCS_ShowFit` function can be used to generate Figure 
-\@ref(fig:dispersion-vs-mean)C, but we generated the plot manually to 
-demonstrate how users can extract this information from a `BASiCS_MCMC` object,
-and for visual consistency with the other panels.
-For each of the panels in Figure \@ref(fig:dispersion-vs-mean), 
+Figure \@ref(fig:dispersion-vs-mean) compares these approaches, focusing on 
+somitic mesoderm cells (repeating this analysis for pre-somitic mesoderm cells 
+led to similar results). 
+For each of the panels in  Figure \@ref(fig:dispersion-vs-mean),
 we use the R package `r CRANpkg("ggpointdensity")` to visualise 
-the local density of genes along the axes of mean and variability.
+the local density of genes along the axes.
+Note that the `BASiCS_ShowFit` 
+function can be used to generate Figure \@ref(fig:dispersion-vs-mean)C, but we 
+generated the plot manually to demonstrate how users can extract this 
+information from a `BASiCS_MCMC` object, and for visual consistency with the 
+other panels.
 
 ```{r dispersion-vs-mean, fig.width=6, fig.height=6, fig.cap="Comparison of gene-specific transcriptional variability estimates and mean expression estimates obtained for each gene using BASiCS and scran. For this analysis, we exclude genes that are not expressed in at least 2 cells. BASiCS estimates for each gene are defined by the posterior median of the associated parameter. scran estimates for each gene are derived after applying the pooling normalisation strategy proposed by Lun et al. Points are coloured according to the local density of genes along the x- and y- axis. A: scran squared CV estimates versus BASiCS estimates for over-dispersion parameters. B: scran estimates for mean expression and the squared CV. C: BASiCS estimates for mean expression and over-dispersion parameters. D: BASiCS estimates for residual over-dispersion parameters versus DM values estimated by scran. E: scran estimates for mean expression and DM values. F: BASiCS estimates for mean expression and residual over-dispersion parameters. Dashed red lines in panels A and D represent the line given by x=y. "}
 
-## Get BASiCS posterior estimates for mean and variability - SM cells
+## Get BASiCS point estimates for mean and variability - SM cells
 summary_sm <- Summary(chain_sm)
 parameter_df <- data.frame(
-  mu = displaySummaryBASiCS(summary_sm, Param = "mu")[, 1],
-  delta = displaySummaryBASiCS(summary_sm, Param = "delta")[, 1],
-  epsilon = displaySummaryBASiCS(summary_sm, Param = "epsilon")[, 1]
+  mean = displaySummaryBASiCS(summary_sm, Param = "mu")[, 1],
+  overdisp = displaySummaryBASiCS(summary_sm, Param = "delta")[, 1],
+  residualoverdisp = displaySummaryBASiCS(summary_sm, Param = "epsilon")[, 1]
 )
 
+## Calculate scran size factors - SM cells
+sce_sm <- computeSumFactors(sce_sm)
 ## Get scran estimates for mean and variability - SM cells
 sce_sm <- logNormCounts(sce_sm, log = FALSE)
 parameter_df$mean_scran <- rowMeans(assay(sce_sm, "normcounts"))
@@ -775,8 +759,12 @@ parameter_df$DM <- DM(
 )
 
 ## Remove genes without counts in > 2 cells - BASiCS estimates not provided
-ind_not_na <- !(is.na(parameter_df$epsilon))
+sel_genes <- !is.na(parameter_df$residualoverdisp) 
 
+## The plots below are generated using ggplot2
+## We use `plot_params` to specify the format of such plots whilst avoiding code duplication
+## The plots can be further customized using ggplot2 principles
+## For example, we modify x- and y-axis limits in some of the plots below
 plot_params <- list(
   geom_pointdensity(size = 0.6, na.rm = TRUE),
   scale_colour_viridis(name = "Density"),
@@ -788,10 +776,22 @@ plot_params <- list(
   )
 )
 
-g1 <- ggplot(parameter_df[ind_not_na, ], aes(log10(cv2_scran), log10(delta))) +
-  plot_params +
-  xlab(bquote("scran"~CV^2~"(log10)")) +
-  ylab("BASiCS\nover-dispersion (log10)") +
+g1 <- ggplot(parameter_df[sel_genes,], aes(log10(cv2_scran), log10(overdisp))) +
+  xlim(-3, 3) + ylim(-3, 3) +
+  geom_abline(
+    slope = 1,
+    intercept = 0,
+    colour = "firebrick",
+    linetype = "dashed"
+  )
+  
+g2 <- ggplot(parameter_df[sel_genes,], aes(log10(mean_scran), log10(cv2_scran))) +
+  xlim(-3, 2.2) + ylim(-3, 3) 
+
+g3 <- ggplot(parameter_df[sel_genes,], aes(log10(mean), log10(overdisp))) +
+  xlim(-3, 2.2) + ylim(-3, 3) 
+
+g4 <- ggplot(parameter_df[sel_genes,], aes(DM, residualoverdisp)) +
   geom_abline(
     slope = 1,
     intercept = 0,
@@ -799,42 +799,57 @@ g1 <- ggplot(parameter_df[ind_not_na, ], aes(log10(cv2_scran), log10(delta))) +
     linetype = "dashed"
   )
 
-g2 <- ggplot(parameter_df[ind_not_na, ],
-    aes(log10(mean_scran), log10(cv2_scran))
-  ) +
-  plot_params +
-  xlab("scran means (log10)") +
-  ylab(bquote("scran"~CV^2~"(log10)"))
+g5 <- ggplot(parameter_df[sel_genes,], aes(log10(mean_scran), DM)) 
 
-g3 <- ggplot(parameter_df[ind_not_na, ], aes(log10(mu), log10(delta))) +
-  plot_params +
-  xlab("BASiCS means (log10)") +
-  ylab("BASiCS\nover-dispersion (log10)")
+g6 <- ggplot(parameter_df[sel_genes,], aes(log10(mean), residualoverdisp))
 
-g4 <- ggplot(parameter_df[ind_not_na, ], aes(DM, epsilon)) +
-  plot_params +
-  xlab("scran DM") +
-  ylab("BASiCS residual\nover-dispersion") +
-  geom_abline(
-    slope = 1,
-    intercept = 0,
-    colour = "firebrick",
-    linetype = "dashed"
-  )
-
-g5 <- ggplot(parameter_df[ind_not_na, ], aes(log10(mean_scran), DM)) +
-  plot_params +
-  xlab("scran means (log10)") +
-  ylab("scran DM")
-
-g6 <- ggplot(parameter_df[ind_not_na, ], aes(log10(mu), epsilon)) +
-  plot_params +
-  xlab("BASiCS means (log10)") +
-  ylab("BASiCS residual\nover-dispersion")
-
-(g1 + g2 + g3) / (g4 + g5 + g6) +
+((g1 + g2 + g3) * plot_params) / ((g4 + g5 + g6) * plot_params)  +
   plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(size = 15))
 ```
+
+
+As seen in Figure \@ref(fig:dispersion-vs-mean)A, CV^2^ and posterior estimates 
+for $\delta_i$ are highly correlated. 
+Moreover, both variability metrics are confounded by differences in mean 
+expression, i.e. highly expressed genes tend to exhibit lower variability
+(Figures \@ref(fig:dispersion-vs-mean)B-C). 
+We note, however, that `r Biocpkg("scran")` infers a more narrow distribution of
+transcriptional variability estimates for any given mean expression level.
+To remove the confounding observed in Figures \@ref(fig:dispersion-vs-mean)B-C, 
+`r Biocpkg("scran")` and `r Biocpkg("BASiCS")` derive *residual variability* 
+estimates as deviations with respect to an global mean-variability trend 
+(see *Methods*).
+These are derived using the DM approach [@Kolodziejczyk2015cell] and the
+residual over-dispersion parameters $\epsilon_i$ defined by [@Eling2018],
+respectively.
+For the somitic mesoderm cell data, both approaches led to correlated 
+estimates (Figure \@ref(fig:dispersion-vs-mean)D, Pearson's correlation equal 
+to `r with(parameter_df, cor(DM, residualoverdisp))`) but the residual 
+variability estimates generated for these data are less consistent than what we 
+have observed in the context of less sparse data (see Section [ADD-REF] in the 
+supplementary material). 
+For the majority of genes (`r with(parameter_df[sel_genes,], sum(sign(DM) == sign(residualoverdisp)))` out of `r sum(sel_genes)` captured in at least 3 
+cells) both approaches led some broadly similar results, inferring the same 
+sign for their residual variability estimates. However, [TO-DO: explore what
+drives the difference; rank figure below is a tentative idea].
+
+Finally, as expected, we observe that
+neither DM values nor posterior estimates for $\epsilon_i$ are 
+associated with mean expression (Figure \@ref(fig:dispersion-vs-mean)E-F).
+However, unlike the DM method, the integrated approach implemented in 
+`r Biocpkg("BASiCS")` provides a direct measure of statistical uncertainty for 
+these estimates via posterior variance. 
+
+
+```{r rank-var-comparison}
+g1 <- ggplot(parameter_df[sel_genes,], aes(rank(DM), rank(residualoverdisp))) 
+# Select genes captured in at least 100 cells 
+sel_genes2 <- sel_genes & rowSums(counts(sce_sm) > 0) > 100
+g2 <- ggplot(parameter_df[sel_genes2,], aes(rank(DM), rank(residualoverdisp))) 
+
+(g1 + g2) * plot_params + plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(size = 15))
+```
+
 
 ## HVG/LVG detection using BASiCS
 
@@ -1069,8 +1084,8 @@ probability threshold is suitable.
 
 ```{r visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between somitic and pre-somitic cells. Log-fold changes of average expression in somitic cells relative to pre-somitic cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in somitic cells relative to pre-somitic mesoderm cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
-p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano",
-    TransLogit = TRUE)
+p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano")
+    #TransLogit = TRUE)
 p1 / p2
 ```
 
