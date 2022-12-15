@@ -701,14 +701,10 @@ model. These issues can often be addressed by more stringent
 filtering of genes and cells before performing inference.
 
 ```{r mcmc-diag, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; somitic mesoderm cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
-diag_p1 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "geweke")
-diag_p1 <- diag_p1 +
-  geom_hline(yintercept = c(-3, 3), col = "firebrick", linetype = "dashed") +
-  theme(legend.position = "none")
-diag_p2 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "ess")
-diag_p2 <- diag_p2 +
-  geom_hline(yintercept = 100, col = "firebrick", linetype = "dashed") +
-  theme(legend.position = "none")
+diag_p1 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "geweke") +
+  theme(legend.position = "bottom")
+diag_p2 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "ess") +
+  theme(legend.position = "bottom")
 diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
 ```
 
