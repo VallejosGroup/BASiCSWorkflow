@@ -885,16 +885,42 @@ hvg <- BASiCS_DetectHVG(chain_sm, EpsilonThreshold = log(2))
 lvg <- BASiCS_DetectLVG(chain_sm, EpsilonThreshold = -log(2))
 ```
 
+For subsequent visualisation and data exploration, here we merge the output
+tables generated above and store these as part of the gene-level metadata
+in the `sce_sm` object.
+
+```{r metadata-VG-SM}
+## Merge HVG and LVG tables in a single data frame
+vg_table <- merge(
+  as.data.frame(lvg, Filter = FALSE),
+  as.data.frame(hvg, Filter = FALSE),
+  by = c("GeneName", "GeneIndex", "Mu", "Delta", "Epsilon"),
+  suffixes = c("LVG", "HVG")
+)
+## Mark genes as highly variable, lowly variable, or not either.
+vg_table$VG <- "Not HVG or LVG"
+vg_table$VG[vg_table$HVG] <- "HVG"
+vg_table$VG[vg_table$LVG] <- "LVG"
+## Store as gene-level metadata
+rowData(sce_sm) <- merge(rowData(sce_sm), vg_table, 
+                         by.x = "ensembl_gene_id", by.y = "GeneName",
+                         sort = FALSE)
+```
+
 Performing HVG and LVG detection involves identifying a posterior probability
-threshold that matches a target EFDR; for the HVG detection in this case,
-we are unable to identify a suitable probability threshold; therefore the
-default minimum probability threshold of $\frac{2}{3}$ is used. 
-This minimum threshold value can be changed using the `ProbThreshold` to
+threshold that matches a target EFDR. We perform this choice using a 
+grid search in which EFDR is calculated for a range of different probability 
+thresholds between 0.5 and 1. As seen in Figure \@ref(fig:efdr-plot-vg-SM),
+for the somitic mesoderm cells, this leads to a threshold of 
+`r hvg@ProbThreshold` and `r lvg@ProbThreshold` for HVG and LVG detection, 
+respectively (the value of these thresholds can be extracted from the 
+`ProbThreshold` slot in the `hvg` and `lvg` objects, e.g. using 
+`hvg@ProbThreshold`). 
+For some datasets, the grid search may fail to identify a probability threshold
+that matches the target EFDR. In such cases, the default minimum probability 
+threshold of $\frac{2}{3}$ is used. 
+This default threshold value can be changed using the `ProbThreshold` to
 `BASiCS_DetectHVG` and `BASiCS_DetectLVG`.
-This can be seen in \@ref(fig:efdr-plot-vg-SM), where in
-panel A the chosen probability threshold matches the target EFDR of 0.1, whereas
-in panel B the chosen probability threshold has a slightly higher EFDR than
-the target value of 0.1.
 
 ```{r efdr-plot-vg-SM, fig.cap = "Lines representing the EFDR and EFNR for a range of posterior probability thresholds for the HVG (A) and LVG (B) detection tasks. The target EFDR is indicated by dashed horizontal lines, while the chosen posterior probability threshold is indicated by a vertical dashed line."}
 p1 <- BASiCS_PlotVG(hvg, Plot = "Grid")
@@ -907,16 +933,6 @@ p1 + p2 +
 ```
 
 ```{r plot-vg-SM, fig.cap="HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
-vg_table <- merge(
-  as.data.frame(hvg, Filter = FALSE),
-  as.data.frame(lvg, Filter = FALSE),
-  all = TRUE
-)
-## mark genes as highly variable, lowly variable, or not either.
-vg_table$VG <- "Not HVG or LVG"
-vg_table$VG[vg_table$HVG] <- "HVG"
-vg_table$VG[vg_table$LVG] <- "LVG"
-
 ggplot(vg_table) +
   aes(log10(Mu), Epsilon, colour = VG) +
   geom_point() +
@@ -935,70 +951,46 @@ ggplot(vg_table) +
   )
 ```
 
-For the somitic data, we obtained *`r sum(hvg@Table$HVG, na.rm=TRUE)`* 
-HVG and *`r sum(lvg@Table$LVG, na.rm=TRUE)`* LVG.
+For the somitic mesoderm cells data, we obtained 
+*`r sum(hvg@Table$HVG, na.rm=TRUE)`* HVG and *`r sum(lvg@Table$LVG, na.rm=TRUE)`* LVG.
 As shown in Figure \@ref(fig:plot-vg-SM), these genes are distributed across 
 a wide range of mean expression values. 
 As an illustration, Figure \@ref(fig:plot-example-vg-SM) shows the 
 distribution of normalised expression values for selected HVG and LVG, focusing 
 on examples with similar mean expression levels.
-As expected, HVG tend to exhibit a wider distribution and potentially bimodal
+As expected, HVG tend to exhibit a wider and potentially bimodal
 distribution (Figure \@ref(fig:plot-example-vg-SM)A).
 Instead, LVG tend to have more narrow and unimodal distributions 
 (Figure \@ref(fig:plot-example-vg-SM)B).
 
 ```{r plot-example-vg-SM, fig.cap = "BASiCS denoised counts for example HVG and LVG with similar overall levels of expression."}
-genenames <- readRDS("rds/genenames.rds")
-
-## Obtain normalised expression values
-dc_sm <- BASiCS_DenoisedCounts(sce_sm, chain_sm)
-
-vg_table <- merge(
-  as.data.frame(lvg, Filter = FALSE),
-  as.data.frame(hvg, Filter = FALSE),
-  by = c("GeneName", "GeneIndex", "Mu", "Delta", "Epsilon"),
-  suffixes = c("LVG", "HVG")
-)
-
-vg_table <- merge(
-  vg_table,
-  genenames,
-  by.x = "GeneName", by.y = "ensembl_gene_id",
-  sort = FALSE
-)
+## Obtain normalised expression values and store them as an assay in sce_sm
+assay(sce_sm, "BASiCS_norm") <- BASiCS_DenoisedCounts(sce_sm, chain_sm)
 
 ## Select HVG/LVG genes with similar mean expression values
-low_exp <- 1
-high_exp <- 2
-is_mid_exp <- log10(vg_table$Mu) > low_exp & log10(vg_table$Mu) < high_exp
-hvg_table <- vg_table[which(is_mid_exp & vg_table$HVG), ]
-lvg_table <- vg_table[which(is_mid_exp & vg_table$LVG), ]
+low_exp <- 20; up_exp <- 40
+is_mid_exp <- rowData(sce_sm)$Mu > low_exp & rowData(sce_sm)$Mu < up_exp
+is_hvg <- is_mid_exp & rowData(sce_sm)$HVG
+is_lvg <- is_mid_exp & rowData(sce_sm)$LVG
 
-## Order by epsilon and select top 3 HVG and LVG within the genes selected above
-top_hvg <- order(hvg_table$Epsilon, decreasing = TRUE)[1:3]
-top_lvg <- order(lvg_table$Epsilon, decreasing = FALSE)[1:3]
+## Amongst those, order by epsilon and select top 5 HVG and LVG 
+top_hvg <- order(rowData(sce_sm)$Epsilon[is_hvg], decreasing = TRUE)[1:5]
+top_lvg <- order(rowData(sce_sm)$Epsilon[is_lvg], decreasing = FALSE)[1:5]
 
-hvg_counts <- as.matrix(log10(t(dc_sm[hvg_table$GeneName[top_hvg], ]) + 1))
-lvg_counts <- as.matrix(log10(t(dc_sm[lvg_table$GeneName[top_lvg], ]) + 1))
+## Generate violin plots for the selected HVG and LVG
+## The plotExpression() function from the scater package is used for this purpose
+plot_hvg <- plotExpression(sce_sm, 
+                           rowData(sce_sm)$external_gene_name[is_hvg][top_hvg],
+               exprs_values = "BASiCS_norm",
+               swap_rownames = "external_gene_name",
+               feature_colours = FALSE) + ylim(0, 90) 
 
-## Add genenames
-colnames(hvg_counts) <- hvg_table$external_gene_name[top_hvg]
-colnames(lvg_counts) <- lvg_table$external_gene_name[top_lvg]
-  
-plot_params <- list(
-  geom_violin(na.rm = TRUE),
-  coord_flip(),
-  ylim(-0.05, max(log10(dc_sm + 1))),
-  geom_jitter(position = position_jitter(0.3)),
-  ylab("log10(norm count + 1)"),
-  xlab("Gene")
-)
-plot_hvg <- ggplot(melt(hvg_counts), aes(x = Var2, y = value)) +
-  plot_params + ggtitle("Example HVGs")
+plot_lvg <- plotExpression(sce_sm, 
+                           rowData(sce_sm)$external_gene_name[is_lvg][top_lvg], 
+               exprs_values = "BASiCS_norm",
+               swap_rownames = "external_gene_name",
+               feature_colours = FALSE) + ylim(0, 90) 
 
-plot_lvg <- ggplot(melt(lvg_counts), aes(x = Var2, y = value)) +
-  plot_params + ggtitle("Example LVGs")
-  
 plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
 ```
 
@@ -1440,9 +1432,9 @@ ind_vg <- table_combined_genes$ResultDiffResDisp %in% c("SM+") &
   ) < 0.05 &
   pmin(
     table_combined_genes$ExpPropSM, table_combined_genes$ExpPropPSM
-  ) > 0.75
+  ) > 0.99
 g1 <- plot_vg(ind_vg) +
-    theme(legend.position = "none")
+    theme(legend.position = "bottom")
 
 ## genes more variable in somitic     &
 ## not differentially expressed     &

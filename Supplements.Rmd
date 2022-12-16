@@ -342,7 +342,8 @@ For the remaining analysis, we will only focus on the
 protein coding genes that are contained in the data. These are selected below. 
 
 ```{r}
-droplet_sce <- droplet_sce[rowData(droplet_sce)$gene_biotype == "protein_coding", ]
+droplet_sce <- droplet_sce[!is.na(rowData(droplet_sce)$gene_biotype) &
+                           rowData(droplet_sce)$gene_biotype == "protein_coding", ]
 ```
 
 ## QC and exploratory data analysis
@@ -475,8 +476,22 @@ droplet_sce <- droplet_sce[rowData(droplet_sce)$include_gene, ]
 The final dataset used in subsequent analyses contains 
 `r ncol(droplet_sce)` cells and `r nrow(droplet_sce)` genes.
 
-```{r save-SCE}
-saveRDS(droplet_sce, "rds/droplet_sce.rds")
+As the analysis will be carried out separately for pre-somitic and somitic
+mesoderm cells, we create separate `SingleCellExperiment` object for each 
+group of cells. These datasets contain 
+`r sum(colData(droplet_sce)$cellType == "presomiticMesoderm")` and 
+`r sum(colData(droplet_sce)$cellType == "somiticMesoderm")`, respectively. 
+
+```{r separate-SCE}
+sce_psm <- droplet_sce[,colData(droplet_sce)$cellType == "presomiticMesoderm"]
+sce_sm <- droplet_sce[,colData(droplet_sce)$cellType == "somiticMesoderm"]
+```
+
+These are then stored for their use in the main manuscript.
+
+```{r save-sce}
+saveRDS(sce_psm, "rds/sce_psm.rds")
+saveRDS(sce_sm, "rds/sce_sm.rds")
 ```
 
 # Exploring the posterior distribution for BASiCS model parameters
