@@ -933,22 +933,13 @@ p1 + p2 +
 ```
 
 ```{r plot-vg-SM, fig.cap="HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
-ggplot(vg_table) +
-  aes(log10(Mu), Epsilon, colour = VG) +
-  geom_point() +
-  geom_hline(yintercept = 0, lty = 2) +
+plotRowData(sce_sm, x = "Mu", y = "Epsilon", colour_by = "VG") + 
+  scale_x_log10() + 
+  geom_hline(yintercept = c(-log(2), 0, log(2)), lty = 2) +
   labs(
     x = "BASiCS means (log10)",
     y = "BASiCS residual\nover-dispersion"
-  ) +
-  scale_colour_manual(name = NULL,
-    values = c(
-      "HVG" = "firebrick",
-      "LVG" = "dodgerblue",
-      "Not HVG or LVG" = "grey80"
-    ),
-    na.value = "grey80"
-  )
+  ) 
 ```
 
 For the somitic mesoderm cells data, we obtained 
@@ -965,7 +956,8 @@ Instead, LVG tend to have more narrow and unimodal distributions
 
 ```{r plot-example-vg-SM, fig.cap = "BASiCS denoised counts for example HVG and LVG with similar overall levels of expression."}
 ## Obtain normalised expression values and store them as an assay in sce_sm
-assay(sce_sm, "BASiCS_norm") <- BASiCS_DenoisedCounts(sce_sm, chain_sm)
+assay(sce_sm, "BASiCS_norm") <- BASiCS_DenoisedCounts(sce_sm, chain_sm,
+                                                      WithSpikes = FALSE)
 
 ## Select HVG/LVG genes with similar mean expression values
 low_exp <- 20; up_exp <- 40
@@ -1088,14 +1080,17 @@ genes within one group of cells (such step is also internally done by
 differences in mRNA content between the groups. 
 
 ```{r offset-denoised}
-## Calculate a global offset between the groups
-offset <- BASiCS_CorrectOffset(chain_sm, chain_psm)
+## Calculate a global offset between the groups using the SM population as reference
+offset <- BASiCS_CorrectOffset(chain_psm, chain_sm)
 offset$Offset
 ## Get offset corrected chain
-chain_sm <- offset$Chain
-## Obtain normalised counts within each group of cells
-dc_sm <- BASiCS_DenoisedCounts(sce_sm, chain_sm, WithSpikes = FALSE)
-dc_psm <- BASiCS_DenoisedCounts(sce_psm, chain_psm, WithSpikes = FALSE)
+chain_psm <- offset$Chain
+## Obtain normalised counts within for the PSM population
+## Normalised counts were for the SM population were already obtained
+## in the HVG/LVG analysis section
+## Obtain normalised expression values and store them as an assay in sce_sm
+assay(sce_psm, "BASiCS_norm") <- BASiCS_DenoisedCounts(sce_psm, chain_psm, 
+                                                       WithSpikes = FALSE)
 ```
 
 To visualise expression patterns for multiple genes at once, we use the 
