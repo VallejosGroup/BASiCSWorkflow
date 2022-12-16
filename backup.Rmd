@@ -1,0 +1,732 @@
+---
+title: "Backup file"
+author: 
+  - name: Alan O'Callaghan
+    affiliation: 
+    - &MRC MRC Human Genetics Unit, Institute of Genetics \& Cancer, 
+      University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
+      EH4 2XU, UK
+    email: "a.b.o'callaghan@sms.ed.ac.uk"
+  - name: Nils Eling
+    affiliation: 
+    - &UZH Department of Quantitative Biomedicine, University of Zurich,
+      Winterthurerstrasse 190, CH-8057, Zurich, Switzerland
+    - &ETH Institute for Molecular Health Sciences, ETH Zurich,
+      Otto-Stern Weg 7, 8093 Zurich, Switzerland
+  - name: John C. Marioni
+    affiliation: 
+    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
+      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+  - name: Catalina A. Vallejos
+    affiliation: 
+    - *MRC 
+    - The Alan Turing Institute, British Library, 96 Euston Road, London, 
+      NW1 2DB, UK
+    email: catalina.vallejos@igmm.ed.ac.uk
+bibliography: Workflow.bib
+urlcolor: Orange
+output:
+  BiocWorkflowTools::f1000_article:
+    fig_width: 6
+    fig_height: 4
+---
+
+
+```{r setup_knitr, include = FALSE, cache = FALSE}
+library("BiocStyle")
+library("knitr")
+knitr::opts_chunk$set(
+  message = FALSE, error = FALSE, warning = FALSE,
+  cache = 2, cache.path = "cache_supp/",
+  fig.path = "figure_supp/"
+)
+```
+
+## Downloading the data
+
+The matrix with raw read counts can be obtained from ArrayExpress under the 
+accession number 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
+In the matrix, column names contain library identifiers and row names
+display Ensembl gene identifiers.
+
+```{r naive-data}
+if (!file.exists("downloads/"))
+  dir.create("downloads", showWarnings = FALSE)
+if (!file.exists("downloads/raw_data.txt")) {
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
+  file <- "E-MTAB-4888.processed.1.zip"
+  download.file(
+    paste0(website, file),
+    destfile = "downloads/raw_data.txt.zip"
+  )
+  unzip("downloads/raw_data.txt.zip", exdir = "downloads")
+  file.remove("downloads/raw_data.txt.zip")
+}
+
+cd4_raw <- read.table("downloads/raw_data.txt", header = TRUE, sep = "\t")
+cd4_raw <- as.matrix(cd4_raw)
+```
+
+The input matrix contains data for `r format(ncol(cd4_raw), big.mark=",")`
+cells and `r format(nrow(cd4_raw), big.mark=",")`
+genes, including `r sum(grepl("ERCC", rownames(cd4_raw)))` ERCC spike-ins.
+
+Information about experimental conditions and other metadata is available 
+under the same accession number. 
+
+```{r selecting-serum-cells}
+if (!file.exists("downloads/metadata_file.txt")) {
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
+  file <- "E-MTAB-4888.additional.1.zip"
+  download.file(
+    paste0(website, file),
+    destfile = "downloads/metadata.txt.zip"
+  )
+  unzip("downloads/metadata.txt.zip", exdir = "downloads")
+  file.remove("downloads/metadata.txt.zip")
+}
+
+cd4_metadata <- read.table(
+  "downloads/metadata_file.txt",
+  header = TRUE,
+  sep = "\t"
+)
+
+## Save sample identifiers as rownames
+rownames(cd4_metadata) <- cd4_metadata$X
+```
+
+The columns in the metadata file contain library identifiers (`X`), strain 
+information (`Strain`; *Mus musculus castaneus* or *Mus musculus domesticus*), 
+the age of the animals (`Age`; young or old), stimulation state of the cells 
+(`Stimulus`; naive or activated), batch information (`Individuals`; associated 
+to different mice), and cell type information (`Celltype`; via FACS or MACS 
+purification). 
+
+Here, we convert the data and metadata described above into a 
+`SingleCellExperiment` object. 
+For this purpose, we first separate the input matrix of expression counts into
+two matrices associated to intrinsic genes and external spike-ins, respectively. 
+Within the `SingleCellExperiment` object, the latter is stored separately
+as an *alternative experiment*. For more details on the alternative experiment
+slot, see `help("altExp")`.
+
+```{r CD4-SCE-object}
+## Separate intrinsic from ERCC counts
+bio_counts <- cd4_raw[!grepl("ERCC", rownames(cd4_raw)), ]
+spike_counts <- cd4_raw[grepl("ERCC", rownames(cd4_raw)), ]
+## Generate the SingleCellExperiment object
+sce_cd4_all <- SingleCellExperiment(
+  assays = list(counts = bio_counts),
+  colData = cd4_metadata[colnames(cd4_raw), ]
+)
+## Add read-counts for spike-ins as an alternative experiment
+altExp(sce_cd4_all, "spike-ins") <- SummarizedExperiment(
+  assays = list(counts = spike_counts)
+)
+```
+
+Hereafter, our analysis focuses on naive CD4^+^ T cells in the presence and
+absence of stimulation using plate-bound antibodies, obtained 
+from young *Mus musculus domesticus* animals, and purified using MACS-based cell
+sorting. 
+Thus, we subset the `SingleCellExperiment` object to these 
+`r sum(sce_cd4_all$Strain == "Mus musculus domesticus" & sce_cd4_all$Age == "Young" & sce_cd4_all$Celltype == "MACS-purified Naive")` cells.
+
+```{r naive-activated-CD4-SCE-object}
+ind_select <- sce_cd4_all$Strain == "Mus musculus domesticus" &
+  sce_cd4_all$Age == "Young" &
+  sce_cd4_all$Celltype == "MACS-purified Naive"
+sce_naive_active <- sce_cd4_all[, ind_select]
+sce_naive_active
+```
+
+## Annotation
+
+Input data was annotated using Ensembl gene identifiers. 
+To facilitate interpretation, it is often useful to obtain a mapping from 
+Ensembl gene IDs to gene symbols using the BioMart suite
+([http://www.biomart.org](http://www.biomart.org)) via the 
+Bioconductor package `r Biocpkg("biomaRt")` [@Durinck2009].
+This can also be used to obtain gene-pathways mappings and other
+metadata (e.g. gene length), useful for performing functional analysis
+of gene sets identified in downstream analyses.
+
+```{r obtain-gene-symbols}
+if (!dir.exists("rds")) {
+  dir.create("rds", showWarnings = FALSE)
+}
+if (!file.exists("rds/genenames.rds")) {
+  # Initialize mart and dataset
+  ensembl <- useEnsembl(
+    biomart = "genes",
+    version = 104,
+    dataset = "mmusculus_gene_ensembl"
+  )
+  # Select gene ID and gene name
+  genenames <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
+    mart = ensembl
+  )
+  rownames(genenames) <- genenames$ensembl_gene_id
+  saveRDS(genenames, "rds/genenames.rds")
+}
+genenames <- readRDS("rds/genenames.rds")
+```
+
+We add this information as `rowData` within the `SingleCellExperiment` 
+object created above. 
+
+```{r}
+## Merge biomaRt annotation
+rowdata <- data.frame(ensembl_gene_id = rownames(sce_naive_active))
+rowdata <- merge(rowdata, genenames, by = "ensembl_gene_id", all.x = TRUE)
+rownames(rowdata) <- rowdata$ensembl_gene_id
+## Check if  order is correct after merge;
+stopifnot(all(rownames(rowdata) == rownames(sce_naive_active)))
+## add to the SingleCellExperiment object
+rowData(sce_naive_active) <- rowdata
+```
+
+For the remaining analysis, we will only focus on the 
+`r format(sum(rowData(sce_naive_active)$gene_biotype == "protein_coding", na.rm=TRUE), big.mark=",")`
+protein coding genes that are contained in the data. These are selected below. 
+
+```{r}
+protein_coding <- which(
+  rowData(sce_naive_active)$gene_biotype == "protein_coding"
+)
+sce_naive_active <- sce_naive_active[protein_coding, ]
+```
+
+## QC and exploratory data analysis
+
+The data available at 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/) have
+been already filtered to remove poor quality samples.
+The QC applied in [@Martinez-jimenez2017] removed cells with: (i) fewer 
+than 1,000,000 total reads, (ii) less than 20% of reads mapped to 
+endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and 
+(iv) more than 10% or fewer than 0.5% of reads mapped to mitochondrial genes.
+We include visualisations of these measures here; we also include another 
+widely used QC diagnostic plot that compares the total 
+number (or fraction) of spike-in counts versus the total number (or fraction) of 
+endogeneous counts.
+In such a plot, low quality samples are characterised by a high fraction of 
+spike-in counts and a low fraction of endogeneous counts 
+(see Figure \@ref(fig:PerCellQC)).
+
+```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
+sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
+p_cell_qc1 <- plotColData(
+  sce_naive_active,
+  x = "sum",
+  y = "detected") +
+  xlab("Total endogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+p_cell_qc2 <- plotColData(
+  sce_naive_active,
+  x = "sum",
+  y = "altexps_spike-ins_sum") +
+  xlab("Total endogenous reads per cell") +
+  ylab("Total spike-in reads per cell") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+
+p_cell_qc1 + p_cell_qc2
+```
+
+We can also visualise these metrics with respect to cell-level metadata, such
+as the experimental conditions (active vs unstimulated) and the different mice 
+from which cells were collected 
+(see Figure \@ref(fig:experimental-condition-batch)). 
+
+```{r experimental-condition-batch, fig.cap="Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
+p_stimulus <- plotColData(
+    sce_naive_active,
+    x = "sum",
+    y = "detected",
+    colour_by = "Stimulus"
+  ) +
+  xlab("Total endogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+p_batch <- plotColData(
+    sce_naive_active,
+    x = "sum",
+    y = "detected",
+    colour_by = "Individuals"
+  ) +
+  xlab("Total endogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+p_stimulus + p_batch
+```
+
+To further explore the underlying structure of the data, we perform global
+scaling normalisation using `r Biocpkg("scran")` and
+principal component analysis (PCA) of log-transformed normalised expression 
+counts using `r Biocpkg("scater")`.
+As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
+suggests the absence of strong batch effects.
+It should be noted that the estimation of global scaling normalisation factors 
+using `r Biocpkg("scran")` is not strictly necessary in the 
+`r Biocpkg("BASiCS")` workflow. 
+Here, we only use it as part of the exploratory data analysis. 
+Moreover, count-based models for dimensionality reduction 
+(e.g. [@Townes2019;@Lopez2018]) could be used as an alternative to PCA, 
+removing the need for log normalisation.
+
+```{r pca-visualisation-stimulus-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
+## Global scaling normalisation + log tranformation + PCA
+sce_naive_active <- computeSumFactors(sce_naive_active)
+sce_naive_active <- logNormCounts(sce_naive_active)
+sce_naive_active <- runPCA(sce_naive_active)
+p_stimulus <- plotPCA(sce_naive_active, ncomponents = c(2, 1), colour_by = "Stimulus") +
+  theme(legend.position = "bottom")
+p_batch <- plotPCA(sce_naive_active, ncomponents = c(2, 1), colour_by = "Individuals") +
+  theme(legend.position = "bottom")
+p_stimulus + p_batch
+```
+
+In addition to cell-specific QC, we also recommend a gene filtering 
+step prior to using `r Biocpkg("BASiCS")`. 
+The purpose of this filter is to remove lowly expressed genes that were largely
+undetected through sequencing, making reliable variability estimates difficult
+to obtain.
+Here, we remove genes that are not detected in at least 20 cells across both
+conditions, or that have an average read count below 1. This is to ensure a
+reliable estimate of variability, roughly in line with the sample size
+requirements for the negative binomial distribution outlined in
+@Lloyd-Smith2007.
+
+
+```{r gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
+sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
+## Remove genes with zero total counts across all cells
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
+
+## Transform "detected" into number of cells and define inclusion criteria
+rowData(sce_naive_active)$detected_cells <-
+  rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
+
+detected_threshold <- 20
+mean_threshold <- 1
+include_gene <- rowData(sce_naive_active)$mean >= mean_threshold &
+  rowData(sce_naive_active)$detected_cells >= detected_threshold
+rowData(sce_naive_active)$include_gene <- include_gene
+plotRowData(
+    sce_naive_active,
+    x = "detected_cells",
+    y = "mean",
+    colour_by = "include_gene"
+  ) +
+  xlab("Number of cells in which expression was detected") +
+  ylab("Average number of read counts across all cells") +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme(legend.position = "bottom") +
+  geom_vline(
+    xintercept = detected_threshold,
+    linetype = "dashed",
+    col = "grey60"
+  ) +
+  geom_hline(
+    yintercept = mean_threshold,
+    linetype = "dashed",
+    col = "grey60"
+  )
+
+## Apply gene filter
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
+```
+
+Subsequently, we also require users to remove spike-in molecules that were not 
+captured through sequencing. We do this separately for naive and active
+cells.
+
+```{r spike-ins-present}
+ind_active <- sce_naive_active$Stimulus == "Active"
+ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
+spikes <- assay(altExp(sce_naive_active))
+detected_spikes_active <- rowSums(spikes[, ind_active] > 0) > 0
+detected_spikes_naive <- rowSums(spikes[, ind_naive] > 0) > 0
+detected_spikes <- detected_spikes_naive & detected_spikes_active
+altExp(sce_naive_active) <- altExp(sce_naive_active)[detected_spikes, ]
+```
+
+Subsequently, we also require users to remove spike-in molecules that were not 
+captured through sequencing. We do this separately for naive and active
+cells.
+
+```{r spike-ins-present}
+ind_active <- sce_naive_active$Stimulus == "Active"
+ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
+spikes <- assay(altExp(sce_naive_active))
+detected_spikes_active <- rowSums(spikes[, ind_active] > 0) > 0
+detected_spikes_naive <- rowSums(spikes[, ind_naive] > 0) > 0
+detected_spikes <- detected_spikes_naive & detected_spikes_active
+altExp(sce_naive_active) <- altExp(sce_naive_active)[detected_spikes, ]
+```
+
+## Spike-in concentrations
+
+If spike-ins will be used to aid data normalisation and technical noise 
+quantification, `r Biocpkg("BASiCS")` also requires the number of spike-in 
+molecules that were added to each well. 
+For each spike-in $i$, this corresponds to:
+
+$$ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
+\times V \times D \hspace{0.5cm} \mbox{where,} $$
+
+- $C_i$ is the concentration for the spike-in $i$ (measured in $aM\mu{}l^{-1}$),
+- $V$ is the volume added into each well (measure in $nl$) and
+- $D$ is a dilution factor. 
+
+The remaining factors in the equation above are unit conversion constants
+(e.g. from moles to molecules). 
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC 
+spike-in mix 1 and a volume of $9nl$ was added into each well (see [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9)).
+Finally, input concentrations $C_i$ can be downloaded from 
+[https://assets.thermofisher.com/TFS-Assets/LSG/manuals](https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt).
+
+```{r spike-in_download}
+if (!file.exists("downloads/spike_info.txt")) {
+  website <- "https://assets.thermofisher.com/TFS-Assets/LSG/manuals/"
+  file <- "cms_095046.txt"
+  download.file(
+    paste0(website, file),
+    destfile = "downloads/spike_info.txt"
+  )
+}
+ERCC_conc <- read.table("downloads/spike_info.txt", sep = "\t", header = TRUE)
+```
+
+Based on this information, the calculation above proceeds as follows
+
+```{r, ercc-mul}
+## Moles per micro litre
+ERCC_mmul <- ERCC_conc$concentration.in.Mix.1..attomoles.ul. * 1e-18
+## Molecule count per microL
+## (1 mole comprises 6.02214076 x 10^{23} molecules)
+ERCC_countmul <- ERCC_mmul * (6.02214076 * (1e23))
+## Application of the dilution factor (1:50,000)
+ERCC_count <- ERCC_countmul / 50000
+## Multiplying by the volume added into each well
+ERCC_count_final <- ERCC_count * 0.009
+```
+
+To add this information to the existing `sce_naive` and `sce_active` objects, 
+the user must create a `data.frame` whose first column contains the spike-in 
+labels (e.g. ERCC-00130) and whose second column contains the number of 
+molecules calculated above. We add this as row metadata for `altExp(sce_naive)` 
+and `altExp(sce_active)`. 
+
+```{r spike-info}
+SpikeInput <- data.frame(
+  Names = ERCC_conc$ERCC.ID,
+  count = ERCC_count_final
+)
+## Exclude spike-ins not included in the input SingleCellExperiment objects
+SpikeInput <- SpikeInput[match(rownames(altExp(sce_naive_active)), SpikeInput$Names), ]
+## Add as metadata
+rowData(altExp(sce_naive_active)) <- SpikeInput
+```
+
+The final dataset used in subsequent analyses contains 
+`r ncol(sce_naive_active)` cells, `r nrow(sce_naive_active)` genes and 
+`r nrow(altExp(sce_naive_active))` spike-ins.
+
+```{r save-SCE}
+saveRDS(sce_naive_active, "rds/sce_naive_active.rds")
+
+ind_active <- sce_naive_active$Stimulus == "Active"
+ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
+
+sce_naive <- sce_naive_active[, ind_naive]
+sce_active <- sce_naive_active[, ind_active]
+```
+
+## BASiCS with and without spike-ins
+
+### Inference using BASiCS without spike-ins
+
+
+`r Biocpkg("BASiCS")`, when using spike-in molecules, uses
+spike-ins as a reference in order to aid normalisation,
+based on the assumption that the original quantity of spike-in molecules was
+approximately equal in each well. @Eling2018 introduced a novel method of
+inferring gene expression profiles using `r Biocpkg("BASiCS")` without
+relying on spike-ins to quantify technical noise. This is useful
+for droplet-based scRNAseq protocols, given that it is not possible to ensure
+that each droplet contains a specified quantity of spike-in molecules.
+In this horizontal integration framework, technical variation is quantified
+using replication [@Carroll2005]. In the absence of true technical replicates,
+we assume that population-level characteristics of the cells are replicated
+using appropriate experimental design. This requires that cells from the same
+population have been randomly allocated to different batches. Given appropriate
+experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
+are shared across batches, while technical variation leads to spurious
+differences between cells in different batches.
+
+Using `r Biocpkg("BASiCS")` without spike-ins is very similar to using it
+with spike-ins. We will demonstrate using the
+naive cells. However, first, we must ensure that a `BatchInfo` field is present
+in the `SingleCellExperiment` used as input. In this case we use individual
+of origin as the batch vector.
+
+```{r MCMC-naive-nospikes, eval = FALSE}
+set.seed(42)
+chain_naive_nospikes <- BASiCS_MCMC(
+  Data = sce_naive,
+  PrintProgress = TRUE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  PriorParam = prior_param_naive,
+  Threads = 4,
+  StoreChains = TRUE,
+  StoreDir = "rds/",
+  RunName = "naive_nospikes",
+  WithSpikes = FALSE
+)
+```
+
+As before, for convenience we provide a completed version of this chain at
+[https://doi.org/10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
+
+```{r download-chain-naive-nospikes}
+if (!file.exists("rds/chain_naive_nospikes.Rds")) {
+  download.file(
+    paste0(chains_website, "/chain_naive_nospikes.Rds"),
+    destfile = "rds/chain_naive_nospikes.Rds"
+  )
+}
+chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
+```
+
+The resulting `BASiCS_Chain` object produced using this horizontal integration
+framework is functionally similar to one produced using the vertical integration
+framework. It can be used in place of the `BASiCS_Chain` objects produced using
+the vertical integration approach, as described above.
+
+```{r diag-plot-naive-nospikes, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters using the horizontal integration approach. Colour indicates local density, with lighter colours representing higher density.", eval = FALSE, echo = FALSE}
+As discussed previously, it is important to ensure that an adequate effective
+sample size has been generated using MCMC.
+Figure \@ref(fig:diag-plot-naive-nospikes) shows that the sampler has generated
+a large effective sample size for most parameters, similar to the case when we 
+ included spike-in molecules.
+mu_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "mu") +
+  theme(legend.position = "bottom")
+delta_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "delta") +
+  theme(legend.position = "bottom")
+multiplot(mu_ess2, delta_ess2, cols = 2)
+```
+
+### Comparison of parameter estimates with and without spike-ins
+
+Under the horizontal integration approach described above,
+the scale of mean expression parameters and global scaling factors is not 
+jointly identifiable, in that a global shift in mean expression parameters 
+could be exactly offset by an equivalent shift in cell-specific normalisation
+parameters. Therefore, the geometric mean of the mean expression parameters
+is fixed to a constant value. Relative expression level estimates are broadly 
+consistent between the horizontal and vertical integration approaches; 
+however there may be a global difference in mean expression estimates, as shown
+in Figure \@ref(fig:offset). It is important to remove this global scale offset
+before performing comparative analyses. This is performed by default in
+`BASiCS_TestDE`, but can be performed manually using `BASiCS_CorrectOffset`.
+
+```{r download-chains}
+chains_website <- "https://zenodo.org/record/5243265/files/"
+options(timeout = 1000)
+if (!file.exists("rds/chain_naive.Rds")) {
+  download.file(
+    paste0(chains_website, "chain_naive.Rds"),
+    destfile = "rds/chain_naive.Rds"
+  )
+}
+if (!file.exists("rds/chain_active.Rds")) {
+  download.file(
+    paste0(chains_website, "chain_active.Rds"),
+    destfile = "rds/chain_active.Rds"
+  )
+}
+chain_naive <- readRDS("rds/chain_naive.Rds")
+chain_active <- readRDS("rds/chain_active.Rds")
+```
+
+```{r offset, fig.cap="Distribution of mean expression values before and after correcting the global difference in scale."}
+BASiCS_PlotOffset(chain_naive_nospikes, chain_naive,
+  GroupLabel1 = "No spike-ins", GroupLabel2 = "Spike-ins",
+  Type = "before-after")
+offset <- BASiCS_CorrectOffset(chain_naive_nospikes, chain_naive)
+chain_naive_nospikes_offset <- offset$Chain
+chain_naive_nospikes_offset
+```
+
+A number of genes have very low expression estimates in the naive population,
+due to the fact that they each have zero read counts across the entire naive
+population; we therefore remove these genes before making a comparison.
+Following removal of the global offset, the mean expression 
+and over-dispersion estimates obtained from each method are directly comparable.
+As seen in Figures \@ref(fig:spike-comp)A and 
+\@ref(fig:spike-comp)B, parameter point estimates from the two 
+methods are highly correlated. There is a tail of non-expressed genes with
+very low mean expression level as inferred without spike-ins, comprising
+those genes with no measured expression across the entire population.
+
+```{r spike-comp, fig.cap="Comparison of point estimates using spike-ins, and the same parameters estimated without using spike-ins for mean expression (A) and over-dispersion (B). A dashed red line indicates the identity line, $y=x$. Genes with zero counts across all cells were excluded from the plot of mean expression parameters."}
+mu_spikes <- displayChainBASiCS(chain_naive)
+mu_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset)
+
+# Remove genes with zero counts across all cells and calculate medians
+ind_nonzero <- rowSums(counts(sce_naive)) != 0
+mu_spikes <- colMedians(mu_spikes[, ind_nonzero])
+mu_nospikes <- colMedians(mu_nospikes[, ind_nonzero])
+
+g1 <- ggplot() +
+  aes(mu_spikes, mu_nospikes) +
+  geom_pointdensity(alpha = 0.7) +
+  scale_colour_viridis(name = "Density") +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_abline(
+    colour = "firebrick",
+    linetype = "dashed",
+    slope = 1,
+    intercept = 0
+  ) +
+  labs(
+    x = "Mean expression\n(with spike-ins)",
+    y = "Mean expression\n(without spike-ins)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(angle = 45, size = 8, hjust = 0.5, vjust = 0.5)
+  )
+
+delta_spikes <- displayChainBASiCS(chain_naive, Param = "delta")
+delta_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset, Param = "delta")
+
+g2 <- ggplot() +
+  aes(colMedians(delta_spikes), colMedians(delta_nospikes)) +
+  geom_pointdensity(alpha = 0.7) +
+  scale_colour_viridis(name = "Density") +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_abline(
+    colour = "firebrick",
+    linetype = "dashed",
+    slope = 1,
+    intercept = 0
+  ) +
+  labs(
+    x = "Over-dispersion\n(with spike-ins)",
+    y = "Over-dispersion\n(without spike-ins)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(angle = 45, size = 8, hjust = 0.5, vjust = 0.5)
+  )
+g1 + g2 + plot_annotation(tag_levels = "A")
+```
+
+
+# Trace plots
+
+First, we will load `r Biocpkg("BASiCS")` and read in each MCMC chain.
+While it is important to ensure the MCMC algorithm has converged and has
+produced an adequate number of independent samples from the posterior
+distribution, we will here assume this proceeds as in the MCMC diagnostics
+section of the main manuscript.
+
+```{r load-chain-naive}
+chain_naive <- readRDS("rds/chain_naive.Rds")
+chain_active <- readRDS("rds/chain_active.Rds")
+chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
+```
+
+## Global scaling normalisation using BASiCS
+
+Global scaling normalisation techniques for scRNA-seq data can be used to infer
+cell-specific scaling factors that capture systematic differences in the scale
+of the expression counts across cells. 
+Generally, these scaling factors capture both biological (e.g. mRNA content) and technical (e.g. sequencing depth) factors, but spike-in genes can be used to
+disentangle these effects [@Vallejos2017]. 
+For example, when spike-in genes are used to assist data normalisation, 
+`r Biocpkg("BASiCS")` infers two separate sets of cell-specific parameters 
+associated to these sources of variability: $\phi_j$ and $\nu_j$, respectively.  
+Posterior estimates for these parameters ($\hat{\phi}_j$, $\hat{\nu}_j$) can be 
+used to normalise the input data via the `BASiCS_DenoisedCounts` function. 
+This function returns normalised expression values defined as
+$$
+  x^*_{ij} = \frac{ x_{ij} } {\hat{\phi}_j \hat{\nu}_j},
+$$
+where $x_{ij}$ denotes the observed expression count for gene $i$ in cell $j$.
+
+```{r normalisation-naive}
+## First remove global differences in scale for normalisation factors
+offset_corrected <- BASiCS_CorrectOffset(chain_active, chain_naive)
+norm_basics_naive <- BASiCS_DenoisedCounts(
+  Data = sce_naive,
+  Chain = chain_naive
+)
+norm_basics_active <- BASiCS_DenoisedCounts(
+  Data = sce_active,
+  Chain = offset_corrected$Chain
+)
+```
+
+As shown in Figure \@ref(fig:normalisation-vs-scran), the capture efficiency and 
+scaling factors ($\nu_j$ and $\phi_j$ respectively) inferred by 
+`r Biocpkg("BASiCS")` are highly correlated with the global scaling 
+normalisation factors inferred using the method of @Lun2016.
+We will load `r Biocpkg("scran")` to estimate these size factors.
+An advantage of jointly inferring normalisation and gene-specific expression
+parameters, rather than using pre-computed
+normalisation factors, is that in the former case, statistical uncertainty is 
+propagated from normalisation to all downstream analyses.
+
+```{r normalisation-vs-scran, fig.width=4, fig.height=4, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
+## BASiCS scaling factors within each group of samples
+basics_sf_naive <- colMedians(
+  displayChainBASiCS(chain_naive, "phi")
+  * displayChainBASiCS(chain_naive, "nu")
+)
+basics_sf_active <- colMedians(
+  displayChainBASiCS(chain_active, "phi")
+  * displayChainBASiCS(chain_active, "nu")
+)
+## scran scaling factors within each group of samples
+scran_sf_naive <- calculateSumFactors(sce_naive)
+scran_sf_active <- calculateSumFactors(sce_active)
+
+ggplot() +
+  aes(basics_sf_naive, scran_sf_naive) +
+  geom_point() +
+  labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
+  annotate(
+    x = 14,
+    y = 0.4,
+    label = paste(
+      "Pearson's r = ",
+      round(
+        cor(basics_sf_naive, scran_sf_naive),
+        digits = 2
+      )
+    ),
+    geom = "text",
+    size = 4
+  )
+```
