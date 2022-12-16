@@ -30,3 +30,4 @@ figure*/*
 *.Rds
 *.tex
 *.pdf
+.DS_Store

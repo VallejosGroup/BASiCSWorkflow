@@ -475,7 +475,6 @@ droplet_sce <- droplet_sce[rowData(droplet_sce)$include_gene, ]
 
 The final dataset used in subsequent analyses contains 
 `r ncol(droplet_sce)` cells and `r nrow(droplet_sce)` genes.
-
 As the analysis will be carried out separately for pre-somitic and somitic
 mesoderm cells, we create separate `SingleCellExperiment` object for each 
 group of cells. These datasets contain 
@@ -489,7 +488,489 @@ sce_sm <- droplet_sce[,colData(droplet_sce)$cellType == "somiticMesoderm"]
 
 These are then stored for their use in the main manuscript.
 
-```{r save-sce}
+## BASiCS with and without spike-ins
+
+
+### Inference using BASiCS with spike-ins
+
+```{r}
+set.seed(42)
+chain_naive <- BASiCS_MCMC(
+  Data = sce_naive,
+  PrintProgress = TRUE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  PriorParam = prior_param_naive,
+  Threads = 4,
+  StoreChains = TRUE,
+  StoreDir = "rds/",
+  RunName = "naive",
+  WithSpikes = FALSE
+)
+set.seed(43)
+chain_active <- BASiCS_MCMC(
+  Data = sce_active,
+  PrintProgress = TRUE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  PriorParam = prior_param_active,
+  Threads = 4,
+  StoreChains = TRUE,
+  StoreDir = "rds/",
+  RunName = "active",
+  WithSpikes = FALSE
+)
+```
+
+### Inference using BASiCS without spike-ins
+
+
+`r Biocpkg("BASiCS")`, when using spike-in molecules, uses
+spike-ins as a reference in order to aid normalisation,
+based on the assumption that the original quantity of spike-in molecules was
+approximately equal in each well. @Eling2018 introduced a novel method of
+inferring gene expression profiles using `r Biocpkg("BASiCS")` without
+relying on spike-ins to quantify technical noise. This is useful
+for droplet-based scRNAseq protocols, given that it is not possible to ensure
+that each droplet contains a specified quantity of spike-in molecules.
+In this horizontal integration framework, technical variation is quantified
+using replication [@Carroll2005]. In the absence of true technical replicates,
+we assume that population-level characteristics of the cells are replicated
+using appropriate experimental design. This requires that cells from the same
+population have been randomly allocated to different batches. Given appropriate
+experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
+are shared across batches, while technical variation leads to spurious
+differences between cells in different batches.
+
+Using `r Biocpkg("BASiCS")` without spike-ins is very similar to using it
+with spike-ins. We will demonstrate using the
+naive cells. However, first, we must ensure that a `BatchInfo` field is present
+in the `SingleCellExperiment` used as input. In this case we use individual
+of origin as the batch vector.
+
+```{r MCMC-naive-nospikes, eval = FALSE}
+set.seed(44)
+chain_naive_nospikes <- BASiCS_MCMC(
+  Data = sce_naive,
+  PrintProgress = TRUE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  PriorParam = prior_param_naive,
+  Threads = 4,
+  StoreChains = TRUE,
+  StoreDir = "rds/",
+  RunName = "naive_nospikes",
+  WithSpikes = FALSE
+)
+```
+
+This MCMC chain and the chains run using spike-in data each took approximately
+5 hours using an Intel 4770k processor with four threads.
+As before, for convenience we provide a completed version of this chain at
+[https://doi.org/10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
+
+```{r download-chain-naive-nospikes}
+if (!file.exists("rds/chain_naive_nospikes.Rds")) {
+  download.file(
+    paste0(chains_website, "/chain_naive_nospikes.Rds"),
+    destfile = "rds/chain_naive_nospikes.Rds"
+  )
+}
+chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
+```
+
+The resulting `BASiCS_Chain` object produced using this horizontal integration
+framework is functionally similar to one produced using the vertical integration
+framework. It can be used in place of the `BASiCS_Chain` objects produced using
+the vertical integration approach, as described above.
+
+```{r diag-plot-naive-nospikes, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters using the horizontal integration approach. Colour indicates local density, with lighter colours representing higher density.", eval = FALSE, echo = FALSE}
+As discussed previously, it is important to ensure that an adequate effective
+sample size has been generated using MCMC.
+Figure \@ref(fig:diag-plot-naive-nospikes) shows that the sampler has generated
+a large effective sample size for most parameters, similar to the case when we 
+ included spike-in molecules.
+mu_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "mu") +
+  theme(legend.position = "bottom")
+delta_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "delta") +
+  theme(legend.position = "bottom")
+multiplot(mu_ess2, delta_ess2, cols = 2)
+```
+
+### Comparison of parameter estimates with and without spike-ins
+
+Under the horizontal integration approach described above,
+the scale of mean expression parameters and global scaling factors is not 
+jointly identifiable, in that a global shift in mean expression parameters 
+could be exactly offset by an equivalent shift in cell-specific normalisation
+parameters. Therefore, the geometric mean of the mean expression parameters
+is fixed to a constant value. Relative expression level estimates are broadly 
+consistent between the horizontal and vertical integration approaches; 
+however there may be a global difference in mean expression estimates, as shown
+in Figure \@ref(fig:offset). It is important to remove this global scale offset
+before performing comparative analyses. This is performed by default in
+`BASiCS_TestDE`, but can be performed manually using `BASiCS_CorrectOffset`.
+
+```{r download-chains}
+chains_website <- "https://zenodo.org/record/5243265/files/"
+options(timeout = 1000)
+if (!file.exists("rds/chain_naive.Rds")) {
+  download.file(
+    paste0(chains_website, "chain_naive.Rds"),
+    destfile = "rds/chain_naive.Rds"
+  )
+}
+if (!file.exists("rds/chain_active.Rds")) {
+  download.file(
+    paste0(chains_website, "chain_active.Rds"),
+    destfile = "rds/chain_active.Rds"
+  )
+}
+chain_naive <- readRDS("rds/chain_naive.Rds")
+chain_active <- readRDS("rds/chain_active.Rds")
+```
+
+```{r offset, fig.cap="Distribution of mean expression values before and after correcting the global difference in scale."}
+BASiCS_PlotOffset(chain_naive_nospikes, chain_naive,
+  GroupLabel1 = "No spike-ins", GroupLabel2 = "Spike-ins",
+  Type = "before-after")
+offset <- BASiCS_CorrectOffset(chain_naive_nospikes, chain_naive)
+chain_naive_nospikes_offset <- offset$Chain
+chain_naive_nospikes_offset
+```
+
+A number of genes have very low expression estimates in the naive population,
+due to the fact that they each have zero read counts across the entire naive
+population; we therefore remove these genes before making a comparison.
+Following removal of the global offset, the mean expression 
+and over-dispersion estimates obtained from each method are directly comparable.
+As seen in Figures \@ref(fig:spike-comp)A and 
+\@ref(fig:spike-comp)B, parameter point estimates from the two 
+methods are highly correlated. There is a tail of non-expressed genes with
+very low mean expression level as inferred without spike-ins, comprising
+those genes with no measured expression across the entire population.
+
+```{r spike-comp, fig.cap="Comparison of point estimates using spike-ins, and the same parameters estimated without using spike-ins for mean expression (A) and over-dispersion (B). A dashed red line indicates the identity line, $y=x$. Genes with zero counts across all cells were excluded from the plot of mean expression parameters."}
+mu_spikes <- displayChainBASiCS(chain_naive)
+mu_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset)
+
+# Remove genes with zero counts across all cells and calculate medians
+ind_nonzero <- rowSums(counts(sce_naive)) != 0
+mu_spikes <- colMedians(mu_spikes[, ind_nonzero])
+mu_nospikes <- colMedians(mu_nospikes[, ind_nonzero])
+
+g1 <- ggplot() +
+  aes(mu_spikes, mu_nospikes) +
+  geom_pointdensity(alpha = 0.7) +
+  scale_colour_viridis(name = "Density") +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_abline(
+    colour = "firebrick",
+    linetype = "dashed",
+    slope = 1,
+    intercept = 0
+  ) +
+  labs(
+    x = "Mean expression\n(with spike-ins)",
+    y = "Mean expression\n(without spike-ins)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(angle = 45, size = 8, hjust = 0.5, vjust = 0.5)
+  )
+
+delta_spikes <- displayChainBASiCS(chain_naive, Param = "delta")
+delta_nospikes <- displayChainBASiCS(chain_naive_nospikes_offset, Param = "delta")
+
+g2 <- ggplot() +
+  aes(colMedians(delta_spikes), colMedians(delta_nospikes)) +
+  geom_pointdensity(alpha = 0.7) +
+  scale_colour_viridis(name = "Density") +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_abline(
+    colour = "firebrick",
+    linetype = "dashed",
+    slope = 1,
+    intercept = 0
+  ) +
+  labs(
+    x = "Over-dispersion\n(with spike-ins)",
+    y = "Over-dispersion\n(without spike-ins)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(angle = 45, size = 8, hjust = 0.5, vjust = 0.5)
+  )
+g1 + g2 + plot_annotation(tag_levels = "A")
+```
+
+
+# Trace plots
+
+First, we will load `r Biocpkg("BASiCS")` and read in each MCMC chain.
+While it is important to ensure the MCMC algorithm has converged and has
+produced an adequate number of independent samples from the posterior
+distribution, we will here assume this proceeds as in the MCMC diagnostics
+section of the main manuscript.
+
+```{r load-chain-naive}
+chain_naive <- readRDS("rds/chain_naive.Rds")
+chain_active <- readRDS("rds/chain_active.Rds")
+chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
+```
+
+## Global scaling normalisation using BASiCS
+
+Global scaling normalisation techniques for scRNA-seq data can be used to infer
+cell-specific scaling factors that capture systematic differences in the scale
+of the expression counts across cells. 
+Generally, these scaling factors capture both biological (e.g. mRNA content) and technical (e.g. sequencing depth) factors, but spike-in genes can be used to
+disentangle these effects [@Vallejos2017]. 
+For example, when spike-in genes are used to assist data normalisation, 
+`r Biocpkg("BASiCS")` infers two separate sets of cell-specific parameters 
+associated to these sources of variability: $\phi_j$ and $\nu_j$, respectively.  
+Posterior estimates for these parameters ($\hat{\phi}_j$, $\hat{\nu}_j$) can be 
+used to normalise the input data via the `BASiCS_DenoisedCounts` function. 
+This function returns normalised expression values defined as
+$$
+  x^*_{ij} = \frac{ x_{ij} } {\hat{\phi}_j \hat{\nu}_j},
+$$
+where $x_{ij}$ denotes the observed expression count for gene $i$ in cell $j$.
+
+```{r normalisation-naive}
+## First remove global differences in scale for normalisation factors
+offset_corrected <- BASiCS_CorrectOffset(chain_active, chain_naive)
+norm_basics_naive <- BASiCS_DenoisedCounts(
+  Data = sce_naive,
+  Chain = chain_naive
+)
+norm_basics_active <- BASiCS_DenoisedCounts(
+  Data = sce_active,
+  Chain = offset_corrected$Chain
+)
+```
+
+As shown in Figure \@ref(fig:normalisation-vs-scran), the capture efficiency and 
+scaling factors ($\nu_j$ and $\phi_j$ respectively) inferred by 
+`r Biocpkg("BASiCS")` are highly correlated with the global scaling 
+normalisation factors inferred using the method of @Lun2016.
+We will load `r Biocpkg("scran")` to estimate these size factors.
+An advantage of jointly inferring normalisation and gene-specific expression
+parameters, rather than using pre-computed
+normalisation factors, is that in the former case, statistical uncertainty is 
+propagated from normalisation to all downstream analyses.
+
+```{r normalisation-vs-scran, fig.width=4, fig.height=4, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
+## BASiCS scaling factors within each group of samples
+basics_sf_naive <- colMedians(
+  displayChainBASiCS(chain_naive, "phi")
+  * displayChainBASiCS(chain_naive, "nu")
+)
+basics_sf_active <- colMedians(
+  displayChainBASiCS(chain_active, "phi")
+  * displayChainBASiCS(chain_active, "nu")
+)
+## scran scaling factors within each group of samples
+scran_sf_naive <- calculateSumFactors(sce_naive)
+scran_sf_active <- calculateSumFactors(sce_active)
+
+ggplot() +
+  aes(basics_sf_naive, scran_sf_naive) +
+  geom_point() +
+  labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
+  annotate(
+    x = 14,
+    y = 0.4,
+    label = paste(
+      "Pearson's r = ",
+      round(
+        cor(basics_sf_naive, scran_sf_naive),
+        digits = 2
+      )
+    ),
+    geom = "text",
+    size = 4
+  )
+```
+
+
+# Differential testing using droplet-based differentiating cells {#droplet-data}
+
+The development of droplet-based scRNA-seq [@Klein2015;@Macosko2015] 
+lead to a large increase in the number of cells that can be profiled per 
+experiment at a fixed cost.
+With this, large-scale scRNA-seq datasets have been generated to study 
+development across multiple time-points and capturing multiple tissues 
+[@Ibarra-Soria2018;@Kernfeld2018]. 
+Here we describe the computational analysis of changes in mean expression 
+and transcriptional variability when data are sparse and technical spike-in 
+genes are missing. 
+For this, we compare cells of the presomitic mesoderm and somitic mesoderm 
+using droplet-based scRNA-seq data [@Ibarra-Soria2018].
+
+## Obtaining the data
+
+The full dataset is stored under the accession number E-MTAB-6153 on 
+ArrayExpress and can be obtained via:
+
+```{r load-droplet-data}
+options(timeout = 1000)
+if (!file.exists("downloads/rawCounts.tsv")) {
+  website <- "https://www.ebi.ac.uk/"
+  folder <- "arrayexpress/files/E-MTAB-6153/"
+  file <- "E-MTAB-6153.processed.2.zip"
+  download.file(
+    paste0(website, folder, file),
+    destfile = "downloads/rawCounts.zip"
+  )
+  unzip(zipfile = "downloads/rawCounts.zip", exdir = "downloads")
+  file.remove("downloads/rawCounts.zip")
+}
+raw_counts <- read.delim("downloads/rawCounts.tsv", header = TRUE)
+```
+
+*Of note:* The zip file is 65 MB in size while the unzipped, raw counts measure
+873 MB in size. The cluster labels of the original publication ca be obtained 
+via:
+
+```{r cluster-labels-droplet}
+if (!file.exists("downloads/cellAnnotation.tsv")) {
+  website <- "https://www.ebi.ac.uk/"
+  folder <- "arrayexpress/files/E-MTAB-6153/"
+  file <- "E-MTAB-6153.processed.3.zip"
+  download.file(
+    paste0(website, folder, file),
+    destfile = "cluster_labels.zip"
+  )
+  unzip(zipfile = "cluster_labels.zip", exdir = "downloads")
+}
+
+cluster_labels <- read.table("downloads/cellAnnotation.tsv",
+  sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+```
+
+## Select populations of interest
+
+We select the somitic and pre-somitic mesoderm cells to perform differential 
+testing. Prior to running the MCMC, we want to control for outlying cells and 
+heterogeneous substructure in both cell populations. 
+
+```{r droplet-cell-selection}
+cluster_labels[["Cell_type"]] <- cluster_labels$cellType
+cluster_labels[["Cell_type"]] <- sub(
+  "presomiticMesoderm",
+  "PSM",
+  cluster_labels[["Cell_type"]]
+)
+cluster_labels[["Cell_type"]] <- sub("somiticMesoderm",
+  "SM",
+  cluster_labels[["Cell_type"]]
+)
+
+ind_som <- which(cluster_labels[["Cell_type"]] == "PSM" |
+  cluster_labels[["Cell_type"]] == "SM")
+raw_counts <- raw_counts[, ind_som]
+cluster_labels <- cluster_labels[ind_som, ]
+```
+
+## Generating SingleCellExperiment object and quality control
+
+For pre-processing and visualisation purposes, we load the data into a 
+SingleCellExperiment object. The metadata will be stored in the `colData` slot.
+
+```{r droplet-sce}
+droplet_sce <- SingleCellExperiment(
+  assays = list(counts = as(as.matrix(raw_counts), "dgCMatrix")),
+  colData = DataFrame(
+    cluster_labels,
+    subCellType = sub("_.*", "", cluster_labels$cell)
+  )
+)
+rm(raw_counts)
+```
+
+For further processing steps, we remove lowly expressed genes.
+
+```{r filter-drop}
+ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
+droplet_sce <- droplet_sce[ind_expressed, ]
+```
+
+To visualise possible sub-structure in the data, we normalise both cell 
+populations using the `scran` package.
+
+```{r norm-drop}
+droplet_sce <- computeSumFactors(droplet_sce,
+  clusters = colData(droplet_sce)$subCellType
+)
+droplet_sce <- logNormCounts(droplet_sce)
+```
+
+Next, we compute a PCA using the `scater` package. 
+
+```{r droplet-pca}
+droplet_sce <- runPCA(droplet_sce)
+```
+
+We can now visualise the different factors stored in the `colData` slot.
+
+```{r drop-pca-plot, fig.cap="Principal component plot of pre-somitic and somitic mesoderm cells. Colour indicates cell type."}
+## Cell types identified by clustering
+plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
+  scale_fill_manual(
+    name = "cellType",
+    values = c("coral4", "steelblue", "limegreen")
+  )
+```
+
+The first PC separates the two different cell types while the second PC captures
+outlying cells.
+We will remove these outliers and the intermediate cell population from 
+down-stream analysis.
+
+```{r drop-filt}
+ind_retain <- reducedDims(droplet_sce)$PCA[, 2] > -5 &
+  colData(droplet_sce)$subCellType != "presomiticMesoderm.b"
+droplet_sce <- droplet_sce[, ind_retain]
+```
+
+We now collected the cells that we want to process using BASiCS. 
+For this, we will generate the BASiCS data objects.
+
+## Generating BASiCS data objects
+
+Since droplet-based scRNA-seq data are generated without including technical 
+spike-in genes, BASiCS uses measurement error models to quantify technical 
+variation through replication [@Carroll1998].
+Here, it is crucial to provide batch information to the BASiCS model.
+In the case of the somitic and pre-somoitic mesoderm cells, embryos of two mice 
+have been used to generate the data. 
+Cells isolated from the first embryo were split into two batches and processed 
+independently.
+To capture cell-type extrinsic, biological variation between the two mice, we 
+pool cells from the two batches of the first animal and only considere cells 
+from mouse 1 and mouse 2 as replicates.
+
+```{r BASiCS-droplet-data}
+## Presomitic mesoderm
+ind_presom <- colData(droplet_sce)[["Cell_type"]] == "PSM"
+droplet_sce$batch <- round(colData(droplet_sce)$sample)
+sce_psm <- droplet_sce[, ind_presom]
+
+sce_psm$BatchInfo <- factor(sce_psm$batch)
+
+## Somitic mesoderm
+ind_som <- colData(droplet_sce)[["Cell_type"]] == "SM"
+sce_sm <- droplet_sce[, ind_som]
+sce_sm$BatchInfo <- factor(sce_sm$batch)
 saveRDS(sce_psm, "rds/sce_psm.rds")
 saveRDS(sce_sm, "rds/sce_sm.rds")
 ```
