@@ -567,6 +567,42 @@ sce_active <- sce_naive_active[, ind_active]
 
 ## BASiCS with and without spike-ins
 
+
+### Inference using BASiCS with spike-ins
+
+```{r}
+set.seed(42)
+chain_naive <- BASiCS_MCMC(
+  Data = sce_naive,
+  PrintProgress = TRUE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  PriorParam = prior_param_naive,
+  Threads = 4,
+  StoreChains = TRUE,
+  StoreDir = "rds/",
+  RunName = "naive",
+  WithSpikes = FALSE
+)
+set.seed(43)
+chain_active <- BASiCS_MCMC(
+  Data = sce_active,
+  PrintProgress = TRUE,
+  N = 40000,
+  Thin = 20,
+  Burn = 20000,
+  Regression = TRUE,
+  PriorParam = prior_param_active,
+  Threads = 4,
+  StoreChains = TRUE,
+  StoreDir = "rds/",
+  RunName = "active",
+  WithSpikes = FALSE
+)
+```
+
 ### Inference using BASiCS without spike-ins
 
 
@@ -594,7 +630,7 @@ in the `SingleCellExperiment` used as input. In this case we use individual
 of origin as the batch vector.
 
 ```{r MCMC-naive-nospikes, eval = FALSE}
-set.seed(42)
+set.seed(44)
 chain_naive_nospikes <- BASiCS_MCMC(
   Data = sce_naive,
   PrintProgress = TRUE,
@@ -611,6 +647,8 @@ chain_naive_nospikes <- BASiCS_MCMC(
 )
 ```
 
+This MCMC chain and the chains run using spike-in data each took approximately
+5 hours using an Intel 4770k processor with four threads.
 As before, for convenience we provide a completed version of this chain at
 [https://doi.org/10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
 
