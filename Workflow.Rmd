@@ -1042,6 +1042,13 @@ table_de_resdisp <- as.data.frame(
   Parameter = "ResDisp",
   Filter = FALSE
 )
+## combine results of differential mean and residual over-dispersion tests
+table_de<- merge(table_de_mean, table_de_resdisp)
+## Merge with gene-level metadata to obtain gene names used in figures
+table_de <- merge(table_de, 
+                  rowData(sce_sm)[,c("ensembl_gene_id", "external_gene_name")],
+                  by.x = "GeneName", by.y = "ensembl_gene_id")
+table_de <- as.data.frame(table_de)
 ```
 
 After running the test, it is important to visualise the results to facilitate
@@ -1108,45 +1115,29 @@ population.
 
 ```{r heatmap-diffexp, fig.width = 7, fig.height = 6, fig.cap="Heatmap displays normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in somitic or pre-somitic cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 
-## Add gene symbol to table
-table_de_mean$Symbol <- genenames[table_de_mean$GeneName, 2]
-
 ## utility function for selecting genes
-select_top_n <- function(table, counts, condition, n=15, decreasing=TRUE) {
+select_top_n <- function(table, condition, n=15, decreasing=TRUE) {
   ind_condition <- table$ResultDiffMean == condition
   table <- table[ind_condition, ]
   ind_diff <- order(table$ProbDiffMean, decreasing = decreasing)[1:n]
-  genes <- table$GeneName[ind_diff]
-  counts[genes, ]
+  return(table$GeneName[ind_diff])
 }
 
-## pre-somitic & somitic count matrices for genes up-regulated in pre-somitic cells
-psm_counts_psm <- select_top_n(table_de_mean, dc_psm, "PSM+")
-sm_counts_psm <- select_top_n(table_de_mean, dc_sm, "PSM+")
-
-## pre-somitic & somitic count matrices for genes up-regulated in somitic cells
-psm_counts_sm <- select_top_n(table_de_mean, dc_psm, "SM+")
-sm_counts_sm <- select_top_n(table_de_mean, dc_sm, "SM+")
-
-## pre-somitic & somitic count matrices for genes not differentially expressed
-psm_counts_nde <- select_top_n(table_de_mean, dc_psm, "NoDiff",
-  decreasing = FALSE)
-sm_counts_nde <- select_top_n(table_de_mean, dc_sm, "NoDiff",
-  decreasing = FALSE)
-
-## Combine count matrices by cell type
-counts_psm <- rbind(psm_counts_psm, psm_counts_sm, psm_counts_nde)
-counts_sm <- rbind(sm_counts_psm, sm_counts_sm, sm_counts_nde)
+select_all <- c(select_top_n(table_de, "PSM+"), # up-regulated in pre-somitic cells
+                select_top_n(table_de, "SM+"), # up-regulated in somitic cells
+                select_top_n(table_de, "NoDiff")) # not differentially expressed
+counts_psm <- assay(sce_psm, "BASiCS_norm")[select_all,]
+counts_sm <- assay(sce_sm, "BASiCS_norm")[select_all,]
+rownames(counts_psm) <- rownames(counts_sm) <- rowData(sce_sm)[select_all, "external_gene_name"]
 
 ## split heatmaps by gene category
 split <- data.frame(
   Upregulated = c(
-    rep("Up-regulated \nin PSM", nrow(psm_counts_psm)),
-    rep("Up-regulated \nin SM", nrow(psm_counts_sm)),
-    rep("Non DE", nrow(psm_counts_nde))
+    rep("Up-regulated \nin PSM", length(select_all)/3),
+    rep("Up-regulated \nin SM", length(select_all)/3),
+    rep("Non DE", length(select_all)/3)
   )
 )
-syms <- genenames[rownames(counts_psm), 2]
 fontsize <- 7
 
 ## Color palettes using circlize
@@ -1159,8 +1150,8 @@ col <- colorRamp2(
 )
 
 ## Subset table of DE results to extract mean estimates
-match_order <- match(rownames(counts_sm), table_de_mean$GeneName)
-table_de_selected <- table_de_mean[match_order, ]
+match_order <- match(rownames(counts_sm), table_de$GeneName)
+table_de_selected <- table_de[match_order, ]
 
 ## Color palette for mu annotation
 log_mu_sm <- log10(table_de_selected$Mean1)
@@ -1172,11 +1163,9 @@ mu_col <- colorRamp2(
 
 Heatmap(
   log10(as.matrix(counts_sm) + 1),
-  row_labels = syms,
   row_names_gp = gpar(fontsize = fontsize),
   name = "log10(count + 1)",
-  column_dend_height = unit(0.2, "npc"),
-  column_title_side = "bottom",
+  show_column_dend = FALSE,
   column_title = "Somitic cells",
   show_column_names = FALSE,
   cluster_rows = FALSE,
@@ -1188,11 +1177,9 @@ Heatmap(
   col = col) +
   Heatmap(
     log10(as.matrix(counts_psm) + 1),
-    row_labels = syms,
-    column_dend_height = unit(0.2, "npc"),
+    show_column_dend = FALSE,
     row_names_gp = gpar(fontsize = fontsize),
     column_title = "Pre-somitic cells",
-    column_title_side = "bottom",
     show_column_names = FALSE,
     split = split,
     show_heatmap_legend = FALSE,
@@ -1238,18 +1225,6 @@ in mean expression, as shown in Figure \@ref(fig:combine-results).
 that are not expressed in at least 2 cells in either condition.---> 
 
 ```{r combine-results, fig.cap="Difference in residual over-dispersion against $\\log_2$ fold change in mean expression."}
-## combine results of differential mean and residual over-dispersion tests
-table_de_combined <- merge(table_de_mean, table_de_resdisp)
-
-## merge with some summary statistics about genes
-gene_tests <- data.frame(
-  "GeneName" = rownames(dc_sm),
-  "ExpPropSM" = rowMeans(dc_sm > 0),
-  "ExpPropPSM" = rowMeans(dc_psm > 0),
-  "nExpPropSM" = rowSums(dc_sm > 0),
-  "nExpPropPSM" = rowSums(dc_psm > 0)
-)
-table_combined_genes <- merge(table_de_combined, gene_tests)
 ## create list of generic plot parameters to use across a few plots
 plot_params <- list(
   geom_pointdensity(na.rm = TRUE),
@@ -1262,7 +1237,7 @@ plot_params <- list(
   )
 )
 ## plot log2FC against difference of residual over-dispersion
-ggplot(table_de_combined) +
+ggplot(table_de) +
   aes(MeanLog2FC, ResDispDistance) +
   plot_params +
   xlim(-15, 15) +
@@ -1283,7 +1258,7 @@ and vice versa.
 
 ```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: $\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
 g1 <- ggplot(
-    table_combined_genes[table_combined_genes$ResultDiffResDisp == "SM+", ]
+    table_de[table_de$ResultDiffResDisp == "SM+", ]
   ) +
   aes(MeanOverall, MeanLog2FC) +
   plot_params +
@@ -1295,7 +1270,7 @@ g1 <- ggplot(
   )
 
 g2 <- ggplot(
-    table_combined_genes[table_combined_genes$ResultDiffResDisp == "PSM+", ]
+    table_de[table_de$ResultDiffResDisp == "PSM+", ]
   ) +
   aes(MeanOverall, MeanLog2FC) +
   plot_params +
@@ -1306,33 +1281,7 @@ g2 <- ggplot(
     yintercept = 0, colour = "firebrick", linetype = "dashed"
   )
 
-g3 <- ggplot(
-    table_combined_genes[table_combined_genes$ResultDiffResDisp == "SM+", ]
-  ) +
-  aes(x = ExpPropSM, y = ExpPropPSM) +
-  plot_params +
-  labs(
-    x = "Proportion of cells\nexpressing (SM)",
-    y = "Proportion of cells\nexpressing (PSM)"
-  ) +
-  geom_abline(
-    slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed"
-  )
-
-g4 <- ggplot(
-    table_combined_genes[table_combined_genes$ResultDiffResDisp == "PSM+", ]
-  ) +
-  aes(x = ExpPropSM, y = ExpPropPSM) +
-  plot_params +
-  labs(
-    x = "Proportion of cells\nexpressing (SM)",
-    y = "Proportion of cells\nexpressing (PSM)"
-  ) +
-  geom_abline(
-    slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed"
-  )
-
-(g1 + g3) / (g2 + g4) + plot_annotation(tag_levels = "A")
+g1 + g2 + plot_annotation(tag_levels = "A")
 ```
 
 Similarly to analysis of differential expression, it is useful to visualise 
