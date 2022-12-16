@@ -1115,7 +1115,7 @@ population.
 
 ```{r heatmap-diffexp, fig.width = 7, fig.height = 6, fig.cap="Heatmap displays normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in somitic or pre-somitic cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 
-## utility function for selecting genes
+## utility function for selecting top DE/non-DE genes
 select_top_n <- function(table, condition, n=15, decreasing=TRUE) {
   ind_condition <- table$ResultDiffMean == condition
   table <- table[ind_condition, ]
@@ -1125,19 +1125,17 @@ select_top_n <- function(table, condition, n=15, decreasing=TRUE) {
 
 select_all <- c(select_top_n(table_de, "PSM+"), # up-regulated in pre-somitic cells
                 select_top_n(table_de, "SM+"), # up-regulated in somitic cells
-                select_top_n(table_de, "NoDiff")) # not differentially expressed
+                select_top_n(table_de, "NoDiff", decreasing = FALSE)) # not differentially expressed
 counts_psm <- assay(sce_psm, "BASiCS_norm")[select_all,]
 counts_sm <- assay(sce_sm, "BASiCS_norm")[select_all,]
-rownames(counts_psm) <- rownames(counts_sm) <- rowData(sce_sm)[select_all, "external_gene_name"]
+rownames(counts_psm) <- rownames(counts_sm) <- 
+  rowData(sce_sm)[select_all, "external_gene_name"]
 
 ## split heatmaps by gene category
 split <- data.frame(
-  Upregulated = c(
-    rep("Up-regulated \nin PSM", length(select_all)/3),
-    rep("Up-regulated \nin SM", length(select_all)/3),
-    rep("Non DE", length(select_all)/3)
-  )
-)
+  Upregulated = rep(c("Up-regulated \nin PSM", 
+                      "Up-regulated \nin SM",
+                      "Non DE"), each = length(select_all)/3))
 fontsize <- 7
 
 ## Color palettes using circlize
