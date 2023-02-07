@@ -4,10 +4,10 @@ on:
     branches:
       - master
 
-name: R-CMD-check
+name: build-pdfs
 
 jobs:
-  R-CMD-check:
+  build-pdfs:
     runs-on: ubuntu-latest
     container: alanocallaghan/bocker:latest
     env:
