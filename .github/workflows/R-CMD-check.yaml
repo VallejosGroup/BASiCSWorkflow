@@ -1,0 +1,21 @@
+on:
+  push:
+  pull_request:
+    branches:
+      - master
+
+name: R-CMD-check
+
+jobs:
+  R-CMD-check:
+    runs-on: ubuntu-latest
+    container: alanocallaghan/bocker:latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+
+      - name: Build
+        run: |
+          make all
