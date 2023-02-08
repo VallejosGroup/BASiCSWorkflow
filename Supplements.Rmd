@@ -200,6 +200,7 @@ if (!file.exists("downloads/rawCounts.tsv")) {
     destfile = "downloads/rawCounts.tsv"
   )
 }
+
 ```
 
 We then load the raw read counts. 
