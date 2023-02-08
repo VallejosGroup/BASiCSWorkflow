@@ -188,7 +188,7 @@ sub-folder. This is decompressed in order to access the individual `.tsv` files.
 After decompression, the `.zip` can be deleted as it is no longer required. 
 
 ```{r download-droplet-data}
-options(timeout = 1000)
+options(timeout = 10000)
 dir.create("downloads", showWarnings = FALSE)
 # Check whether the data was downloaded already
 if (!file.exists("downloads/rawCounts.tsv")) {
