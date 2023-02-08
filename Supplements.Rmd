@@ -769,17 +769,29 @@ Figure \@ref(fig:gene-selection) as well as prior knowledge about the cell types
 and conditions being studied, where available.
 
 ```{r cd4-gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
+
+## Add QC measures based on features
 sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
+
 ## Remove genes with zero total counts across all cells
 sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
+
 ## Transform "detected" into number of cells and define inclusion criteria
 rowData(sce_naive_active)$detected_cells <-
   rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
+
+## define thresholds for genes based on QC measures
 detected_threshold <- 20
 mean_threshold <- 1
+
+## apply thresholds
 include_gene <- rowData(sce_naive_active)$mean >= mean_threshold &
   rowData(sce_naive_active)$detected_cells >= detected_threshold
+
+## add gene QC filter to rowdata for visualisation
 rowData(sce_naive_active)$include_gene <- include_gene
+
+## plot gene QC filter
 plotRowData(
     sce_naive_active,
     x = "detected_cells",
@@ -801,7 +813,8 @@ plotRowData(
     linetype = "dashed",
     col = "grey60"
   )
-## Apply gene filter
+
+## Apply gene QC filter
 sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
 ```
 
