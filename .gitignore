@@ -31,3 +31,4 @@ figure*/*
 *.tex
 *.pdf
 .DS_Store
+downloads/
