@@ -1009,13 +1009,13 @@ before performing comparative analyses. This is performed by default in
 options(timeout = 1000)
 if (!file.exists("rds/chain_naive.Rds")) {
   download.file(
-    paste0(chains_website, "chain_naive.Rds"),
+    paste0(chains_website, "rds/chain_naive.Rds"),
     destfile = "rds/chain_naive.Rds"
   )
 }
 if (!file.exists("rds/chain_active.Rds")) {
   download.file(
-    paste0(chains_website, "chain_active.Rds"),
+    paste0(chains_website, "rds/chain_active.Rds"),
     destfile = "rds/chain_active.Rds"
   )
 }
