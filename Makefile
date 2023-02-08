@@ -3,7 +3,7 @@
 all: Supplements.pdf Workflow.pdf
 
 IMAGE=alanocallaghan/basicsworkflow2020-docker
-VERSION=latest
+VERSION=0.1.1
 
 %.pdf: %.Rmd
 	docker run -v $(shell pwd):/home/rstudio/mycode \

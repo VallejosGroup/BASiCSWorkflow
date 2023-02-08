@@ -9,7 +9,7 @@ name: build-pdfs
 jobs:
   build-pdfs:
     runs-on: ubuntu-latest
-    container: alanocallaghan/bocker:latest
+    container: alanocallaghan/basicsworkflow2020-docker:latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
