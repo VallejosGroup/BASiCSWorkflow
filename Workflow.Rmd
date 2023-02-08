@@ -206,7 +206,10 @@ A graphical overview is provided in Figure \@ref(fig:overview)
 and its main components are described below. 
 
 ```{r overview, out.width=out_width, out.height=out_height, fig.cap = "Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a matrix of expression counts, we use the scater and scran Bioconductor packages to perform QC and initial exploratory analyses. To robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations, we apply the BASiCS Bioconductor package and  illustrate how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.", echo=FALSE}
-knitr::include_graphics("figure/Overview.png")
+library(cowplot)
+fig_svg <- cowplot::ggdraw() +
+  cowplot::draw_image("figure/Overview.svg")
+plot(fig_svg)
 ```
 
 Here, we load all the libraries that will be used throughout this workflow.
@@ -231,8 +234,9 @@ algorithm implemented in `r Biocpkg("BASiCS")` (e.g. `r CRANpkg("coda")`).
 library("ggplot2")
 library("ggpointdensity")
 library("patchwork")
-library("viridis")
 library("ComplexHeatmap")
+# colour scales
+library("viridis")
 library("circlize")
 library("RColorBrewer")
 # Data manipulation
@@ -255,6 +259,7 @@ spike-in molecules (see `help("altExp")`).
 A major advantage of using a `SingleCellExperiment` object as the input for 
 scRNA-seq analyses is the interoperability across a large number of 
 Bioconductor packages [@Amezquita2019]. 
+
 
 ## QC and exploratory data analysis
 
@@ -418,9 +423,9 @@ group of cells.
 
 ```{r SCE-load}
 # Pre-somitic mesoderm cells
-sce_psm <- readRDS("rds/sce_psm.rds")
+sce_psm <- readRDS("rds/sce_psm.Rds")
 # Somitic mesoderm cells
-sce_sm <- readRDS("rds/sce_sm.rds")
+sce_sm <- readRDS("rds/sce_sm.Rds")
 ```
 
 In brief, we have filtered the original data to select presomitic mesoderm (PSM) 
@@ -902,9 +907,11 @@ vg_table$VG <- "Not HVG or LVG"
 vg_table$VG[vg_table$HVG] <- "HVG"
 vg_table$VG[vg_table$LVG] <- "LVG"
 ## Store as gene-level metadata
-rowData(sce_sm) <- merge(rowData(sce_sm), vg_table, 
-                         by.x = "ensembl_gene_id", by.y = "GeneName",
-                         sort = FALSE)
+rowData(sce_sm) <- merge(
+  rowData(sce_sm), vg_table, 
+  by.x = "ensembl_gene_id", by.y = "GeneName",
+  sort = FALSE
+)
 ```
 
 Performing HVG and LVG detection involves identifying a posterior probability
@@ -956,11 +963,13 @@ Instead, LVG tend to have more narrow and unimodal distributions
 
 ```{r plot-example-vg-SM, fig.cap = "BASiCS denoised counts for example HVG and LVG with similar overall levels of expression."}
 ## Obtain normalised expression values and store them as an assay in sce_sm
-assay(sce_sm, "BASiCS_norm") <- BASiCS_DenoisedCounts(sce_sm, chain_sm,
-                                                      WithSpikes = FALSE)
+assay(sce_sm, "BASiCS_norm") <- BASiCS_DenoisedCounts(
+  sce_sm, chain_sm, WithSpikes = FALSE
+)
 
 ## Select HVG/LVG genes with similar mean expression values
-low_exp <- 20; up_exp <- 40
+low_exp <- 20
+up_exp <- 40
 is_mid_exp <- rowData(sce_sm)$Mu > low_exp & rowData(sce_sm)$Mu < up_exp
 is_hvg <- is_mid_exp & rowData(sce_sm)$HVG
 is_lvg <- is_mid_exp & rowData(sce_sm)$LVG
@@ -972,16 +981,21 @@ top_lvg <- order(rowData(sce_sm)$Epsilon[is_lvg], decreasing = FALSE)[1:5]
 ## Generate violin plots for the selected HVG and LVG
 ## The plotExpression() function from the scater package is used for this purpose
 plot_hvg <- plotExpression(sce_sm, 
-                           rowData(sce_sm)$external_gene_name[is_hvg][top_hvg],
-               exprs_values = "BASiCS_norm",
-               swap_rownames = "external_gene_name",
-               feature_colours = FALSE) + ylim(0, 90) 
+    rowData(sce_sm)$external_gene_name[is_hvg][top_hvg],
+    exprs_values = "BASiCS_norm",
+    swap_rownames = "external_gene_name",
+    feature_colours = FALSE
+  ) +
+  ylim(0, 90) 
 
-plot_lvg <- plotExpression(sce_sm, 
-                           rowData(sce_sm)$external_gene_name[is_lvg][top_lvg], 
-               exprs_values = "BASiCS_norm",
-               swap_rownames = "external_gene_name",
-               feature_colours = FALSE) + ylim(0, 90) 
+plot_lvg <- plotExpression(
+    sce_sm,
+    rowData(sce_sm)$external_gene_name[is_lvg][top_lvg], 
+    exprs_values = "BASiCS_norm",
+    swap_rownames = "external_gene_name",
+    feature_colours = FALSE
+  ) +
+  ylim(0, 90) 
 
 plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
 ```
@@ -1043,11 +1057,14 @@ table_de_resdisp <- as.data.frame(
   Filter = FALSE
 )
 ## combine results of differential mean and residual over-dispersion tests
-table_de<- merge(table_de_mean, table_de_resdisp)
+table_de <- merge(table_de_mean, table_de_resdisp)
 ## Merge with gene-level metadata to obtain gene names used in figures
-table_de <- merge(table_de, 
-                  rowData(sce_sm)[,c("ensembl_gene_id", "external_gene_name")],
-                  by.x = "GeneName", by.y = "ensembl_gene_id")
+table_de <- merge(
+  table_de, 
+  rowData(sce_sm)[, c("ensembl_gene_id", "external_gene_name")],
+  by.x = "GeneName", by.y = "ensembl_gene_id"
+)
+# convert to standard data.frame, not S4 DFrame, for ggplot2
 table_de <- as.data.frame(table_de)
 ```
 
@@ -1096,8 +1113,24 @@ chain_psm <- offset$Chain
 ## Normalised counts were for the SM population were already obtained
 ## in the HVG/LVG analysis section
 ## Obtain normalised expression values and store them as an assay in sce_sm
-assay(sce_psm, "BASiCS_norm") <- BASiCS_DenoisedCounts(sce_psm, chain_psm, 
-                                                       WithSpikes = FALSE)
+assay(sce_psm, "BASiCS_norm") <- BASiCS_DenoisedCounts(
+  sce_psm, chain_psm, 
+  WithSpikes = FALSE
+)
+denoised_counts <- SingleCellExperiment(
+  assays = list(
+    BASiCS_norm = cbind(
+      assay(sce_psm, "BASiCS_norm"),
+      assay(sce_sm, "BASiCS_norm")
+    )
+  ),
+  colData = data.frame(
+    Celltype = c(
+      rep("presomitic", ncol(sce_psm)),
+      rep("somitic", ncol(sce_sm))
+    )
+  )
+)
 ```
 
 To visualise expression patterns for multiple genes at once, we use the 
@@ -1123,9 +1156,11 @@ select_top_n <- function(table, condition, n=15, decreasing=TRUE) {
   return(table$GeneName[ind_diff])
 }
 
-select_all <- c(select_top_n(table_de, "PSM+"), # up-regulated in pre-somitic cells
-                select_top_n(table_de, "SM+"), # up-regulated in somitic cells
-                select_top_n(table_de, "NoDiff", decreasing = FALSE)) # not differentially expressed
+select_all <- c(
+  select_top_n(table_de, "PSM+"), # up-regulated in pre-somitic cells
+  select_top_n(table_de, "SM+"), # up-regulated in somitic cells
+  select_top_n(table_de, "NoDiff", decreasing = FALSE) # not differentially expressed
+) 
 counts_psm <- assay(sce_psm, "BASiCS_norm")[select_all,]
 counts_sm <- assay(sce_sm, "BASiCS_norm")[select_all,]
 rownames(counts_psm) <- rownames(counts_sm) <- 
@@ -1133,9 +1168,15 @@ rownames(counts_psm) <- rownames(counts_sm) <-
 
 ## split heatmaps by gene category
 split <- data.frame(
-  Upregulated = rep(c("Up-regulated \nin PSM", 
-                      "Up-regulated \nin SM",
-                      "Non DE"), each = length(select_all)/3))
+  Upregulated = rep(
+    c(
+      "Up-regulated \nin PSM", 
+      "Up-regulated \nin SM",
+      "Non DE"
+    ),
+    each = length(select_all) / 3
+  )
+)
 fontsize <- 7
 
 ## Color palettes using circlize
@@ -1148,7 +1189,7 @@ col <- colorRamp2(
 )
 
 ## Subset table of DE results to extract mean estimates
-match_order <- match(rownames(counts_sm), table_de$GeneName)
+match_order <- match(rownames(counts_sm), table_de$external_gene_name)
 table_de_selected <- table_de[match_order, ]
 
 ## Color palette for mu annotation
@@ -1161,32 +1202,34 @@ mu_col <- colorRamp2(
 
 Heatmap(
   log10(as.matrix(counts_sm) + 1),
-  row_names_gp = gpar(fontsize = fontsize),
-  name = "log10(count + 1)",
-  show_column_dend = FALSE,
-  column_title = "Somitic cells",
-  show_column_names = FALSE,
-  cluster_rows = FALSE,
+  col = col,
   split = split,
   right_annotation = rowAnnotation(
     `log(mu)` = log_mu_sm,
     col = list(`log(mu)` = mu_col)
   ),
-  col = col) +
+  name = "log10(count + 1)",
+  column_title = "Somitic cells",
+  show_column_names = FALSE,
+  cluster_columns = FALSE,
+  cluster_rows = FALSE,
+  row_names_gp = gpar(fontsize = fontsize)
+) +
   Heatmap(
     log10(as.matrix(counts_psm) + 1),
-    show_column_dend = FALSE,
-    row_names_gp = gpar(fontsize = fontsize),
-    column_title = "Pre-somitic cells",
-    show_column_names = FALSE,
+    col = col,
     split = split,
-    show_heatmap_legend = FALSE,
     right_annotation = rowAnnotation(
       `log(mu)` = log_mu_psm,
       col = list(`log(mu)` = mu_col)
     ),
+    column_title = "Pre-somitic cells",
+    show_heatmap_legend = FALSE,
+    show_column_names = FALSE,
     cluster_rows = FALSE,
-    col = col)
+    cluster_columns = FALSE,
+    row_names_gp = gpar(fontsize = fontsize),
+  )
 ```
 
 While several computational tools exist to perform differential mean expression
@@ -1332,22 +1375,22 @@ be undertaken with care.
 ```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in somitic cells, and similar levels of detection in pre-somitic and somitic populations. B: Four genes with higher residual over-dispersion in somitic cells and different levels of detection in somitic and pre-somitic cells. C: Four genes with higher residual over-dispersion in pre-somitic cells and similar levels of detection in somitic and pre-somitic cells. D: Three genes with higher residual over-dispersion in pre-somitic cells and different levels of detection in somitic and pre-somitic cells."}
 ## Utility function that plots logcounts of a set of genes defined by "ind_vg"
 plot_vg <- function(ind_vg) {
-  table_combined_genes_vg <- table_combined_genes[ind_vg, ]
+  table_de_vg <- table_de[ind_vg, ]
   ## If more than 4 genes,
   ## pick top 4 ranked by differences in residual over-dispersion
-  if(nrow(table_combined_genes_vg) > 4) {
-    table_combined_genes_vg <- table_combined_genes_vg[
-      order(abs(table_combined_genes_vg$ResDispDistance), decreasing = TRUE), ]
-    table_combined_genes_vg <- table_combined_genes_vg[1:4, ]
+  if(nrow(table_de_vg) > 4) {
+    table_de_vg <- table_de_vg[
+      order(abs(table_de_vg$ResDispDistance), decreasing = TRUE), ]
+    table_de_vg <- table_de_vg[1:4, ]
   }
-  var_genes <- table_combined_genes_vg$GeneName
-  var_sm <- as.matrix(dc_sm[var_genes, , drop = FALSE])
-  var_psm <- as.matrix(dc_psm[var_genes, , drop = FALSE])
+  var_genes <- table_de_vg$GeneName
+  var_sm <- as.matrix(assay(sce_sm, "BASiCS_norm")[var_genes, , drop = FALSE])
+  var_psm <- as.matrix(assay(sce_psm, "BASiCS_norm")[var_genes, , drop = FALSE])
   var_df <- rbind(
     data.frame(t(var_sm), Group = "SM"),
     data.frame(t(var_psm), Group = "PSM")
   )
-  colnames(var_df)[-ncol(var_df)] <- genenames[var_genes, "external_gene_name"]
+  colnames(var_df)[-ncol(var_df)] <- rowData(sce_sm)[var_genes, "external_gene_name"]
   var_long_df <- pivot_longer(var_df, cols = colnames(var_df)[-ncol(var_df)])
 
   ggplot(var_long_df, aes(x = name, y = value + 1, colour = Group)) +
@@ -1362,18 +1405,27 @@ plot_vg <- function(ind_vg) {
     scale_colour_brewer(palette = "Set1")
 }
 
+## merge with some summary statistics about genes
+gene_tests <- data.frame(
+  "GeneName" = rownames(sce_sm),
+  "ExpPropSM" = rowMeans(assay(sce_sm, "BASiCS_norm") > 0),
+  "ExpPropPSM" = rowMeans(assay(sce_psm, "BASiCS_norm") > 0)
+)
+
+table_de_genetests <- merge(table_de, gene_tests)
+
 ## genes more variable in somitic   &
 ## not differentially expressed   &
 ## with similar levels of non-zero expression &
 ## expressed in at least 50% of cells within each group
 ## ie, genes that are probably unimodal but with higher variance in somitic cells
-ind_vg <- table_combined_genes$ResultDiffResDisp %in% c("SM+") &
-  table_combined_genes$ResultDiffMean %in% c("NoDiff") &
+ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("SM+") &
+  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
   abs(
-    table_combined_genes$ExpPropSM - table_combined_genes$ExpPropPSM
+    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
   ) < 0.05 &
   pmin(
-    table_combined_genes$ExpPropSM, table_combined_genes$ExpPropPSM
+    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
   ) > 0.99
 g1 <- plot_vg(ind_vg) +
     theme(legend.position = "bottom")
@@ -1383,13 +1435,13 @@ g1 <- plot_vg(ind_vg) +
 ## with different levels of non-zero expression &
 ## expressed in at least 50% of cells within one or more of the groups
 ## i.e., genes with more bursting pattern of expression
-ind_vg <- table_combined_genes$ResultDiffResDisp %in% c("SM+") &
-  table_combined_genes$ResultDiffMean %in% c("NoDiff") &
+ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("SM+") &
+  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
   abs(
-    table_combined_genes$ExpPropSM - table_combined_genes$ExpPropPSM
+    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
   ) > 0.1 &
   pmax(
-    table_combined_genes$ExpPropSM, table_combined_genes$ExpPropPSM
+    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
   ) > 0.75
 g2 <- plot_vg(ind_vg)
 
@@ -1399,13 +1451,13 @@ g2 <- plot_vg(ind_vg)
 ## with similar levels of non-zero expression &
 ## expressed in at least 50% of cells within each group
 ## ie, genes that are probably unimodal but with higher variance
-ind_vg <- table_combined_genes$ResultDiffResDisp %in% c("PSM+") &
-  table_combined_genes$ResultDiffMean %in% c("NoDiff") &
+ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("PSM+") &
+  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
   abs(
-    table_combined_genes$ExpPropSM - table_combined_genes$ExpPropPSM
+    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
   ) < 0.1 &
   pmin(
-    table_combined_genes$ExpPropSM, table_combined_genes$ExpPropPSM
+    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
   ) > 0.75
 g3 <- plot_vg(ind_vg) +
     theme(legend.position = "none")
@@ -1415,13 +1467,13 @@ g3 <- plot_vg(ind_vg) +
 ## with similar levels of non-zero expression &
 ## expressed in at least 50% of cells within one or more of the groups
 ## i.e., genes with more bursting pattern of expression
-ind_vg <- table_combined_genes$ResultDiffResDisp %in% c("PSM+") &
-  table_combined_genes$ResultDiffMean %in% c("NoDiff") &
+ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("PSM+") &
+  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
   abs(
-    table_combined_genes$ExpPropSM - table_combined_genes$ExpPropPSM
+    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
   ) > 0.10 &
   pmax(
-    table_combined_genes$ExpPropSM, table_combined_genes$ExpPropPSM
+    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
   ) > 0.50
 g4 <- plot_vg(ind_vg)
 
@@ -1498,8 +1550,8 @@ sessionInfo()
 ```
 
 ```{r, echo = FALSE}
-saveRDS(sce_sm, "rds/sce_sm.rds")
-saveRDS(sce_psm, "rds/sce_psm.rds")
+# saveRDS(sce_sm, "rds/sce_sm_output.rds")
+# saveRDS(sce_psm, "rds/sce_psm_output.rds")
 ```
 
 # Data availability

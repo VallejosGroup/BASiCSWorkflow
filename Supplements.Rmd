@@ -39,7 +39,7 @@ library("BiocStyle")
 library("knitr")
 knitr::opts_chunk$set(
   message = FALSE, error = FALSE, warning = FALSE,
-  cache = 2, cache.path = "cache_supp/",
+  cache = 0, cache.path = "cache_supp/",
   fig.path = "figure_supp/"
 )
 ```
@@ -147,6 +147,8 @@ The posterior probability threshold $\alpha_R$ is chosen to control the EFDR
 we exclude genes that are not expressed in at least 2 cells per condition from
 differential variability testing.
 
+
+
 # Pre-processing and quality control steps for the presomitic and somitic mesoderm cells
 
 ## Loading necessary libraries
@@ -188,19 +190,13 @@ After decompression, the `.zip` can be deleted as it is no longer required.
 options(timeout = 1000)
 # Check whether the data was downloaded already
 if (!file.exists("downloads/rawCounts.tsv")) {
-  # Specifies data location
   website <- "https://www.ebi.ac.uk/"
-  folder <- "arrayexpress/files/E-MTAB-6153/"
-  file <- "E-MTAB-6153.processed.2.zip"
-  # Data is downloaded in a `downloads` sub-folder
+  folder <- "biostudies/files/E-MTAB-6153/"
   download.file(
-    paste0(website, folder, file),
-    destfile = "downloads/rawCounts.zip"
+    paste0(website, folder),
+    destfile = "downloads/E-MTAB-6153.zip"
   )
-  # Un-compress the downloaded zip file 
-  unzip(zipfile = "downloads/rawCounts.zip", exdir = "downloads")
-  # Delete zip file as not longer required
-  file.remove("downloads/rawCounts.zip")
+  unzip("downloads/E-MTAB-6153.zip", exdir = "downloads")
 }
 ```
 
@@ -264,8 +260,10 @@ of this workflow could be applied to any other pair of cell types.
 
 ```{r droplet-cell-selection}
 # Identifies which cells are in the groups of interest
-ind_som <- which(cluster_labels$cellType == "somiticMesoderm" |
-                 cluster_labels$cellType == "presomiticMesoderm")
+ind_som <- which(
+  cluster_labels$cellType == "somiticMesoderm" |
+  cluster_labels$cellType == "presomiticMesoderm"
+)
 # Selects the cells of interest from the raw counts and cluster-label metadata
 raw_counts <- raw_counts[, ind_som]
 cluster_labels <- cluster_labels[ind_som, ]
@@ -280,9 +278,14 @@ For pre-processing and visualisation purposes, we load the data into a
 droplet_sce <- SingleCellExperiment(
   assays = list(counts = as(as.matrix(raw_counts), "dgCMatrix")),
   colData = cluster_labels
-  )
+)
 # Delete the original table of raw expression counts as no longer needed
 rm(raw_counts)
+```
+
+```{r remove-counts}
+ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
+droplet_sce <- droplet_sce[ind_expressed, ]
 ```
 
 ## Annotation
@@ -342,8 +345,8 @@ For the remaining analysis, we will only focus on the
 protein coding genes that are contained in the data. These are selected below. 
 
 ```{r}
-droplet_sce <- droplet_sce[!is.na(rowData(droplet_sce)$gene_biotype) &
-                           rowData(droplet_sce)$gene_biotype == "protein_coding", ]
+ind_pc <- which(rowData(droplet_sce)$gene_biotype == "protein_coding")
+droplet_sce <- droplet_sce[ind_pc, ]
 ```
 
 ## QC and exploratory data analysis
@@ -354,7 +357,7 @@ number of detected genes per cell (`detected`). These will be added in the
 `colData` slot using the `addPerCellQC()` function from the `r Biocpkg("scater")`
 package. 
 
-```{r cellqc-metrics}
+```{r add-cellqc-metrics}
 droplet_sce <- addPerCellQC(droplet_sce)
 ```
 
@@ -410,11 +413,23 @@ droplet_sce <- logNormCounts(droplet_sce)
 ## Run PCA
 droplet_sce <- runPCA(droplet_sce)
 ## Plot first two PCs colour-coded according to cell-level metadata
-p_type <- plotPCA(droplet_sce, ncomponents = c(2, 1), colour_by = "subCellType") +
+p_type <- plotPCA(
+    droplet_sce,
+    ncomponents = c(2, 1),
+    colour_by = "subCellType"
+  ) +
   theme(legend.position = "bottom")
-p_detected <- plotPCA(droplet_sce, ncomponents = c(2, 1), colour_by = "detected") +
+p_detected <- plotPCA(
+    droplet_sce,
+    ncomponents = c(2, 1),
+    colour_by = "detected"
+  ) +
   theme(legend.position = "bottom")
-p_batch <- plotPCA(droplet_sce, ncomponents = c(2, 1), colour_by = "sample") +
+p_batch <- plotPCA(
+    droplet_sce,
+    ncomponents = c(2, 1),
+    colour_by = "sample"
+  ) +
   theme(legend.position = "bottom")
 p_type + p_detected  + p_batch 
 ```
@@ -482,18 +497,385 @@ group of cells. These datasets contain
 `r sum(colData(droplet_sce)$cellType == "somiticMesoderm")`, respectively. 
 
 ```{r separate-SCE}
-sce_psm <- droplet_sce[,colData(droplet_sce)$cellType == "presomiticMesoderm"]
-sce_sm <- droplet_sce[,colData(droplet_sce)$cellType == "somiticMesoderm"]
+sce_psm <- droplet_sce[, colData(droplet_sce)$cellType == "presomiticMesoderm"]
+sce_sm <- droplet_sce[, colData(droplet_sce)$cellType == "somiticMesoderm"]
 ```
 
 These are then stored for their use in the main manuscript.
 
+```{r}
+saveRDS(sce_psm, "rds/sce_psm.rds")
+saveRDS(sce_sm, "rds/sce_sm.rds")
+```
+
 ## BASiCS with and without spike-ins
+
+TODO: write a basic intro here.
+
+# Data pre-processing and quality control steps
+
+## Downloading the data
+
+The matrix with raw read counts can be obtained from ArrayExpress under the 
+accession number 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
+In the matrix, column names contain library identifiers and row names
+display Ensembl gene identifiers.
+
+```{r naive-data}
+if (!file.exists("downloads/")) {
+  dir.create("downloads", showWarnings = FALSE)
+}
+if (!file.exists("downloads/raw_data.txt")) {
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
+  file <- "E-MTAB-4888.processed.1.zip"
+  download.file(
+    paste0(website, file),
+    destfile = "downloads/raw_data.txt.zip"
+  )
+  unzip("downloads/raw_data.txt.zip", exdir = "downloads")
+  file.remove("downloads/raw_data.txt.zip")
+}
+cd4_raw <- read.table("downloads/raw_data.txt", header = TRUE, sep = "\t")
+cd4_raw <- as.matrix(cd4_raw)
+```
+
+The input matrix contains data for `r format(ncol(cd4_raw), big.mark=",")`
+cells and `r format(nrow(cd4_raw), big.mark=",")`
+genes, including `r sum(grepl("ERCC", rownames(cd4_raw)))` ERCC spike-ins.
+
+Information about experimental conditions and other metadata is available 
+under the same accession number. 
+
+```{r selecting-serum-cells}
+if (!file.exists("downloads/metadata_file.txt")) {
+  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
+  file <- "E-MTAB-4888.additional.1.zip"
+  download.file(
+    paste0(website, file),
+    destfile = "downloads/metadata.txt.zip"
+  )
+  unzip("downloads/metadata.txt.zip", exdir = "downloads")
+  file.remove("downloads/metadata.txt.zip")
+}
+cd4_metadata <- read.table(
+  "downloads/metadata_file.txt",
+  header = TRUE,
+  sep = "\t"
+)
+## Save sample identifiers as rownames
+rownames(cd4_metadata) <- cd4_metadata$X
+```
+
+The columns in the metadata file contain library identifiers (`X`), strain 
+information (`Strain`; *Mus musculus castaneus* or *Mus musculus domesticus*), 
+the age of the animals (`Age`; young or old), stimulation state of the cells 
+(`Stimulus`; naive or activated), batch information (`Individuals`; associated 
+to different mice), and cell type information (`Celltype`; via FACS or MACS 
+purification). 
+
+Here, we convert the data and metadata described above into a 
+`SingleCellExperiment` object. 
+For this purpose, we first separate the input matrix of expression counts into
+two matrices associated to intrinsic genes and external spike-ins, respectively. 
+Within the `SingleCellExperiment` object, the latter is stored separately
+as an *alternative experiment*. For more details on the alternative experiment
+slot, see `help("altExp")`.
+
+
+```{r CD4-SCE-object}
+## Separate intrinsic from ERCC counts
+bio_counts <- cd4_raw[!grepl("ERCC", rownames(cd4_raw)), ]
+spike_counts <- cd4_raw[grepl("ERCC", rownames(cd4_raw)), ]
+## Generate the SingleCellExperiment object
+sce_cd4_all <- SingleCellExperiment(
+  assays = list(counts = bio_counts),
+  colData = cd4_metadata[colnames(cd4_raw), ]
+)
+## Add read-counts for spike-ins as an alternative experiment
+altExp(sce_cd4_all, "spike-ins") <- SummarizedExperiment(
+  assays = list(counts = spike_counts)
+)
+```
+
+Hereafter, our analysis focuses on naive CD4^+^ T cells in the presence and
+absence of stimulation using plate-bound antibodies,+ obtained 
+from young *Mus musculus domesticus* animals, and purified using MACS-based cell
+sorting. 
+Thus, we subset the `SingleCellExperiment` object to these 
+`r sum(sce_cd4_all$Strain == "Mus musculus domesticus" & sce_cd4_all$Age == "Young" & sce_cd4_all$Celltype == "MACS-purified Naive")` cells.
+
+```{r naive-activated-CD4-SCE-object}
+ind_select <- sce_cd4_all$Strain == "Mus musculus domesticus" &
+  sce_cd4_all$Age == "Young" &
+  sce_cd4_all$Celltype == "MACS-purified Naive"
+sce_naive_active <- sce_cd4_all[, ind_select]
+sce_naive_active
+```
+
+
+## Annotation
+
+Input data was annotated using Ensembl gene identifiers. 
+To facilitate interpretation, it is often useful to obtain a mapping from 
+Ensembl gene IDs to gene symbols using the BioMart suite
+([http://www.biomart.org](http://www.biomart.org)) via the 
+Bioconductor package `r Biocpkg("biomaRt")` [@Durinck2009].
+This can also be used to obtain gene-pathways mappings and other
+metadata (e.g. gene length), useful for performing functional analysis
+of gene sets identified in downstream analyses.
+
+```{r read-gene-symbols}
+genenames <- readRDS("rds/genenames.rds")
+```
+
+We add this information as `rowData` within the `SingleCellExperiment` 
+object created above. 
+
+```{r}
+## Merge biomaRt annotation
+rowdata <- data.frame(ensembl_gene_id = rownames(sce_naive_active))
+rowdata <- merge(rowdata, genenames, by = "ensembl_gene_id", all.x = TRUE)
+rownames(rowdata) <- rowdata$ensembl_gene_id
+## Check if  order is correct after merge;
+stopifnot(all(rownames(rowdata) == rownames(sce_naive_active)))
+## add to the SingleCellExperiment object
+rowData(sce_naive_active) <- rowdata
+```
+
+For the remaining analysis, we will only focus on the 
+`r format(sum(rowData(sce_naive_active)$gene_biotype == "protein_coding", na.rm=TRUE), big.mark=",")`
+protein coding genes that are contained in the data. These are selected below. 
+
+```{r}
+protein_coding <- which(
+  rowData(sce_naive_active)$gene_biotype == "protein_coding"
+)
+sce_naive_active <- sce_naive_active[protein_coding, ]
+```
+
+## QC and exploratory data analysis
+
+The data available at 
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/) have
+been already filtered to remove poor quality samples.
+The QC applied in [@Martinez-jimenez2017] removed cells with: (i) fewer 
+than 1,000,000 total reads, (ii) less than 20% of reads mapped to 
+endogenous genes, (iii) less than 1,250 or more than 3,000 detected genes and 
+(iv) more than 10% or fewer than 0.5% of reads mapped to mitochondrial genes.
+We include visualisations of these measures here; we also include another 
+widely used QC diagnostic plot that compares the total 
+number (or fraction) of spike-in counts versus the total number (or fraction) of 
+endogeneous counts.
+In such a plot, low quality samples are characterised by a high fraction of 
+spike-in counts and a low fraction of endogeneous counts 
+(see Figure \@ref(fig:PerCellQC)).
+
+```{r PerCellQC, fig.cap="Cell-level QC metrics. The total number of endogenous read-counts (excludes non-mapped and intronic reads) is plotted against the total number of detected genes (left) and the total number of spike-in read-counts (right)."}
+sce_naive_active <- addPerCellQC(sce_naive_active, use_altexps = TRUE)
+p_cell_qc1 <- plotColData(
+  sce_naive_active,
+  x = "sum",
+  y = "detected") +
+  xlab("Total endogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+p_cell_qc2 <- plotColData(
+  sce_naive_active,
+  x = "sum",
+  y = "altexps_spike-ins_sum") +
+  xlab("Total endogenous reads per cell") +
+  ylab("Total spike-in reads per cell") +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+p_cell_qc1 + p_cell_qc2
+```
+
+We can also visualise these metrics with respect to cell-level metadata, such
+as the experimental conditions (active vs unstimulated) and the different mice 
+from which cells were collected 
+(see Figure \@ref(fig:experimental-condition-batch)). 
+
+```{r experimental-condition-batch, fig.cap="Cell-level QC metrics according to cell-level metadata. The total number of endogenous reads (excludes non-mapped and intronic reads) is plotted against the total number of detected genes. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
+p_stimulus <- plotColData(
+    sce_naive_active,
+    x = "sum",
+    y = "detected",
+    colour_by = "Stimulus"
+  ) +
+  xlab("Total endogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+p_batch <- plotColData(
+    sce_naive_active,
+    x = "sum",
+    y = "detected",
+    colour_by = "Individuals"
+  ) +
+  xlab("Total endogenous reads per cell") +
+  ylab("Number of detected genes per cell") +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+p_stimulus + p_batch
+```
+
+To further explore the underlying structure of the data, we perform global
+scaling normalisation using `r Biocpkg("scran")` and
+principal component analysis (PCA) of log-transformed normalised expression 
+counts using `r Biocpkg("scater")`.
+As seen in Figure \@ref(fig:pca-visualisation-stimulus-batch), this analysis 
+suggests the absence of strong batch effects.
+It should be noted that the estimation of global scaling normalisation factors 
+using `r Biocpkg("scran")` is not strictly necessary in the 
+`r Biocpkg("BASiCS")` workflow. 
+Here, we only use it as part of the exploratory data analysis. 
+Moreover, count-based models for dimensionality reduction 
+(e.g. [@Townes2019;@Lopez2018]) could be used as an alternative to PCA, 
+removing the need for log normalisation.
+
+```{r pca-visualisation-stimulus-batch, fig.cap="First two principal components of log-transformed expression counts after scran normalisation. Colour indicates the experimental condition (left) and animal of origin (right) for each cell."}
+## Global scaling normalisation + log tranformation + PCA
+sce_naive_active <- computeSumFactors(sce_naive_active)
+sce_naive_active <- logNormCounts(sce_naive_active)
+sce_naive_active <- runPCA(sce_naive_active)
+p_stimulus <- plotPCA(sce_naive_active, colour_by = "Stimulus") +
+  theme(legend.position = "bottom")
+p_batch <- plotPCA(sce_naive_active, colour_by = "Individuals") +
+  theme(legend.position = "bottom")
+p_stimulus + p_batch
+```
+
+In addition to cell-specific QC, we also recommend a gene filtering 
+step prior to using `r Biocpkg("BASiCS")`. 
+The purpose of this filter is to remove lowly expressed genes that were largely
+undetected through sequencing, making reliable variability estimates difficult
+to obtain.
+Here, we remove genes that are not detected in at least 20 cells across both
+conditions, or that have an average read count below 1. 
+These thresholds can vary across datasets and should be 
+informed by gene-specific QC metrics such as those shown in
+Figure \@ref(fig:gene-selection) as well as prior knowledge about the cell types
+and conditions being studied, where available.
+
+```{r cd4-gene-selection, fig.cap="Average read-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
+sce_naive_active <- addPerFeatureQC(sce_naive_active, exprs_values = "counts")
+## Remove genes with zero total counts across all cells
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$detected != 0, ]
+## Transform "detected" into number of cells and define inclusion criteria
+rowData(sce_naive_active)$detected_cells <-
+  rowData(sce_naive_active)$detected * ncol(sce_naive_active) / 100
+detected_threshold <- 20
+mean_threshold <- 1
+include_gene <- rowData(sce_naive_active)$mean >= mean_threshold &
+  rowData(sce_naive_active)$detected_cells >= detected_threshold
+rowData(sce_naive_active)$include_gene <- include_gene
+plotRowData(
+    sce_naive_active,
+    x = "detected_cells",
+    y = "mean",
+    colour_by = "include_gene"
+  ) +
+  xlab("Number of cells in which expression was detected") +
+  ylab("Average number of read counts across all cells") +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme(legend.position = "bottom") +
+  geom_vline(
+    xintercept = detected_threshold,
+    linetype = "dashed",
+    col = "grey60"
+  ) +
+  geom_hline(
+    yintercept = mean_threshold,
+    linetype = "dashed",
+    col = "grey60"
+  )
+## Apply gene filter
+sce_naive_active <- sce_naive_active[rowData(sce_naive_active)$include_gene, ]
+```
+
+Subsequently, we also require users to remove spike-in molecules that were not 
+captured through sequencing. We do this separately for naive and active
+cells.
+
+```{r spike-ins-present}
+ind_active <- sce_naive_active$Stimulus == "Active"
+ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
+spikes <- assay(altExp(sce_naive_active))
+detected_spikes_active <- rowSums(spikes[, ind_active] > 0) > 0
+detected_spikes_naive <- rowSums(spikes[, ind_naive] > 0) > 0
+detected_spikes <- detected_spikes_naive & detected_spikes_active
+altExp(sce_naive_active) <- altExp(sce_naive_active)[detected_spikes, ]
+```
+
+## Spike-in concentrations
+
+If spike-ins will be used to aid data normalisation and technical noise 
+quantification, `r Biocpkg("BASiCS")` also requires the number of spike-in 
+molecules that were added to each well. 
+For each spike-in $i$, this corresponds to:
+
+$$ \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) 
+\times V \times D \hspace{0.5cm} \mbox{where,} $$
+
+- $C_i$ is the concentration for the spike-in $i$ (measured in $aM\mu{}l^{-1}$),
+- $V$ is the volume added into each well (measure in $nl$) and
+- $D$ is a dilution factor. 
+
+The remaining factors in the equation above are unit conversion constants
+(e.g. from moles to molecules). 
+For the CD4^+^ T cell data, the authors added a 1:50,000 dilution of the ERCC 
+spike-in mix 1 and a volume of $9nl$ was added into each well (see [https://www.fluidigm.com/faq/ifc-9](https://www.fluidigm.com/faq/ifc-9)).
+Finally, input concentrations $C_i$ can be downloaded with the Bioconductor
+package `r Biocpkg("scRNAseq")`, using the function
+`ERCCSpikeInConcentrations()`.
+
+Based on this information, we can use `BASiCS_CalculateERCC` to calculate
+the amount of spike-in molecules in each well:
+
+```{r, ercc-mul}
+ERCC_count <- BASiCS_CalculateERCC(Mix = 1, DilutionFactor = 1/50000, VolumePerCell = 0.009)
+```
+
+To update the `sce_naive` and `sce_active` objects, the user must create a 
+`data.frame` whose first column contains the spike-in labels (e.g. ERCC-00130) 
+and whose second column contains the number of molecules calculated above.
+We add this as row metadata for `altExp(sce_naive)` and 
+`altExp(sce_active)`. 
+
+```{r spike-info}
+SpikeInput <- data.frame(
+  Names = names(ERCC_count),
+  count = ERCC_count
+)
+## Exclude spike-ins not included in the input SingleCellExperiment objects
+ind_match <- match(rownames(altExp(sce_naive_active)), SpikeInput$Names)
+SpikeInput <- SpikeInput[ind_match , ]
+## Add as metadata
+rowData(altExp(sce_naive_active)) <- SpikeInput
+```
+
+The final dataset used in subsequent analyses contains 
+`r ncol(sce_naive_active)` cells, `r nrow(sce_naive_active)` genes and 
+`r nrow(altExp(sce_naive_active))` spike-ins.
+
+```{r save-SCE}
+saveRDS(sce_naive_active, "rds/sce_naive_active.rds")
+ind_active <- sce_naive_active$Stimulus == "Active"
+ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
+sce_naive <- sce_naive_active[, ind_naive]
+sce_active <- sce_naive_active[, ind_active]
+```
+
 
 
 ### Inference using BASiCS with spike-ins
 
-```{r}
+```{r, eval = FALSE}
 set.seed(42)
 chain_naive <- BASiCS_MCMC(
   Data = sce_naive,
@@ -502,7 +884,6 @@ chain_naive <- BASiCS_MCMC(
   Thin = 20,
   Burn = 20000,
   Regression = TRUE,
-  PriorParam = prior_param_naive,
   Threads = 4,
   StoreChains = TRUE,
   StoreDir = "rds/",
@@ -517,7 +898,6 @@ chain_active <- BASiCS_MCMC(
   Thin = 20,
   Burn = 20000,
   Regression = TRUE,
-  PriorParam = prior_param_active,
   Threads = 4,
   StoreChains = TRUE,
   StoreDir = "rds/",
@@ -561,7 +941,6 @@ chain_naive_nospikes <- BASiCS_MCMC(
   Thin = 20,
   Burn = 20000,
   Regression = TRUE,
-  PriorParam = prior_param_naive,
   Threads = 4,
   StoreChains = TRUE,
   StoreDir = "rds/",
@@ -800,368 +1179,3 @@ ggplot() +
     size = 4
   )
 ```
-
-
-# Differential testing using droplet-based differentiating cells {#droplet-data}
-
-The development of droplet-based scRNA-seq [@Klein2015;@Macosko2015] 
-lead to a large increase in the number of cells that can be profiled per 
-experiment at a fixed cost.
-With this, large-scale scRNA-seq datasets have been generated to study 
-development across multiple time-points and capturing multiple tissues 
-[@Ibarra-Soria2018;@Kernfeld2018]. 
-Here we describe the computational analysis of changes in mean expression 
-and transcriptional variability when data are sparse and technical spike-in 
-genes are missing. 
-For this, we compare cells of the presomitic mesoderm and somitic mesoderm 
-using droplet-based scRNA-seq data [@Ibarra-Soria2018].
-
-## Obtaining the data
-
-The full dataset is stored under the accession number E-MTAB-6153 on 
-ArrayExpress and can be obtained via:
-
-```{r load-droplet-data}
-options(timeout = 1000)
-if (!file.exists("downloads/rawCounts.tsv")) {
-  website <- "https://www.ebi.ac.uk/"
-  folder <- "arrayexpress/files/E-MTAB-6153/"
-  file <- "E-MTAB-6153.processed.2.zip"
-  download.file(
-    paste0(website, folder, file),
-    destfile = "downloads/rawCounts.zip"
-  )
-  unzip(zipfile = "downloads/rawCounts.zip", exdir = "downloads")
-  file.remove("downloads/rawCounts.zip")
-}
-raw_counts <- read.delim("downloads/rawCounts.tsv", header = TRUE)
-```
-
-*Of note:* The zip file is 65 MB in size while the unzipped, raw counts measure
-873 MB in size. The cluster labels of the original publication ca be obtained 
-via:
-
-```{r cluster-labels-droplet}
-if (!file.exists("downloads/cellAnnotation.tsv")) {
-  website <- "https://www.ebi.ac.uk/"
-  folder <- "arrayexpress/files/E-MTAB-6153/"
-  file <- "E-MTAB-6153.processed.3.zip"
-  download.file(
-    paste0(website, folder, file),
-    destfile = "cluster_labels.zip"
-  )
-  unzip(zipfile = "cluster_labels.zip", exdir = "downloads")
-}
-
-cluster_labels <- read.table("downloads/cellAnnotation.tsv",
-  sep = "\t", header = TRUE, stringsAsFactors = FALSE)
-```
-
-## Select populations of interest
-
-We select the somitic and pre-somitic mesoderm cells to perform differential 
-testing. Prior to running the MCMC, we want to control for outlying cells and 
-heterogeneous substructure in both cell populations. 
-
-```{r droplet-cell-selection}
-cluster_labels[["Cell_type"]] <- cluster_labels$cellType
-cluster_labels[["Cell_type"]] <- sub(
-  "presomiticMesoderm",
-  "PSM",
-  cluster_labels[["Cell_type"]]
-)
-cluster_labels[["Cell_type"]] <- sub("somiticMesoderm",
-  "SM",
-  cluster_labels[["Cell_type"]]
-)
-
-ind_som <- which(cluster_labels[["Cell_type"]] == "PSM" |
-  cluster_labels[["Cell_type"]] == "SM")
-raw_counts <- raw_counts[, ind_som]
-cluster_labels <- cluster_labels[ind_som, ]
-```
-
-## Generating SingleCellExperiment object and quality control
-
-For pre-processing and visualisation purposes, we load the data into a 
-SingleCellExperiment object. The metadata will be stored in the `colData` slot.
-
-```{r droplet-sce}
-droplet_sce <- SingleCellExperiment(
-  assays = list(counts = as(as.matrix(raw_counts), "dgCMatrix")),
-  colData = DataFrame(
-    cluster_labels,
-    subCellType = sub("_.*", "", cluster_labels$cell)
-  )
-)
-rm(raw_counts)
-```
-
-For further processing steps, we remove lowly expressed genes.
-
-```{r filter-drop}
-ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
-droplet_sce <- droplet_sce[ind_expressed, ]
-```
-
-To visualise possible sub-structure in the data, we normalise both cell 
-populations using the `scran` package.
-
-```{r norm-drop}
-droplet_sce <- computeSumFactors(droplet_sce,
-  clusters = colData(droplet_sce)$subCellType
-)
-droplet_sce <- logNormCounts(droplet_sce)
-```
-
-Next, we compute a PCA using the `scater` package. 
-
-```{r droplet-pca}
-droplet_sce <- runPCA(droplet_sce)
-```
-
-We can now visualise the different factors stored in the `colData` slot.
-
-```{r drop-pca-plot, fig.cap="Principal component plot of pre-somitic and somitic mesoderm cells. Colour indicates cell type."}
-## Cell types identified by clustering
-plotReducedDim(droplet_sce, dimred = "PCA", colour_by = "subCellType") +
-  scale_fill_manual(
-    name = "cellType",
-    values = c("coral4", "steelblue", "limegreen")
-  )
-```
-
-The first PC separates the two different cell types while the second PC captures
-outlying cells.
-We will remove these outliers and the intermediate cell population from 
-down-stream analysis.
-
-```{r drop-filt}
-ind_retain <- reducedDims(droplet_sce)$PCA[, 2] > -5 &
-  colData(droplet_sce)$subCellType != "presomiticMesoderm.b"
-droplet_sce <- droplet_sce[, ind_retain]
-```
-
-We now collected the cells that we want to process using BASiCS. 
-For this, we will generate the BASiCS data objects.
-
-## Generating BASiCS data objects
-
-Since droplet-based scRNA-seq data are generated without including technical 
-spike-in genes, BASiCS uses measurement error models to quantify technical 
-variation through replication [@Carroll1998].
-Here, it is crucial to provide batch information to the BASiCS model.
-In the case of the somitic and pre-somoitic mesoderm cells, embryos of two mice 
-have been used to generate the data. 
-Cells isolated from the first embryo were split into two batches and processed 
-independently.
-To capture cell-type extrinsic, biological variation between the two mice, we 
-pool cells from the two batches of the first animal and only considere cells 
-from mouse 1 and mouse 2 as replicates.
-
-```{r BASiCS-droplet-data}
-## Presomitic mesoderm
-ind_presom <- colData(droplet_sce)[["Cell_type"]] == "PSM"
-droplet_sce$batch <- round(colData(droplet_sce)$sample)
-sce_psm <- droplet_sce[, ind_presom]
-
-sce_psm$BatchInfo <- factor(sce_psm$batch)
-
-## Somitic mesoderm
-ind_som <- colData(droplet_sce)[["Cell_type"]] == "SM"
-sce_sm <- droplet_sce[, ind_som]
-sce_sm$BatchInfo <- factor(sce_sm$batch)
-saveRDS(sce_psm, "rds/sce_psm.rds")
-saveRDS(sce_sm, "rds/sce_sm.rds")
-```
-
-# Exploring the posterior distribution for BASiCS model parameters
-
-Here we explore the posterior distribution for the `r Biocpkg("BASiCS")` model
-parameters estimated for the pre-somitic mesoderm cells. First, we load the 
-saved MCMC chains:
-
-```{r load-droplet-chain}
-chain_psm <- readRDS("rds/chain_PSM.Rds")
-```
-
-MCMC chains for specific model parameters can be extracted using the 
-`displayChainBASiCS()` function. For example, the following code will return
-all MCMC samples for gene-specific mean expression parameters across all genes 
-(other parameters can be obtained by varying the value of `Param`):
-
-```{r display-mu}
-chain_mu <- displayChainBASiCS(chain_psm, Param = "mu")
-```
-
-`chain_mu` is a matrix with `r nrow(chain_mu)` rows (1 per each stored MCMC
-iteration) and `r ncol(chain_mu)` (1 per each gene). The following code can
-be used to visualise the univariate posterior density for the mean expression
-parameter associated to a specific gene. 
-
-```{r}
-plot(density(chain_mu[,"ENSMUSG00000025902"]))
-```
-
-Point estimates (posterior medians) and their corresponding 95\% Highest 
-Posterior Density (HPD) interval for each model parameter can be obtained 
-using the `Summary()` method:
-
-```{r summary-droplet}
-summary_psm <- Summary(chain_psm)
-```
-
-To access posterior estimates associated to specific model parameters, we use
-the `displaySummaryBASiCS()` function. For example, here we display these 
-estimates for mean expression parameters estimated for 5 different genes:
-
-```{r summary-droplet-display}
-summary_mu <- displaySummaryBASiCS(summary_psm, Param = "mu")
-summary_mu[1:5,]
-```
-
-We can also directly visualise point estimates and their associated 95\% HPD:
-
-```{r summary-droplet-plot}
-# Genes denote the gene-index (row) in which the gene appears in the input data
-plot(summary_psm, Param = "mu", Genes = 1:5)
-```
-
-## MCMC convergence diagnostics pre-somatic mesoderm cells
-
-Here, we provide MCMC convergence diagnostics for the chains generated for the
-pre-somatic mesoderm cell population.
-To assess whether the chains converged, we will visualise trace plots for some 
-of the parameters. 
-
-```{r psm-chain-convergence, fig.cap = "Trace plot, marginal density, and autocorrelation function for mean expression of an example gene; presomatic cells."}
-plot(chain_psm, Param = "mu", Gene = 1)
-```
-
-```{r diag-psm, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; presomatic cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
-diag_p1 <- BASiCS_DiagPlot(chain_psm, Param = "mu", Measure = "geweke") +
-  theme(legend.position = "bottom")
-diag_p2 <- BASiCS_DiagPlot(chain_psm, Param = "mu", Measure = "ess") +
-  theme(legend.position = "bottom")
-diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
-```
-
-We observe that the chains for all chosen parameters appear to have converged. 
-Furthermore, to validate that the model fitted the mean-variability trend 
-correctly, we plot posterior estimates for over-dispersion paramters $\delta_i$ 
-against posterior estimates of mean expression parameters $\mu_i$.
-For this, the `BASiCS_ShowFit` function can be used.
-
-```{r droplet-regression-trend-psm, fig.cap="Over-dispersion is plotted against mean expression for all genes in pre-somitic mesoderm cells (A) and somitic mesoderm cells (B), on a log-log scale. Colour corresponds to local density, with lighter colours representing higher density. The curve represents the inferred trend of over-dispersion against mean, and the shaded area indicates the 95\\% credible interval."}
-a <- BASiCS_ShowFit(chain_psm)
-b <- BASiCS_ShowFit(chain_sm)
-
-a + b + plot_annotation(tag_levels = "A")
-```
-
-Both trends display similar behaviour which allows us to compare residual 
-over-dispersion estimates.
-
-## Differential testing 
-
-Next, we test for changes in mean expression and expression variability 
-between the somitic and pre-somitic mesoderm.
-First, we are interested in assessing global changes in expression 
-variability between the two conditions.
-For this, we compare over-dispersion parameters $\delta_i$ for genes that are
-similarly expressed in both conditions.
-
-```{r drop_testde_lfc0}
-Droplet_Test_logFC0 <- BASiCS_TestDE(
-  Chain1 = chain_psm,
-  Chain2 = chain_sm,
-  EpsilonM = 0,
-  GroupLabel1 = "PSM",
-  GroupLabel2 = "SM",
-  Plot = FALSE,
-  PlotOffset = FALSE,
-  CheckESS = TRUE,
-  MinESS = 100
-)
-```
-
-```{r droplet-tested-boxplot, fig.cap="Boxplot of log over-dispersion parameters in pre-somitic and somitic mesoderm cells, respectively."}
-DropletTableDisp <- as.data.frame(
-  Droplet_Test_logFC0,
-  Parameter = "Disp",
-  Filter = FALSE
-)
-not_excluded <- DropletTableDisp$ResultDiffDisp != "ExcludedFromTesting"
-for_plot <- DropletTableDisp[not_excluded, c("Disp1", "Disp2")]
-for_plot <- reshape2::melt(for_plot)
-ggplot(for_plot, aes(variable, log(value))) +
-  geom_violin() +
-  geom_boxplot(width = 0.25) +
-  scale_x_discrete(labels = c("PSM", "SM")) +
-  ylab("log(delta)") + xlab("")
-```
-
-### Global changes in variability
-
-With this analysis, we do not detect global changes in expression variability.
-We next profile changes in mean expression and expression variability on a 
-gene-specific level.
-For this, we use a log~2~ fold change threshold of 1 for mean expression testing 
-and the default threshold of $\psi_0\approx0.41$ for differential variability 
-testing.
-
-```{r droplet-gene-specific-testing, fig.cap="Fold changes of average expression in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher mean expression in either group."}
-Droplet_Test <- BASiCS_TestDE(
-  Chain1 = chain_psm,
-  Chain2 = chain_sm,
-  EpsilonM = 1,
-  GroupLabel1 = "PSM",
-  GroupLabel2 = "SM",
-  Plot = FALSE,
-  PlotOffset = FALSE,
-  CheckESS = TRUE,
-  MinESS = 100
-)
-
-BASiCS_PlotDE(Droplet_Test, Parameter = "Mean", Plot = "MA")
-Droplet_TableMean <- as.data.frame(
-  Droplet_Test,
-  Parameter = "Mean",
-  Filter = FALSE
-)
-```
-
-```{r droplet-gene-specific-testing-resdisp, fig.cap="Differences in residual over-dispersion parameters in presomitic mesoderm cells relative to somitic mesoderm cells are plotted again mean expression. Colour indicates genes that were excluded from differential expression test, and those with significantly higher residual over-dispersion in either group."}
-Droplet_TableResDisp <- as.data.frame(
-  Droplet_Test,
-  Parameter = "ResDisp",
-  Filter = FALSE
-)
-BASiCS_PlotDE(Droplet_Test, Parameter = "ResDisp", Plot = "MA")
-```
-
-### Differential mean expression
-
-We can now list the genes that were detected as differentially expressed and 
-differentially variable ordered by their difference in mean 
-expression/variability.
-
-```{r gene-lists-mean}
-genenames <- readRDS("rds/genenames.rds")
-## Highly expressed in somitic mesoderm
-ind_sm <- Droplet_TableMean$ResultDiffMean == "SM+"
-SM_mean <- Droplet_TableMean[ind_sm, ]
-SM_mean <- SM_mean[order(SM_mean$MeanLog2FC, decreasing = FALSE), ]
-SM_mean$Symbol <- genenames[SM_mean$GeneName, 2]
-
-## Highly expressed in pre-somitic mesoderm
-ind_psm <- Droplet_TableMean$ResultDiffMean == "PSM+"
-PSM_mean <- Droplet_TableMean[ind_psm, ]
-PSM_mean <- PSM_mean[order(PSM_mean$MeanLog2FC, decreasing = TRUE), ]
-PSM_mean$Symbol <- genenames[PSM_mean$GeneName, 2]
-```
-
-We could then analyse the differentially expressed genes as performed
-in the main text, or using
-functional enrichment analysis as with other differential expression analysis
-packages.

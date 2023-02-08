@@ -16,8 +16,23 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v2
 
+      - name: Cache downloads
+        id: cache-downloads
+        uses: actions/cache@v3
+        with:
+          path: downloads
+          key: ${{ runner.os }}-downloads
+
       - name: Build
         run: |
           rmarkdown::render("Supplements.Rmd")
           rmarkdown::render("Workflow.Rmd")
         shell: Rscript {0}
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: pdfs
+          path: |
+            Workflow.pdf
+            Supplements.pdf
