@@ -965,7 +965,7 @@ chains_website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/-/
 # chains_website <- "https://zenodo.org/record/5243265/files/"
 if (!file.exists("rds/chain_naive_nospikes.Rds")) {
   download.file(
-    paste0(chains_website, "/chain_naive_nospikes.Rds"),
+    paste0(chains_website, "rds/chain_naive_nospikes.Rds"),
     destfile = "rds/chain_naive_nospikes.Rds"
   )
 }
