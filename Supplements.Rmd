@@ -163,6 +163,7 @@ library("ggpointdensity")
 library("biomaRt")
 library("patchwork")
 library("viridis")
+library("readxl")
 ## set default theme for plots
 theme_set(theme_bw())
 ```
@@ -315,7 +316,7 @@ of gene sets identified in downstream analyses.
 if (!dir.exists("rds")) {
   dir.create("rds", showWarnings = FALSE)
 }
-if (!file.exists("rds/genenames.rds")) {
+if (!file.exists("rds/genenames.Rds")) {
   # Initialize mart and dataset
   ensembl <- useEnsembl(
     biomart = "genes",
@@ -329,10 +330,10 @@ if (!file.exists("rds/genenames.rds")) {
   )
   rownames(genenames) <- genenames$ensembl_gene_id
   # Store information for future use
-  saveRDS(genenames, "rds/genenames.rds")
+  saveRDS(genenames, "rds/genenames.Rds")
 }
 # Load pre-downloaded gene annotation information
-genenames <- readRDS("rds/genenames.rds")
+genenames <- readRDS("rds/genenames.Rds")
 ```
 
 We add this information as `rowData` within the `SingleCellExperiment` 
@@ -515,8 +516,8 @@ sce_sm <- droplet_sce[, colData(droplet_sce)$cellType == "somiticMesoderm"]
 These are then stored for their use in the main manuscript.
 
 ```{r}
-saveRDS(sce_psm, "rds/sce_psm.rds")
-saveRDS(sce_sm, "rds/sce_sm.rds")
+saveRDS(sce_psm, "rds/sce_psm.Rds")
+saveRDS(sce_sm, "rds/sce_sm.Rds")
 ```
 
 ## BASiCS with and without spike-ins
@@ -537,17 +538,21 @@ display Ensembl gene identifiers.
 if (!file.exists("downloads/")) {
   dir.create("downloads", showWarnings = FALSE)
 }
-if (!file.exists("downloads/raw_data.txt")) {
-  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
-  file <- "E-MTAB-4888.processed.1.zip"
+if (!dir.exists("downloads/MarioniLab-ImmuneAging2017-5b665d1")) {
+  website <- "https://zenodo.org/"
+  folder <- "record/3522970/files/MarioniLab/"
+  file <- "ImmuneAging2017-1.0.0.zip"
   download.file(
-    paste0(website, file),
-    destfile = "downloads/raw_data.txt.zip"
+    paste0(website, folder, file),
+    destfile = "downloads/ImmuneAging2017-1.0.0.zip"
   )
-  unzip("downloads/raw_data.txt.zip", exdir = "downloads")
-  file.remove("downloads/raw_data.txt.zip")
+  unzip("downloads/ImmuneAging2017-1.0.0.zip", exdir = "downloads")
 }
-cd4_raw <- read.table("downloads/raw_data.txt", header = TRUE, sep = "\t")
+cd4_raw <- read.table(
+  "downloads/MarioniLab-ImmuneAging2017-5b665d1/Data/raw_data.txt",
+  header = TRUE,
+  sep = "\t"
+)
 cd4_raw <- as.matrix(cd4_raw)
 ```
 
@@ -559,23 +564,13 @@ Information about experimental conditions and other metadata is available
 under the same accession number. 
 
 ```{r selecting-serum-cells}
-if (!file.exists("downloads/metadata_file.txt")) {
-  website <- "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-4888/"
-  file <- "E-MTAB-4888.additional.1.zip"
-  download.file(
-    paste0(website, file),
-    destfile = "downloads/metadata.txt.zip"
-  )
-  unzip("downloads/metadata.txt.zip", exdir = "downloads")
-  file.remove("downloads/metadata.txt.zip")
-}
-cd4_metadata <- read.table(
-  "downloads/metadata_file.txt",
-  header = TRUE,
-  sep = "\t"
+cd4_metadata <- read_xlsx(
+  "downloads/MarioniLab-ImmuneAging2017-5b665d1/Data/metadata.xlsx"
 )
+cd4_metadata <- as.data.frame(cd4_metadata)
+
 ## Save sample identifiers as rownames
-rownames(cd4_metadata) <- cd4_metadata$X
+rownames(cd4_metadata) <- cd4_metadata$CellName
 ```
 
 The columns in the metadata file contain library identifiers (`X`), strain 
@@ -637,7 +632,7 @@ metadata (e.g. gene length), useful for performing functional analysis
 of gene sets identified in downstream analyses.
 
 ```{r read-gene-symbols}
-genenames <- readRDS("rds/genenames.rds")
+genenames <- readRDS("rds/genenames.Rds")
 ```
 
 We add this information as `rowData` within the `SingleCellExperiment` 
@@ -875,7 +870,7 @@ The final dataset used in subsequent analyses contains
 `r nrow(altExp(sce_naive_active))` spike-ins.
 
 ```{r save-SCE}
-saveRDS(sce_naive_active, "rds/sce_naive_active.rds")
+saveRDS(sce_naive_active, "rds/sce_naive_active.Rds")
 ind_active <- sce_naive_active$Stimulus == "Active"
 ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
 sce_naive <- sce_naive_active[, ind_naive]
