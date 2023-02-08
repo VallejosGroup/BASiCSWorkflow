@@ -961,6 +961,8 @@ As before, for convenience we provide a completed version of this chain at
 [https://doi.org/10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
 
 ```{r download-chain-naive-nospikes}
+chains_website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/-/raw/master/"
+# chains_website <- "https://zenodo.org/record/5243265/files/"
 if (!file.exists("rds/chain_naive_nospikes.Rds")) {
   download.file(
     paste0(chains_website, "/chain_naive_nospikes.Rds"),
@@ -1003,7 +1005,6 @@ before performing comparative analyses. This is performed by default in
 `BASiCS_TestDE`, but can be performed manually using `BASiCS_CorrectOffset`.
 
 ```{r download-chains}
-chains_website <- "https://zenodo.org/record/5243265/files/"
 options(timeout = 1000)
 if (!file.exists("rds/chain_naive.Rds")) {
   download.file(
