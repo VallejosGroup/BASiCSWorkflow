@@ -192,11 +192,11 @@ options(timeout = 1000)
 if (!file.exists("downloads/rawCounts.tsv")) {
   website <- "https://www.ebi.ac.uk/"
   folder <- "biostudies/files/E-MTAB-6153/"
+  file <- "rawCounts.tsv"
   download.file(
-    paste0(website, folder),
-    destfile = "downloads/E-MTAB-6153.zip"
+    paste0(website, folder, file),
+    destfile = "downloads/rawCounts.tsv"
   )
-  unzip("downloads/E-MTAB-6153.zip", exdir = "downloads")
 }
 ```
 
@@ -216,6 +216,16 @@ be use as the input for BASiCS.
 The cluster labels identified in the original publication are then loaded:
 
 ```{r cluster-labels-droplet}
+# Check whether the data was downloaded already
+if (!file.exists("downloads/cellAnnotation.tsv")) {
+  website <- "https://www.ebi.ac.uk/"
+  folder <- "biostudies/files/E-MTAB-6153/"
+  file <- "cellAnnotation.tsv"
+  download.file(
+    paste0(website, folder, file),
+    destfile = "downloads/cellAnnotation.tsv"
+  )
+}
 cluster_labels <- read.table("downloads/cellAnnotation.tsv",
   sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 ```
