@@ -152,11 +152,10 @@ model was initially motivated by supervised experimental designs in which
 experimental conditions correspond to groups of cells defined *a priori* (e.g. 
 selected cell types obtained through FACS sorting). However, the approach can 
 also be used in cases where the groups of cells of interest are computationally 
-identified through clustering. In such cases, the model implemented in 
-`r Biocpkg("BASiCS")` does not currently address issues associated to 
-post-selection inference, where the same data is analysed twice: first to 
-perform clustering and then to compare expression profiles between clusters 
-[@Lahnemann2020]. 
+identified through clustering (in such cases, the model does not currently 
+address issues associated to *post-selection inference*, where the same data is 
+analysed twice: first to perform clustering and then to compare expression 
+profiles between the identified clusters [@Lahnemann2020]). 
 
 `r Biocpkg("BASiCS")` jointly performs data normalisation, technical noise 
 quantification and downstream analyses, whilst propagating statistical 
@@ -171,8 +170,10 @@ Poisson model --- this is typically referred to as *over-dispersion*.
 Critically, `r Biocpkg("BASiCS")` enables the quantification of transcriptional
 variability within a population of cells, while accounting for the overall 
 mean-variance relationship that typically arises in scRNA-seq data [@Eling2018].
-Furthermore, when available, `r Biocpkg("BASiCS")` can also leverage extrinsic 
-spike-in molecules to aid data normalisation. 
+The latter enables the quantification of a gene-level *residual over-dispersion*
+as a measure of transcriptional noise that is not confounded by differences in
+gene expression. Furthermore, when available, `r Biocpkg("BASiCS")` can also 
+leverage extrinsic spike-in molecules to aid data normalisation. 
 
 <!--- Describes aims for the workflow and introduces BASiCS ---> 
 This article complements existing scRNA-seq workflows based on the Bioconductor 
@@ -248,7 +249,7 @@ library("sparseMatrixStats")
 library("coda")
 ```
 
-### Input data
+## Input data
 
 We use the Bioconductor package `r Biocpkg("SingleCellExperiment")` to convert 
 an input matrix of raw read counts (molecule counts for UMI-based protocols) 
@@ -265,37 +266,34 @@ Bioconductor packages [@Amezquita2019].
 
 A critical step in scRNA-seq analyses is QC, removing low quality samples that 
 may distort downstream analyses. 
-In this step, we use QC diagnostics to identify and remove samples that 
-correspond to broken cells, that are empty, or that contain multiple cells 
-[@Ilicic2016]. We  also typically remove lowly expressed genes that represent 
-less reliable information.
 The [*OSCA*](https://bioconductor.org/books/release/OSCA/) online book provides 
 an extensive overview on important aspects of how to perform QC of scRNA-seq 
 data, including exploratory analyses [@Amezquita2019].
+Here, we use QC diagnostics to identify and remove samples that correspond to 
+broken cells, that are empty, or that contain multiple cells [@Ilicic2016]. 
+We also remove lowly expressed genes that represent less reliable 
+information.
 
-Here, we use the Bioconductor package `r Biocpkg("scater")`
-package [@McCarthy2017] to calculate 
-QC metrics for each cell (e.g. total read-count) and gene (e.g. percentage of 
-zeroes across all cells), respectively. 
+We use the Bioconductor package `r Biocpkg("scater")`package [@McCarthy2017] to 
+calculate QC metrics for each cell (e.g. total read-count) and gene (e.g. 
+percentage of zeroes across all cells), respectively. 
 We also use the visualisation tools implemented in the `r Biocpkg("scater")` to 
 explore the input dataset and its associated QC diagnostic metrics. 
-For further exploratory data analysis we use the Bioconductor package 
+To perform further exploratory data analysis, we use the Bioconductor package 
 `r Biocpkg("scran")` [@Lun2016].
-The latter can perform *global scaling* normalisation, calculating 
+The latter is used to perform *global scaling* normalisation, calculating 
 cell-specific scaling factors that capture global differences in read-counts 
 across cells (e.g. due to sequencing depth and PCR amplification) 
-[@Lun2016pooling]. 
-To quantify transcriptional variability, `r Biocpkg("scran")` can infer an 
-overall trend between mean expression and the squared coefficent of 
-variation (CV^2^) for each gene. 
-Variability estimates that are not confounded by this 
-trend are then obtained via the DM approach [@Kolodziejczyk2015cell]. 
-For each gene, these are defined as the distance between CV$^2$ and a rolling 
-median along the range of mean expression values.
-DM estimates enable exploratory analyses of transcriptional 
-variability, but a measure of statistical uncertainty is not readily available. 
-As such, gene-specific downstream inference (such as differential variability 
-testing) is precluded.
+[@Lun2016pooling]. Note that, as described in the next section, the use of 
+`r Biocpkg("scran")` as a normalisation tool is not a requirement for 
+`r Biocpkg("BASiCS")` (which uses raw read-counts as input). However, we
+recommend the use of `r Biocpkg("scran")` normalisation as part of the 
+exploratory data analysis. For example, as illustrated in this workflow, 
+normalised read-counts can be used to visualise the data in a low-dimensional
+space (e.g. using principal component analysis). This can help to explore the
+underlying structure of the data, e.g. due to batch effects or other systematic
+differences (e.g. associated to different experimental conditions) across 
+different groups of cells. 
 
 ## BASiCS - Bayesian Analysis of Single Cell Sequencing data
 
@@ -303,10 +301,15 @@ Instead of modelling expression patterns for each gene separately, the
 `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 framework that shares information between all genes and cells to robustly
 quantify transcriptional variability [@Vallejos2015BASiCS]. 
-For example, as described below, we pool information across genes with similar 
-expression levels to obtain more reliable parameter estimates. The latter is 
-particularly helpful for lowly expressed genes and sparse datasets, where less 
-information is available. 
+For example, as described by [@Eling2018], pooling information across genes with 
+similar mean expression levels helps to obtain more reliable transcriptional 
+variability estimates. The latter is particularly helpful for lowly expressed 
+genes and sparse datasets, where less information is available.
+
+[ADD SHORT PARAGRAPH THAT LINKS TO THE FIG: DISTINGUISH BETWEEN NUISANCE 
+PARAMETERS AND THOSE OF INTEREST + PROVIDE HIGH-LEVEL DIFFERENCES BETWEEN THE 
+DIFFERENT MODEL VARIATIIONS. ADD A REF TO THE SUPP SECTION IN WHICH
+THE FULL MODEL IS DESCRIBED.]
 
 Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
 infers cell-specific global scaling normalisation parameters. 
@@ -376,6 +379,20 @@ Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
 uncovering changes in cell-to-cell expression variability that are not 
 confounded by differences in technical noise or in overall expression.
 
+## Transcriptional variability analysis using `r Biocpkg("scran")` 
+
+To quantify transcriptional variability, `r Biocpkg("scran")` can infer an 
+overall trend between mean expression and the squared coefficient of 
+variation (CV^2^) for each gene. 
+Variability estimates that are not confounded by this 
+trend are then obtained via the DM approach [@Kolodziejczyk2015cell]. 
+For each gene, these are defined as the distance between CV$^2$ and a rolling 
+median along the range of mean expression values.
+DM estimates enable exploratory analyses of transcriptional 
+variability, but a measure of statistical uncertainty is not readily available. 
+As such, gene-specific downstream inference (such as differential variability 
+testing) is precluded.
+
 # Case study: analysis of presomitic and somitic mesoderm cells {#SM-analysis}
 
 The development of droplet-based scRNA-seq [@Klein2015;@Macosko2015] 
@@ -414,12 +431,12 @@ pair of cell types.
 
 While quality control and pre-processing is an important topic in scRNAseq
 analysis, we feel that it has been covered in detail in other articles.
-We have included quality control, pre-processing and exploratory data analysis
-in the supplementary material (see Section [ADD-REF]). For simplicity, we will 
-proceed by loading this pre-processed data for the current analysis.
-Separate `SingleCellExperiment` data objects were generated for presomitic and 
-somitic mesoderm cells, as `r Biocpkg("BASiCS")` will be applied separately to 
-group of cells. 
+For this analysis, we have performed quality control, pre-processing and 
+exploratory data analysis in the supplementary material (see Section [ADD-REF]). 
+The code presented there needs to be run before running the rest of this 
+workflow. Here, we load the pre-processed data. This consists of two separate 
+`SingleCellExperiment` data objects: one for presomitic and one for
+somitic mesoderm cells. 
 
 ```{r SCE-load}
 # Pre-somitic mesoderm cells

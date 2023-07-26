@@ -170,26 +170,27 @@ theme_set(theme_bw())
 
 ## Obtaining the data
 
-The full dataset is stored under the accession number E-MTAB-6153 on 
-ArrayExpress and can be obtained from [here](https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-6153#). 
-This workflows uses the *processed* data which consists of 3 files: 
+The full dataset, described by @Ibarra-Soria2018, is stored under the accession 
+number E-MTAB-6153 on ArrayExpress and can be obtained from 
+[here](https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-6153#). 
+This workflows uses the *processed* data which consists of 2 files: 
 
 - `rawCounts.tsv`: matrix of raw expression counts (UMI-based) for all genes
 and cells.
 - `cellAnnotation.tsv`: cell type labels identified by [@Ibarra-Soria2018].
-- `normalisedCounts.tsv`: normalised expression counts obtained by 
-[@Ibarra-Soria2018]. This file is **not** used in this workflow. 
 
-*Of note:* The `.zip` file is 65 MB in size while the unzipped, raw counts 
-measure 873 MB in size.
+These will be downloaded into a *downloads* folder. 
 
-The code below downloads these as a compressed `.zip` file in the `downloads`
-sub-folder. This is decompressed in order to access the individual `.tsv` files. 
-After decompression, the `.zip` can be deleted as it is no longer required. 
+First, we download and load the `rawCounts.tsv` file (832.9 MB in size).
 
 ```{r download-droplet-data}
 options(timeout = 10000)
-dir.create("downloads", showWarnings = FALSE)
+
+# Check whether the 'downloads' directory exists. If not, create it. 
+if (!dir.exists("downloads")) {
+  dir.create("downloads", showWarnings = FALSE)   
+}
+
 # Check whether the data was downloaded already
 if (!file.exists("downloads/rawCounts.tsv")) {
   website <- "https://www.ebi.ac.uk/"
@@ -200,14 +201,12 @@ if (!file.exists("downloads/rawCounts.tsv")) {
     destfile = "downloads/rawCounts.tsv"
   )
 }
-
-```
-
-We then load the raw read counts. 
-
-```{r load-droplet-data-raw}
+# Load the downloaded file (this will take some time!)
 raw_counts <- read.delim("downloads/rawCounts.tsv", header = TRUE)
 ```
+
+These data consist of `r nrow(raw_counts)` genes and `r ncol(raw_counts)` cells,
+i.e. this is the raw data prior to the QC steps applied by @Ibarra-Soria2018. 
 
 Prior to using BASiCS, it is important to perform quality control to remove 
 poor quality cells and to control for potential heterogeneous substructure 
@@ -216,7 +215,8 @@ has already characterised population structure using clustering techniques.
 Here, we will use such information in order to define the cell populations to
 be use as the input for BASiCS. 
 
-The cluster labels identified in the original publication are then loaded:
+The cluster labels identified in the original publication are then loaded (
+`cellAnnotation.tsv` file; 883 KB in size):
 
 ```{r cluster-labels-droplet}
 # Check whether the data was downloaded already
@@ -229,38 +229,51 @@ if (!file.exists("downloads/cellAnnotation.tsv")) {
     destfile = "downloads/cellAnnotation.tsv"
   )
 }
+# Load the downloaded file
 cluster_labels <- read.table("downloads/cellAnnotation.tsv",
   sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 ```
 
-The data contains the `r length(unique(cluster_labels$cellType))` cell types
-identified by the authors. The number of cells per cluster is displayed below:
+The table above contains annotation information for all `r nrow(cluster_labels)` 
+cells. 
 
-```{r table-cluster-labels-droplet}
-table(cluster_labels$cellType, useNA = "ifany")
-```
-
-Cluster labels are not available for `r sum(is.na(cluster_labels$cellType))` cells. 
-
-Note that the authors also identified some sub-structure within these main clusters:
-
-```{r table-subclusters}
-# Extract sub-type cell labels (sample sub-index is removed)
-cluster_labels$subCellType <- sub("_.*", "", cluster_labels$cell)
-table(cluster_labels$subCellType, cluster_labels$cellType)
-```
-
-Finally, we also note that the data also contains information about the three
-samples from which the cells were extracted. This information can help us to
-visualise potential batch effects.
+The data contains information about the three samples from which the cells were 
+extracted. This information can help us to explore potential batch effects.
 
 ```{r table-batch}
 cluster_labels$sample <- as.factor(cluster_labels$sample)
 table(cluster_labels$sample)
 ```
 
-The authors integrated the data from these three samples using the cellranger
-aggr program, which uses downsampling to generate samples with similar depth. 
+The authors integrated the data from these three samples using the `cellranger`
+`aggr` program, which uses downsampling to generate samples with similar depth. 
+
+Furthermore, the data contains the 20 major cell types identified by the authors. 
+The number of cells per cluster is displayed below:
+
+```{r table-cluster-labels-droplet}
+table(cluster_labels$cellType, useNA = "ifany")
+```
+
+Note that `cellType` is missing for `r sum(is.na(cluster_labels$cellType))` cells. 
+The latter correspond to cells discarded during QC by [@Ibarra-Soria2018]. Such
+cells are labelled with a `badQuality` tag in `cluster_label$cell`. The QC used
+by the authors consisted of filtering out cells for which less than 1,000 genes
+were detected or that had more than 3\% of reads mapped to mitochondrial genes. 
+They also removed potential doublets defined as cells for which expression of 
+*Xist* and any of *Kdm5d*, *Eif2s3y*, *Gm29650*, *Uty* or *Ddx3y* (genes located 
+in the Y chromosome) was detected. `r sum(!is.na(cluster_labels$cellType))` were
+used by the authors in their analysis after applying this exclusion criteria. 
+
+Note that the authors also identified some sub-structure within these main clusters.
+For example, they identified two sub-types of presomitic mesoderm cells:
+
+```{r table-subclusters}
+# Extract sub-type cell labels (sample sub-index is removed)
+cluster_labels$subCellType <- sub("_.*", "", cluster_labels$cell)
+with(cluster_labels[cluster_labels$cellType == "presomiticMesoderm", ], 
+     table(subCellType, cellType))
+```
 
 ## Select populations of interest
 
@@ -282,6 +295,13 @@ raw_counts <- raw_counts[, ind_som]
 cluster_labels <- cluster_labels[ind_som, ]
 ```
 
+After selecting these cells, the distribution of the number of cells across
+samples is displayed below:
+
+```{r table-batch}
+table(cluster_labels$cellType, cluster_labels$sample)
+```
+
 ## Generating SingleCellExperiment object 
 
 For pre-processing and visualisation purposes, we load the data into a 
@@ -294,11 +314,6 @@ droplet_sce <- SingleCellExperiment(
 )
 # Delete the original table of raw expression counts as no longer needed
 rm(raw_counts)
-```
-
-```{r remove-counts}
-ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
-droplet_sce <- droplet_sce[ind_expressed, ]
 ```
 
 ## Annotation
@@ -326,7 +341,8 @@ if (!file.exists("rds/genenames.Rds")) {
   )
   # Select gene ID and gene name
   genenames <- getBM(
-    attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
+    attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype", 
+                   "chromosome_name", "description"),
     mart = ensembl
   )
   rownames(genenames) <- genenames$ensembl_gene_id
@@ -368,7 +384,9 @@ In order to perform quality control (QC), we calculate some cell-specific
 summary statistics: the total number of counts per cell (`sum`) and the total 
 number of detected genes per cell (`detected`). These will be added in the
 `colData` slot using the `addPerCellQC()` function from the `r Biocpkg("scater")`
-package. 
+package. Note that additional QC metrics are often calculated (e.g. the 
+percentage of reads mapped to mitochondrial reads). These are not calculated 
+here as the authors already applied relevant QC. 
 
 ```{r add-cellqc-metrics}
 droplet_sce <- addPerCellQC(droplet_sce)
@@ -383,9 +401,9 @@ p_cell_qc1 + p_cell_qc2
 ```
 As seen in Figure \ref(fig:cellqc-metrics), the  `presomiticMesoderm.b` cluster 
 is characterised by a substantially larger number of UMIs and detected genes. 
-These have been highlighted by the authors as potential doublets. As in the 
-original publication, these will be removed from subsequent analyses. We also 
-remove cells with more 25,000 UMIs. 
+Some of these cells have been highlighted by the authors as potential doublets. 
+As in the original publication, these will be removed from subsequent analyses. 
+We also remove cells with more 25,000 UMIs. 
 
 ```{r drop-filt}
 ind_retain <- colData(droplet_sce)$subCellType != "presomiticMesoderm.b" &
@@ -463,6 +481,12 @@ Here, we remove genes that are not detected in at least 20 cells across all
 cells. This is to ensure a reliable estimate of variability, roughly in line 
 with the sample size requirements for the negative binomial distribution 
 outlined in @Lloyd-Smith2007.
+
+
+```{r remove-counts}
+ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
+droplet_sce <- droplet_sce[ind_expressed, ]
+```
 
 
 ```{r gene-selection, fig.cap="Average UMI-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
