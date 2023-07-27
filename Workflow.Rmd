@@ -94,7 +94,7 @@ Alternatively, it can be due to gradual changes along biological processes,
 such as development and differentiation. 
 Several clustering and pseudotime inference tools have been developed to
 capture these types of heterogeneity [@Kiselev2019; @Saelens2019].
-However, there is a limited availability of computational tools tailored 
+However, there is a limited availability of tools tailored 
 to study more subtle variability within seemingly homogeneous cell populations. 
 This variability can reflect deterministic or stochastic events that regulate 
 gene expression and, among other settings, has been seen to increase prior to 
@@ -152,10 +152,12 @@ model was initially motivated by supervised experimental designs in which
 experimental conditions correspond to groups of cells defined *a priori* (e.g. 
 selected cell types obtained through FACS sorting). However, the approach can 
 also be used in cases where the groups of cells of interest are computationally 
-identified through clustering (in such cases, the model does not currently 
+identified through clustering. In such cases, the model does not currently 
 address issues associated to *post-selection inference*, where the same data is 
 analysed twice: first to perform clustering and then to compare expression 
-profiles between the identified clusters [@Lahnemann2020]). 
+profiles between the clusters [@Lahnemann2020] (this is an inherent limitation 
+of most differential expression tools).  then to compare expression 
+profiles between the clusters [@Lahnemann2020]). 
 
 `r Biocpkg("BASiCS")` jointly performs data normalisation, technical noise 
 quantification and downstream analyses, whilst propagating statistical 
@@ -257,9 +259,8 @@ into a `SingleCellExperiment` object that can also store its associated
 metadata, such as gene- and cell-specific information. 
 Moreover, when available, the same object can also store read counts for 
 spike-in molecules (see `help("altExp")`).
-A major advantage of using a `SingleCellExperiment` object as the input for 
-scRNA-seq analyses is the interoperability across a large number of 
-Bioconductor packages [@Amezquita2019]. 
+A major advantage of using `r Biocpkg("SingleCellExperiment")` is that it 
+enables interoperability across a large number of Bioconductor packages [@Amezquita2019]. 
 
 ## QC and exploratory data analysis
 
@@ -273,9 +274,9 @@ broken cells, that are empty, or that contain multiple cells [@Ilicic2016].
 We also remove lowly expressed genes that represent less reliable 
 information.
 
-We use the Bioconductor package `r Biocpkg("scater")`package [@McCarthy2017] to 
-calculate QC metrics for each cell (e.g. total read-count) and gene (e.g. 
-percentage of zeroes across all cells), respectively. 
+We use the Bioconductor package `r Biocpkg("scater")` package [@McCarthy2017] to 
+calculate QC metrics for each cell (e.g. total read-count) and gene 
+(e.g. percentage of zeroes across all cells), respectively. 
 We also use the visualisation tools implemented in the `r Biocpkg("scater")` to 
 explore the input dataset and its associated QC diagnostic metrics. 
 To perform further exploratory data analysis, we use the Bioconductor package 
@@ -283,57 +284,46 @@ To perform further exploratory data analysis, we use the Bioconductor package
 The latter is used to perform *global scaling* normalisation, calculating 
 cell-specific scaling factors that capture global differences in read-counts 
 across cells (e.g. due to sequencing depth and PCR amplification) 
-[@Lun2016pooling]. Note that, as described in the next section, the use of 
-`r Biocpkg("scran")` as a normalisation tool is not a requirement for 
-`r Biocpkg("BASiCS")` (which uses raw read-counts as input). However, we
-recommend the use of `r Biocpkg("scran")` normalisation as part of the 
-exploratory data analysis. For example, as illustrated in this workflow, 
-normalised read-counts can be used to visualise the data in a low-dimensional
-space (e.g. using principal component analysis). This can help to explore the
-underlying structure of the data, e.g. due to batch effects or other systematic
-differences (e.g. associated to different experimental conditions) across 
-different groups of cells. 
+[@Lun2016pooling]. Note that, the use of `r Biocpkg("scran")` as a normalisation 
+tool is not a requirement for `r Biocpkg("BASiCS")` (which uses raw read-counts 
+as input). However, we recommend the use of `r Biocpkg("scran")` normalisation 
+as part of the exploratory data analysis. For example, normalised read-counts 
+can be used to visualise the data in a low-dimensional space (e.g. using 
+principal component analysis). This can help to explore the structure of the 
+data, e.g. to examine potential batch effects. 
 
 ## BASiCS - Bayesian Analysis of Single Cell Sequencing data
 
-Instead of modelling expression patterns for each gene separately, the 
-`r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
-framework that shares information between all genes and cells to robustly
-quantify transcriptional variability [@Vallejos2015BASiCS]. 
-For example, as described by [@Eling2018], pooling information across genes with 
-similar mean expression levels helps to obtain more reliable transcriptional 
-variability estimates. The latter is particularly helpful for lowly expressed 
-genes and sparse datasets, where less information is available.
+The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
+model to simultaneously perform data normalisation, technical noise 
+quantification and downstream analyses [@Vallejos2015BASiCS] [@Vallejos2016] 
+[@Eling2018]. Moreover, instead of modelling expression patterns separately for 
+each gene, `r Biocpkg("BASiCS")` shares information between all genes to 
+robustly quantify transcriptional variability. For example, as described by 
+[@Eling2018], pooling information across genes with similar mean expression 
+levels helps to obtain more reliable transcriptional variability estimates. The 
+latter is particularly helpful for lowly expressed genes and sparse datasets, 
+where less information is available.
 
-As shown in Figure [ADD REF TO DIAGRAM], the model implemented in 
-`r Biocpkg("BASiCS")` involves two broad classes of parameters designed to 
-capture different aspects of the variability observed in scRNAseq data. The 
-first class includes *nuisance* parameters whose role is to (primarily) capture 
-technical artifacts. This includes cell-specific parameters (indexed by a $j$
-subscript) used to perform global scaling normalisation (similar to the size 
-factors in `r Biocpkg("scran")`) and global parameters designed to capture 
+A high-level overview for the model implemented in `r Biocpkg("BASiCS")` is
+shown in Figure X (a more detailed description is provided in Section 1 of the 
+Supplementary Material). Model parameters are designed to capture different 
+aspects of scRNAseq data. First, *nuisance* parameters are used to (primarily) 
+capture technical artifacts. This includes cell-specific parameters (indexed by 
+a $j$ subscript) used to perform global scaling normalisation (similar to the 
+size factors in `r Biocpkg("scran")`) and global parameters designed to capture 
 technical over-dispersion (this can also be interpreted as measurement error) 
-that is shared by all genes. Whilst `r Biocpkg("scran")` infers cell-specific 
-size factors as a pre-processing step, `r Biocpkg("BASiCS")` uses an integrated 
-approach wherein data normalisation and downstream analyses are performed 
-simultaneously, thereby propagating statistical uncertainty. 
-
-The second class comprises gene-specific (indexed by an $i$ subscript) whose 
-role is to characterise the underlying gene expression distribution within the 
-cell population under study. This could correspond to a group of cells that is 
-set *a priori* by the experimental design (e.g. naive or stimulated 
-CD4^+^ T cells in [@Martinez-jimenez2017]) or to groups of cells that were 
-computationally identified through clustering (note that `r Biocpkg("BASiCS")`
-does not account for issues associated to post-selection inference 
-[@Lahnemann2020] in this case, but this is an inherent limitation of most 
-differential expression tools). `r Biocpkg("BASiCS")` summarises the expression 
-pattern for each gene through gene-specific *mean* and *over-dispersion* 
-parameters. Mean parameters $\mu_i$ quantify the overall expression for each 
-gene $i$ across the cell population under study. In contrast, $\delta_i$ 
+that is shared by all genes. Note that, whilst `r Biocpkg("scran")` infers 
+cell-specific size factors as a pre-processing step, `r Biocpkg("BASiCS")` uses 
+an integrated approach wherein data normalisation and downstream analyses are 
+performed simultaneously, thereby propagating statistical uncertainty. Secondly,
+`r Biocpkg("BASiCS")` summarises expression patterns within the population of 
+cells under study (e.g. a experimental condition or cell type) using two sets
+of gene-specific parameters (indexed by a $i$ subscript). Mean parameters 
+$\mu_i$ quantify overall expression for each gene $i$. In contrast, $\delta_i$ 
 captures the excess of variability that is observed with respect to what would 
 be expected in a homogeneous cell population, beyond technical noise. 
-`r Biocpkg("BASiCS")` uses $\delta_i$ as a proxy to quantify transcriptional 
-variability.
+The latter is used as a proxy to quantify transcriptional variability.
 
 Three versions of the `r Biocpkg("BASiCS")` model have been published to date.
 Whilst based on a similar model specification, they differ in how inference is
@@ -341,7 +331,7 @@ performed (e.g. using different priors) and the type of downstream analysis that
 can be performed. The main differences are described below (for more details, 
 see Section [REF] in the Supplementary Material):
 
-- **@Vallejos et al (2015)** [@Vallejos2015]: the original model uses 
+- **Vallejos et al (2015)** [@Vallejos2015]: the original model uses 
 information from extrinsic spike-in molecules (e.g. those introduced by 
 [@Rna2005]) as *control features* to quantify technical noise. This enables the 
 estimation of two sets of cell-specific normalisation parameters ($s_j$ and 
@@ -349,15 +339,15 @@ $\phi_j$) capturing technical (e.g. amplification biases) and biological
 (e.g. mRNA content) systematic differences across cells [@Vallejos2017]. A
 probabilistic decision rule (based on $\delta_i$) was proposed to identify 
 *highly variable genes* (HVGs) that capture the major sources of heterogeneity 
-within the analysed cells [@Brennecke2013]. HVG detection is often used as 
-feature selection, to choose the input set of genes for subsequent analyses. A 
-similar rule was developed to highlight *lowly variable genes* (LVGs) that 
-exhibit stable expression across the population of cells. These may relate to 
-essential cellular functions and can assist the development of new data 
-normalisation or integration strategies [@Lin2019].
+within the analysed cells [@Brennecke2013]. HVG detection is often used to 
+perform feature selection, choosing the input set of genes for subsequent 
+analyses. A similar rule was developed to highlight *lowly variable genes* 
+(LVGs) that exhibit stable expression across the population of cells. These may 
+relate to essential cellular functions and can assist the development of new 
+data normalisation or integration strategies [@Lin2019].
 
-- **@Vallejos et al (2016)** [@Vallejos2016]: the model was extended to enable
-**differential expression** analysis between two pre-specified groups of cells 
+- **Vallejos et al (2016)** [@Vallejos2016]: the model was extended to enable
+**differential expression** analyses between two pre-specified groups of cells 
 (e.g. different experimental conditions or cell types). This is achieved by 
 comparing the posterior distribution of gene-specific parameters ($\mu_i$ and 
 $\delta_i$). While several differential expression tools were previously 
@@ -367,10 +357,25 @@ suggests that these do not generally outperform popular bulk RNA-seq tools
 changes in overall expression, ignoring the more complex patterns that can arise 
 at the single cell level [@Lahnemann2020]. Instead, `r Biocpkg("BASiCS")` 
 embraces the high granularity of scRNA-seq data, uncovering changes in 
-cell-to-cell transcriptional variability. [SAY SOMETHING ABOUT THE CONFOUNDING]. 
+cell-to-cell transcriptional variability. As noted by @Vallejos2016, the inverse
+relationship that is observed between mean expression and over-dispersion 
+derived from (bulk and) scRNAseq can affect the interpretation of such analyses.
+To address this  
+
+Due to typical inverse relationship
+, 
+proposed 
+
+
+However, the strong relationship that is typically observed between variability and mean estimates (e.g., Brennecke et al. [2013]) can hinder the interpretation of these results.
+
+
+[SAY SOMETHING ABOUT THE CONFOUNDING]. 
 This limitation was addressed by @Eling2018. 
 
-- **@Eling et al (2018)** [@Eling2018]: 
+
+
+- **Eling et al (2018)** [@Eling2018]: 
 
 `r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
 perform differential expression analyses between two pre-specified 

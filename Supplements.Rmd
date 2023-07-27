@@ -44,13 +44,48 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Methods
+# 1. The BASiCS model and its variations
 
-## The BASiCS model
+To date, three versions of the model implemented in `r Biocpkg("BASiCS")` have 
+been proposed [@Vallejos2015BASiCS] [@Vallejos2016] [@Eling2018]. They differ in 
+how inference is performed (e.g. using different priors) and the type of 
+downstream analysis that is enabled by the model. 
+
+## Vallejos et al (2015) 
+
+The original model [@Vallejos2015] uses information from extrinsic spike-in 
+molecules (e.g. those introduced by @Rna2005) as *control features* (also 
+referred to as *technical genes*) to quantify technical noise. Let $X_{ij}$ 
+represent the *raw* expression data (read-counts or molecule-counts for 
+UMI-based protocols) for gene $i$ in cell $j$.  For all spike-in genes, the
+model assumes that all the observed variability is due to *technical* reasons.
+In this case, $X_{ij}$ is modelled using a Negative Binomial distribution such 
+that: 
+$$ \text{E}(X_{ij}) = s_j \mu_i, \hspace{0.5cm} \text{and} \hspace{0.5cm} \text{Var}(X_{ij}) = s_j \mu_i + \theta [s_j \mu_i]^2.$$
+As such, cell-specific parameters $s_j$ enable *global scaling normalisation*, 
+capturing *technical* systematic differences across cells (e.g. due to 
+amplification biases or variations in sequencing depth). Gene-specific 
+parameters $\mu_i$ represent the overall expression for gene $i$ across all 
+cells (these are assumed to be known and given by the input concentration of
+spike-in molecules that is added to each cell). Finally, $\theta$ captures
+*technical over-dispersion*, defined as the excess of variability that is 
+observed with respect to Poisson sampling noise. 
+
+For intrinsic genes (i.e. those found in the cells under studies), the model is
+extended to also capture the effect of *biological* variability. 
+
+This enables the estimation of two sets of cell-specific 
+normalisation parameters ($s_j$ and $\phi_j$) capturing technical (e.g. 
+amplification biases) and biological (e.g. mRNA content) systematic differences 
+across cells [@Vallejos2017]. 
 
 The BASiCS package features a hierarchical Bayesian model in which the 
 transcript count of gene $i$ of cell $j$ is represented as a random variable
-$X_{ij}$. For all technical genes, counts can be modelled as Poisson distributed
+$X_{ij}$.
+
+
+
+as Poisson distributed
 with a random effect capturing unexplained technical noise:
 $$
 \begin{aligned}
