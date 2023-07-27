@@ -261,7 +261,6 @@ A major advantage of using a `SingleCellExperiment` object as the input for
 scRNA-seq analyses is the interoperability across a large number of 
 Bioconductor packages [@Amezquita2019]. 
 
-
 ## QC and exploratory data analysis
 
 A critical step in scRNA-seq analyses is QC, removing low quality samples that 
@@ -306,37 +305,86 @@ similar mean expression levels helps to obtain more reliable transcriptional
 variability estimates. The latter is particularly helpful for lowly expressed 
 genes and sparse datasets, where less information is available.
 
-[ADD SHORT PARAGRAPH THAT LINKS TO THE FIG: DISTINGUISH BETWEEN NUISANCE 
-PARAMETERS AND THOSE OF INTEREST + PROVIDE HIGH-LEVEL DIFFERENCES BETWEEN THE 
-DIFFERENT MODEL VARIATIIONS. ADD A REF TO THE SUPP SECTION IN WHICH
-THE FULL MODEL IS DESCRIBED.]
+As shown in Figure [ADD REF TO DIAGRAM], the model implemented in 
+`r Biocpkg("BASiCS")` involves two broad classes of parameters designed to 
+capture different aspects of the variability observed in scRNAseq data. The 
+first class includes *nuisance* parameters whose role is to (primarily) capture 
+technical artifacts. This includes cell-specific parameters (indexed by a $j$
+subscript) used to perform global scaling normalisation (similar to the size 
+factors in `r Biocpkg("scran")`) and global parameters designed to capture 
+technical over-dispersion (this can also be interpreted as measurement error) 
+that is shared by all genes. Whilst `r Biocpkg("scran")` infers cell-specific 
+size factors as a pre-processing step, `r Biocpkg("BASiCS")` uses an integrated 
+approach wherein data normalisation and downstream analyses are performed 
+simultaneously, thereby propagating statistical uncertainty. 
 
-Similar to the approach adopted in `r Biocpkg("scran")`, `r Biocpkg("BASiCS")` 
-infers cell-specific global scaling normalisation parameters. 
-However, instead of inferring these as a pre-processing step, 
-`r Biocpkg("BASiCS")` uses an integrated approach wherein data normalisation 
-and downstream analyses are performed simultaneously, thereby propagating
-statistical uncertainty. 
-To quantify technical noise, the original implementation of 
-`r Biocpkg("BASiCS")` uses information from extrinsic spike-in molecules as 
-control features, but the model has been extended to address situations wherein
-spike-ins are not available [@Eling2018].
-
-`r Biocpkg("BASiCS")` summarises the expression pattern for each gene through 
-gene-specific *mean* and *over-dispersion* parameters. 
-Mean parameters $\mu_i$ quantify the overall expression for each gene $i$
-across the cell population under study. This could correspond to a group that
-is set *a priori* by the experimental design (e.g. naive or stimulated 
+The second class comprises gene-specific (indexed by an $i$ subscript) whose 
+role is to characterise the underlying gene expression distribution within the 
+cell population under study. This could correspond to a group of cells that is 
+set *a priori* by the experimental design (e.g. naive or stimulated 
 CD4^+^ T cells in [@Martinez-jimenez2017]) or to groups of cells that were 
 computationally identified through clustering (note that `r Biocpkg("BASiCS")`
 does not account for issues associated to post-selection inference 
 [@Lahnemann2020] in this case, but this is an inherent limitation of most 
-differential expression tools). 
-In contrast, $\delta_i$ captures the excess of variability that is observed with 
-respect to what would be expected in a homogeneous cell population, beyond 
-technical noise. 
+differential expression tools). `r Biocpkg("BASiCS")` summarises the expression 
+pattern for each gene through gene-specific *mean* and *over-dispersion* 
+parameters. Mean parameters $\mu_i$ quantify the overall expression for each 
+gene $i$ across the cell population under study. In contrast, $\delta_i$ 
+captures the excess of variability that is observed with respect to what would 
+be expected in a homogeneous cell population, beyond technical noise. 
 `r Biocpkg("BASiCS")` uses $\delta_i$ as a proxy to quantify transcriptional 
 variability.
+
+Three versions of the `r Biocpkg("BASiCS")` model have been published to date.
+Whilst based on a similar model specification, they differ in how inference is
+performed (e.g. using different priors) and the type of downstream analysis that
+can be performed. The main differences are described below (for more details, 
+see Section [REF] in the Supplementary Material):
+
+- **@Vallejos et al (2015)** [@Vallejos2015]: the original model uses 
+information from extrinsic spike-in molecules (e.g. those introduced by 
+[@Rna2005]) as *control features* to quantify technical noise. This enables the 
+estimation of two sets of cell-specific normalisation parameters ($s_j$ and 
+$\phi_j$) capturing technical (e.g. amplification biases) and biological 
+(e.g. mRNA content) systematic differences across cells [@Vallejos2017]. A
+probabilistic decision rule (based on $\delta_i$) was proposed to identify 
+*highly variable genes* (HVGs) that capture the major sources of heterogeneity 
+within the analysed cells [@Brennecke2013]. HVG detection is often used as 
+feature selection, to choose the input set of genes for subsequent analyses. A 
+similar rule was developed to highlight *lowly variable genes* (LVGs) that 
+exhibit stable expression across the population of cells. These may relate to 
+essential cellular functions and can assist the development of new data 
+normalisation or integration strategies [@Lin2019].
+
+- **@Vallejos et al (2016)** [@Vallejos2016]: the model was extended to enable
+**differential expression** analysis between two pre-specified groups of cells 
+(e.g. different experimental conditions or cell types). This is achieved by 
+comparing the posterior distribution of gene-specific parameters ($\mu_i$ and 
+$\delta_i$). While several differential expression tools were previously 
+proposed for scRNA-seq data (e.g. [@Kharchenko2014; @Finak2015]), some evidence 
+suggests that these do not generally outperform popular bulk RNA-seq tools 
+[@Soneson2018]. Moreover, most of these methods are only designed to uncover 
+changes in overall expression, ignoring the more complex patterns that can arise 
+at the single cell level [@Lahnemann2020]. Instead, `r Biocpkg("BASiCS")` 
+embraces the high granularity of scRNA-seq data, uncovering changes in 
+cell-to-cell transcriptional variability. [SAY SOMETHING ABOUT THE CONFOUNDING]. 
+This limitation was addressed by @Eling2018. 
+
+- **@Eling et al (2018)** [@Eling2018]: 
+
+`r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
+perform differential expression analyses between two pre-specified 
+groups of cells [@Vallejos2016; @Eling2018].
+
+
+that are not 
+confounded by differences in technical noise or in overall expression.
+
+To quantify technical noise, the original implementation of 
+`r Biocpkg("BASiCS")` uses information from , but the model has been extended to address situations wherein
+spike-ins are not available [@Eling2018].
+
+
 To account for the strong relationship that is typically observed 
 between gene-specific mean expression and over-dispersion estimates, 
 Eling *et al.*  [@Eling2018] introduced a *joint prior* specification for 
@@ -354,17 +402,7 @@ parameters $\epsilon_i$ that are not confounded by mean expression.
 Similar to the DM values implemented in `r Biocpkg("scran")`, these are defined 
 as deviations with respect to the overall trend (Figure XX).
 
-Within a population of cells, `r Biocpkg("BASiCS")` decomposes the total 
-observed variability in expression measurements into technical and biological 
-components [@Vallejos2015]. 
-This enables the identification of *highly variable genes* (HVGs) that capture
-the major sources of heterogeneity within the analysed cells [@Brennecke2013]. 
-HVG detection is often used as feature selection, to identify the input 
-set of genes for subsequent analyses. 
-`r Biocpkg("BASiCS")` can also highlight *lowly variable genes* (LVGs) that 
-exhibit stable expression across the population of cells.
-These may relate to essential cellular functions and can assist the development
-of new data normalisation or integration strategies [@Lin2019].
+
 
 `r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
 perform differential expression analyses between two pre-specified 
