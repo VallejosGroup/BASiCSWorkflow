@@ -394,16 +394,23 @@ droplet_sce <- addPerCellQC(droplet_sce)
 
 The distribution of these metrics per each cluster can be visualised as follows:
 
-```{r cellqc-metrics, fig.cap="Cell-level QC metrics. For each cell cluster: distribution of the total number of UMIs per cell (left) and the total number of detected genes per cell (right)."}
-p_cell_qc1 <- plotColData(droplet_sce, y = "sum", x = "subCellType") 
+```{r cellqc-metrics, fig.cap="Cell-level QC metrics stratified by cell sub-type and sample (before QC). For each cell cluster: distribution of the total number of UMIs per cell (left) and the total number of detected genes per cell (right)."}
+p_cell_qc1 <- plotColData(droplet_sce, y = "sum", x = "subCellType") +
+  geom_hline(yintercept = 25000, lty = 2, col = "red")
 p_cell_qc2 <- plotColData(droplet_sce, y = "detected", x = "subCellType")
-p_cell_qc1 + p_cell_qc2
+p_cell_qc3 <- plotColData(droplet_sce, y = "sum", x = "sample") +
+  geom_hline(yintercept = 25000, lty = 2, col = "red")
+p_cell_qc4 <- plotColData(droplet_sce, y = "detected", x = "sample")
+
+(p_cell_qc1 + p_cell_qc2) / (p_cell_qc3 + p_cell_qc4)
 ```
-As seen in Figure \ref(fig:cellqc-metrics), the  `presomiticMesoderm.b` cluster 
-is characterised by a substantially larger number of UMIs and detected genes. 
-Some of these cells have been highlighted by the authors as potential doublets. 
-As in the original publication, these will be removed from subsequent analyses. 
-We also remove cells with more 25,000 UMIs. 
+As seen in Figure \ref(fig:cellqc-metrics), the  `presomiticMesoderm.b` 
+sub-cluster is characterised by a substantially larger number of UMIs and 
+detected genes. These cells have been highlighted by the authors as potential 
+doublets. Therefore, as in the original publication, the entire sub-cluster will 
+be removed from subsequent analyses. For this workflow, we also apply an 
+additional exclusion criteria to remove cells with more 25,000 UMIs as potential 
+doublets. 
 
 ```{r drop-filt}
 ind_retain <- colData(droplet_sce)$subCellType != "presomiticMesoderm.b" &
@@ -416,6 +423,21 @@ After applying this filter, the dataset contains `r ncol(droplet_sce)` cells:
 presomitic Mesoderm group and 
 `r sum(colData(droplet_sce)$subCellType == "somiticMesoderm")` in the somitic
 Mesoderm group. 
+
+The distribution of the total number of UMIs and detected genes after QC is
+shown in Figure \ref(fig:cellqc-metrics-postqc).
+
+```{r cellqc-metrics-postqc, fig.cap="Cell-level QC metrics stratified by cell sub-type and sample (after QC). For each cell cluster: distribution of the total number of UMIs per cell (left) and the total number of detected genes per cell (right)."}
+p_cell_qc1 <- plotColData(droplet_sce, y = "sum", x = "subCellType") 
+p_cell_qc2 <- plotColData(droplet_sce, y = "detected", x = "subCellType")
+p_cell_qc3 <- plotColData(droplet_sce, y = "sum", x = "sample") +
+  geom_hline(yintercept = 25000, lty = 2, col = "red")
+p_cell_qc4 <- plotColData(droplet_sce, y = "detected", x = "sample")
+
+(p_cell_qc1 + p_cell_qc2) / (p_cell_qc3 + p_cell_qc4)
+```
+
+
 
 <!--- We removed all cells that expressed <1,000 genes or that had >3% of their 
 transcripts mapped to mitochondrial genes. We further removed any cells that 
@@ -470,7 +492,8 @@ of the total variability) captures the presomitic versus somitic Mesoderm
 structure of the data. The second principal component (which explains 
 approximately 3\% of the total variability) is correlated with the number of
 detected features per cell. We do not observe substantial batch effects
-driven by the animal of origin from which cells were collected. 
+driven by the animal of origin from which cells were collected (although some
+minor differences are seen, due to differences in the number of detected genes). 
 
 In addition to cell-specific QC, we also recommend a gene filtering 
 step prior to using `r Biocpkg("BASiCS")`. 
@@ -481,12 +504,6 @@ Here, we remove genes that are not detected in at least 20 cells across all
 cells. This is to ensure a reliable estimate of variability, roughly in line 
 with the sample size requirements for the negative binomial distribution 
 outlined in @Lloyd-Smith2007.
-
-
-```{r remove-counts}
-ind_expressed <- Matrix::rowMeans(counts(droplet_sce)) > 0.1
-droplet_sce <- droplet_sce[ind_expressed, ]
-```
 
 
 ```{r gene-selection, fig.cap="Average UMI-count for each gene is plotted against the number of cells in which that gene was detected. Dashed grey lines are shown at the thresholds below which genes are removed."}
