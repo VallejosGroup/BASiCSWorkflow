@@ -58,6 +58,34 @@ activated cell sorting (FACS). External ERCC spike-in RNA18 was added to aid
 the quantification of technical variability across all cells and all experiments 
 were performed in replicates (hereafter also referred to as batches).
 
+Here, we load the required software packages:
+
+```{r}
+# Data visualisation
+library("ggplot2")
+library("ggpointdensity")
+library("patchwork")
+library("ComplexHeatmap")
+# colour scales
+library("viridis")
+library("circlize")
+library("RColorBrewer")
+# Data manipulation
+library("reshape2")
+library("tidyr")
+# To load excel files
+library("readxl")
+# To obtain summary statistics
+library("sparseMatrixStats")
+# To assess convergence of the algorithm implemented in BASiCS
+library("coda")
+# Single cell specific libraries
+library("SingleCellExperiment")
+library("scater")
+library("scran")
+library("BASiCS")
+```
+
 # Data pre-processing and quality control steps
 
 ## Downloading the data
@@ -681,7 +709,7 @@ to match a given expected false discovery rate (EFDR; EFDR=10\% as default)
 [@Newton2004]. Here, we illustrate this using the naive CD4^+^ T cells (with spike-ins)
 
 
-```{r det-vg-naive, message=TRUE, fig.cap="HVG and LVG detection using BASiCS (naive CD4^+^ T cells, with spike-ins). For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
+```{r det-vg-naive, message=TRUE, fig.cap="HVG and LVG detection using BASiCS (naive CD4+ T cells, with spike-ins). For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
 ## Highly variable genes
 hvg <- BASiCS_DetectHVG(chain_naive, EpsilonThreshold = log(2))
 ## Lowly variable genes
@@ -779,7 +807,7 @@ CD4^+^ T cells. This considers both genes with changes in mean expression and
 those whose transcriptional variability changes between the naive and stimulated
 cells. The results are summarised in Fig \@ref{fig:de-cd4}.
 
-```{r de-cd4, fig.cap = "Upper panel presents the mean-difference plot associated to the differential mean expression test between naive and active cells. Log-fold changes of average expression in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low effective sample size."}
+```{r de-cd4}
 ## Perform differential testing
 test_de <- BASiCS_TestDE(
   Chain1 = chain_naive,
@@ -792,15 +820,23 @@ test_de <- BASiCS_TestDE(
   Plot = FALSE,
   PlotOffset = FALSE
 )
+```
+
+First, we explore the results of the **differential mean expression test**
+using MA plots and volcano plots (Figure \@ref{fig:de-cd4-mean}). In this 
+instance, it is clear that a large number of genes are differentially expressed 
+between the two conditions.
+
+```{r de-cd4-mean, fig.cap = "Upper panel presents the mean-difference plot associated to the differential mean expression test between naive and active cells. Log-fold changes of average expression in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low effective sample size."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
 p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano")
 p1 / p2
 ```
 
-To facilate interpretation, we also visualise expression patterns for 
-differentially expressed genes. To do this, we calculate normalised expression
-values for each cell and gene, correcting for a global offset between naive
-and activated cells. 
+To facilitate interpretation, we also visualise expression patterns for genes
+with differential mean expression patterns. To do this, we calculate normalised 
+expression values for each cell and gene, correcting for a global offset between 
+naive and activated cells. 
 
 ```{r}
 offset <- BASiCS_CorrectOffset(chain_naive, chain_active)
@@ -813,19 +849,19 @@ dc_active <- BASiCS_DenoisedCounts(sce_active, chain_active, WithSpikes = FALSE)
 ```
 
 We then use `r Biocpkg("ComplexHeatmap")` to visualise expression patterns for
-different groups of genes as defined by the differential expression test above.
+different groups of genes as defined by the differential mean expression test above.
 
-```{r}
+```{r heatmap-de-mean, fig.cap="Heatmap displays normalised expression values (log10(x + 1) scale) for naive and active cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in naive or active cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
+
 library("ComplexHeatmap")
 library("circlize")
 library("RColorBrewer")
 
+## Extract table with diff mean results only
 table_de_mean <- as.data.frame(test_de,
                                Parameter = "Mean",
                                Filter = FALSE)
-table_de_resdisp <- as.data.frame(test_de,
-                                  Parameter = "ResDisp",
-                                  Filter = FALSE)
+
 ## Add gene symbol to table
 table_de_mean$Symbol <- genenames[table_de_mean$GeneName, 2]
 ## utility function for selecting genes
@@ -908,4 +944,101 @@ Heatmap(
     col = list(log_mu = mu_col)),
   cluster_rows = FALSE,
   col = col)
+```
+
+Finally, a similar analysis is applied to identify genes with 
+**differential transcriptional variability patterns**. 
+
+```{r de-cd4-rd, fig.cap="Upper panel presents the mean-difference plot associated to the differential residual over-dispersion test between naive and active cells. Differences of residual over-dispersion in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual over-dispersion in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low effective sample size."}
+p1 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "MA")
+p2 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "Volcano")
+p1 / p2
+```
+
+To better understand these results, we will explore them in tandem with the 
+results of the differential mean expression test. As expected, Figure 
+\@ref{fig:de-mean-vs-rd} shows that these are independent analyses, given that 
+changes in residual over-dispersion are not confounded by changes in mean expression.
+
+```{r de-mean-vs-rd, fig.cap="Difference in residual over-dispersion against log2 fold change in mean expression."}
+## Extract table with differential transcriptional variability results
+table_de_resdisp <- as.data.frame(test_de,
+                                  Parameter = "ResDisp",
+                                  Filter = FALSE)
+## combine results of differential mean and residual over-dispersion tests
+table_de_combined <- merge(table_de_mean, table_de_resdisp)
+## merge with some summary statistics about genes
+gene_tests <- data.frame(
+  "GeneName" = rownames(dc_naive),
+  "ExpPropNaive" = rowMeans(dc_naive > 0),
+  "ExpPropActive" = rowMeans(dc_active > 0),
+  "nExpPropNaive" = rowSums(dc_naive > 0),
+  "nExpPropActive" = rowSums(dc_active > 0)
+)
+table_combined_genes <- merge(table_de_combined, gene_tests)
+## create list of generic plot parameters to use across a few plots
+plot_params <- list(
+  geom_pointdensity(),
+  scale_colour_viridis(name = "Density"),
+  theme(
+    # text = element_text(size = rel(3)),
+    legend.position = "bottom",
+    legend.text = element_text(angle = 45, size = 8, hjust = 1, vjust = 1),
+    legend.key.size = unit(0.018, "npc")))
+## plot log2FC against difference of residual over-dispersion
+ggplot(table_de_combined) +
+  aes(MeanLog2FC, ResDispDistance) +
+  plot_params +
+  xlim(-15, 15) +
+  labs(
+    x = "log2 fold change in mean expression",
+    y = "Difference in residual over-dispersion"
+)
+```
+
+While genes with significant changes in residual over-dispersion often have 
+similar levels of mean expression, as seen in Figure \@ref{fig:de-rd-patterns}A 
+and C, they may have a different proportion of zero counts in the two cell 
+populations. Figure \@ref{fig:de-rd-patterns}B and D show that many genes with 
+higher residual over-dispersion in naive cells have a lower proportion of zeros 
+in active cells, and vice versa.
+
+```{r de-rd-patterns, fig.cap="A, C: log2 change in expression against against log mean expression for genes with higher residual over-dispersion in naive (A) cells and active (D) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in naive cells (B) and active (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
+g1 <- ggplot(table_combined_genes[table_combined_genes$ResultDiffResDisp == "Naive+",]) +
+  aes(MeanOverall, MeanLog2FC) +
+  plot_params +
+  ylim(-15, 15) +
+  scale_x_log10() +
+  labs(x = "Mean expression", y = "log2 fold change") +
+  geom_hline(yintercept = 0, colour = "firebrick", linetype = "dashed")
+g2 <- ggplot(table_combined_genes[table_combined_genes$ResultDiffResDisp == "Active+",]) +
+  aes(MeanOverall, MeanLog2FC) +
+  plot_params +
+  ylim(-15, 15) +
+  scale_x_log10() +
+  labs(x = "Mean expression", y = "log2 fold change") +
+  geom_hline(yintercept = 0, colour = "firebrick", linetype = "dashed")
+g3 <- ggplot(table_combined_genes[table_combined_genes$ResultDiffResDisp == "Naive+",]) +
+  aes(x = ExpPropNaive, y = ExpPropActive) +
+  plot_params +
+  labs(
+    x = "Proportion of cells\nexpressing (naive)",
+    y = "Proportion of cells\nexpressing (active)"
+    ) +
+  geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
+g4 <- ggplot(table_combined_genes[table_combined_genes$ResultDiffResDisp == "Active+",]) +
+  aes(x = ExpPropNaive, y = ExpPropActive) +
+  plot_params +
+  labs(
+    x = "Proportion of cells\nexpressing (naive)",
+    y = "Proportion of cells\nexpressing (active)"
+    ) +
+  geom_abline(slope = 1, intercept = 0, colour = "firebrick", linetype = "dashed")
+(g1 + g3) / (g2 + g4) + plot_annotation(tag_levels = "A")
+```
+
+# Session info
+
+```{r}
+sessionInfo()
 ```
