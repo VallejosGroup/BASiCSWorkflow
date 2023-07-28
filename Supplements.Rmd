@@ -55,64 +55,57 @@ downstream analysis that is enabled by the model.
 
 The original model [@Vallejos2015] uses information from extrinsic spike-in 
 molecules (e.g. those introduced by @Rna2005) as *control features* (also 
-referred to as *technical genes*) to quantify technical noise. Let $X_{ij}$ 
-represent the *raw* expression data (read-counts or molecule-counts for 
-UMI-based protocols) for gene $i$ in cell $j$.  For all spike-in genes, the
+referred to as *technical genes*) to quantify technical noise. 
+
+Let $X_{ij}$ represent the *raw* expression data (read-counts or molecule-counts 
+for UMI-based protocols) for gene $i$ in cell $j$. For all spike-in genes, the
 model assumes that all the observed variability is due to *technical* reasons.
-In this case, $X_{ij}$ is modelled using a Negative Binomial distribution such 
-that: 
-$$ \text{E}(X_{ij}) = s_j \mu_i, \hspace{0.5cm} \text{and} \hspace{0.5cm} \text{Var}(X_{ij}) = s_j \mu_i + \theta [s_j \mu_i]^2.$$
+In this case, $X_{ij}$ is modelled to follow a Negative Binomial distribution 
+such that: 
+
+$$ \text{E}(X_{ij}) = s_j \mu_i, \hspace{0.5cm} \text{and} \hspace{0.5cm} 
+\text{Var}(X_{ij}) = s_j \mu_i + \theta [s_j \mu_i]^2.$$
+
 As such, cell-specific parameters $s_j$ enable *global scaling normalisation*, 
 capturing *technical* systematic differences across cells (e.g. due to 
-amplification biases or variations in sequencing depth). Gene-specific 
-parameters $\mu_i$ represent the overall expression for gene $i$ across all 
-cells (these are assumed to be known and given by the input concentration of
-spike-in molecules that is added to each cell). Finally, $\theta$ captures
-*technical over-dispersion*, defined as the excess of variability that is 
-observed with respect to Poisson sampling noise. 
+amplification biases or variations in sequencing depth)[@Vallejos2017]. 
+Instead, gene-specific parameters $\mu_i$ represent the overall expression for 
+gene $i$ across all cells. These are assumed to be *known* and given by the input 
+concentration of spike-in molecules that is added to each cell (see Section X). 
+Finally, $\theta$ captures *technical over-dispersion*, defined as the excess of 
+variability that is observed with respect to Poisson sampling noise. 
 
-For intrinsic genes (i.e. those found in the cells under studies), the model is
-extended to also capture the effect of *biological* variability. 
+For intrinsic genes (i.e. those found in the cells under study), the model is
+extended to also capture both *technical* and *biological* variability. Under
+a similar specification, the model for intrinsice genes is defined such that:
 
-This enables the estimation of two sets of cell-specific 
-normalisation parameters ($s_j$ and $\phi_j$) capturing technical (e.g. 
-amplification biases) and biological (e.g. mRNA content) systematic differences 
-across cells [@Vallejos2017]. 
+$$ \text{E}(X_{ij}) = \phi_j s_j \mu_i, \hspace{0.5cm} \text{and} \hspace{0.5cm} 
+\text{Var}(X_{ij}) = \phi_j s_j \mu_i + \theta [\phi_j s_j \mu_i]^2 + 
+\delta_i (\theta + 1) [\phi_j s_j \mu_i]^2.$$
 
-The BASiCS package features a hierarchical Bayesian model in which the 
-transcript count of gene $i$ of cell $j$ is represented as a random variable
-$X_{ij}$.
+Parameters $s_j$ and $\theta$ are shared with the spike-in model above and are
+inferred jointly by taking into account information across both sets of genes. 
+The additional cell-specific parameters $\phi_j$ also perform globa scaling
+normalisation, but now capture mRNA differences across cells [@Vallejos2017]. 
+As before, gene-specific parameters $\mu_i$ measure overall expression for gene
+$i$ across all cells. However, unlike for spike-in genes, these are assumed to
+be *unknown*. Finally, the new set of gene-specific parameters $\delta_i$ 
+capture, for each gene, the excess of variability with respect to Poisson 
+sampling noise and technical noise (whose strenght is controlled by $\theta$). 
+`r Biocpkg("BASiCS")` uses $\delta_i$ as a proxy for transcriptional noise and
+is akin to the *biological coefficient of variation* introduced by @McCarthy2012 
+in the context of bulk RNAseq datasets. 
+
+Posterior inference for the model above is implemented using an adaptive 
+Metropolis-within-Gibbs algorithm [@Roberts2009]. 
+
+## Vallejos et al (2016) 
 
 
 
-as Poisson distributed
-with a random effect capturing unexplained technical noise:
-$$
-\begin{aligned}
-  X_{ij}|\mu_i,\nu_j & \sim \text{Poisson}(\nu_j\mu_i)\\
-  \nu_j|s_j,\theta & \sim \text{Gamma}\left(\frac{1}{\theta},\frac{1}{s_j\theta}\right)
-\end{aligned}
-$$
-where $\mu_i$ explains the gene's mean expression, $\nu_j$ the technical effect
-dominated by the mRNA capture efficiency $s_j$ and the unexplained technical 
-noise parameter $\theta$. 
 
-This technical influence effects all biological genes in the same manner. 
-In addition to technical variations, cell-to-cell differences of biological 
-gene expression can be cause by biological processes as explained above. 
-To model an additional random effect that captures biological cell-to-cell 
-variability, the random variable $X_{ij}$ is modelled as: 
-$$
-\begin{aligned}
-  X_{ij}|\mu_i,\phi_j,\nu_j,\rho_{ij} & \sim \text{Poisson}(\phi_j\nu_j\mu_i\rho_{ij})\\
-  \rho_{ij}|\delta_i & \sim \text{Gamma}(\frac{1}{\delta_i}, \frac{1}{\delta_i})
-\end{aligned}
-$$
-where $\phi_j$ is the cell-specifc size factor and $\rho_{ij}$ the biological
-random effect incorporating the over-dispersion hyper-parameter $\delta_i$.
 
-In further analysis, $\mu_i$ represents the mean expression and $\delta_i$
-the biological over-dispersion of each gene.
+
 
 ### Testing for changes in mean expression and over-dispersion
 
