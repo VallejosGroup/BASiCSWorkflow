@@ -373,6 +373,25 @@ However, the strong relationship that is typically observed between variability 
 [SAY SOMETHING ABOUT THE CONFOUNDING]. 
 This limitation was addressed by @Eling2018. 
 
+<!---
+PLACE-HOLDER FOR TEXT THAT MAY BE USEFUL.
+
+@Eling2018 introduced a novel method of inferring gene expression profiles 
+using `r Biocpkg("BASiCS")` without
+relying on spike-ins to quantify technical noise. This is useful
+for droplet-based scRNAseq protocols, given that it is not possible to ensure
+that each droplet contains a specified quantity of spike-in molecules.
+In this horizontal integration framework, technical variation is quantified
+using replication [@Carroll2005]. In the absence of true technical replicates,
+we assume that population-level characteristics of the cells are replicated
+using appropriate experimental design. This requires that cells from the same
+population have been randomly allocated to different batches. Given appropriate
+experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
+are shared across batches, while technical variation leads to spurious
+differences between cells in different batches.
+---->
+
+
 
 
 - **Eling et al (2018)** [@Eling2018]: 

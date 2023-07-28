@@ -1,5 +1,5 @@
 ---
-title: "Supplementary material for: A BASiCS workflow for expression variability analysis using scRNA-Seq data"
+title: "Transcriptional variability analysis of CD4^+^ T cells using BASiCS"
 author: 
   - name: Alan O'Callaghan
     affiliation: 
@@ -44,9 +44,19 @@ knitr::opts_chunk$set(
 )
 ```
 
-## BASiCS with and without spike-ins
+# Introduction
 
-TODO: write a basic intro here.
+As a case study, we use scRNA-seq data generated for CD4^+^ T cells using the 
+C1 Single-Cell Auto Prep System (Fluidigm®). @Martinez-jimenez2017 profiled 
+naive (hereafter also referred to as unstimulated) and activated (three hours 
+using in vitro antibody stimulation) CD4^+^ T cells from young and old animals 
+across two mouse strains to study changes in expression variability during 
+ageing and upon immune activation. They extracted naive or effector memory 
+CD4^+^ T cells from spleens of young or old animals, obtaining purified 
+populations using either magnetic-activated cell sorting (MACS) or fluorescence 
+activated cell sorting (FACS). External ERCC spike-in RNA18 was added to aid 
+the quantification of technical variability across all cells and all experiments 
+were performed in replicates (hereafter also referred to as batches).
 
 # Data pre-processing and quality control steps
 
@@ -144,7 +154,7 @@ sce_naive_active
 ```
 
 
-## Annotation
+## Gene annotation
 
 Input data was annotated using Ensembl gene identifiers. 
 To facilitate interpretation, it is often useful to obtain a mapping from 
@@ -155,7 +165,29 @@ This can also be used to obtain gene-pathways mappings and other
 metadata (e.g. gene length), useful for performing functional analysis
 of gene sets identified in downstream analyses.
 
-```{r read-gene-symbols}
+```{r obtain-gene-symbols}
+# Check if data storage folder exists and create it if needed
+if (!dir.exists("rds")) {
+  dir.create("rds", showWarnings = FALSE)
+}
+if (!file.exists("rds/genenames.Rds")) {
+  # Initialize mart and dataset
+  ensembl <- useEnsembl(
+    biomart = "genes",
+    version = 104,
+    dataset = "mmusculus_gene_ensembl"
+  )
+  # Select gene ID and gene name
+  genenames <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype", 
+                   "chromosome_name", "description"),
+    mart = ensembl
+  )
+  rownames(genenames) <- genenames$ensembl_gene_id
+  # Store information for future use
+  saveRDS(genenames, "rds/genenames.Rds")
+}
+# Load pre-downloaded gene annotation information
 genenames <- readRDS("rds/genenames.Rds")
 ```
 
@@ -407,16 +439,22 @@ The final dataset used in subsequent analyses contains
 `r nrow(altExp(sce_naive_active))` spike-ins.
 
 ```{r save-SCE}
-saveRDS(sce_naive_active, "rds/sce_naive_active.Rds")
 ind_active <- sce_naive_active$Stimulus == "Active"
 ind_naive <- sce_naive_active$Stimulus == "Unstimulated"
 sce_naive <- sce_naive_active[, ind_naive]
 sce_active <- sce_naive_active[, ind_active]
 ```
 
+# Running the BASiCS model
 
+Here, we fit the BASiCS model using two separate versions. The first version 
+uses technical spike-in to aid global scaling normalisation and technical 
+noise quantification. The second version ignores spike-in genes. Instead,
+technical noise is quantified by borrowing information across the different
+batches of cells. The latter is based on the horizontal integration approach
+described by @Eling2018.
 
-### Inference using BASiCS with spike-ins
+## Inference using spike-ins
 
 ```{r, eval = FALSE}
 set.seed(42)
@@ -449,25 +487,7 @@ chain_active <- BASiCS_MCMC(
 )
 ```
 
-### Inference using BASiCS without spike-ins
-
-
-`r Biocpkg("BASiCS")`, when using spike-in molecules, uses
-spike-ins as a reference in order to aid normalisation,
-based on the assumption that the original quantity of spike-in molecules was
-approximately equal in each well. @Eling2018 introduced a novel method of
-inferring gene expression profiles using `r Biocpkg("BASiCS")` without
-relying on spike-ins to quantify technical noise. This is useful
-for droplet-based scRNAseq protocols, given that it is not possible to ensure
-that each droplet contains a specified quantity of spike-in molecules.
-In this horizontal integration framework, technical variation is quantified
-using replication [@Carroll2005]. In the absence of true technical replicates,
-we assume that population-level characteristics of the cells are replicated
-using appropriate experimental design. This requires that cells from the same
-population have been randomly allocated to different batches. Given appropriate
-experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
-are shared across batches, while technical variation leads to spurious
-differences between cells in different batches.
+## Inference using BASiCS without spike-ins
 
 Using `r Biocpkg("BASiCS")` without spike-ins is very similar to using it
 with spike-ins. We will demonstrate using the
@@ -492,56 +512,17 @@ chain_naive_nospikes <- BASiCS_MCMC(
 )
 ```
 
-This MCMC chain and the chains run using spike-in data each took approximately
-5 hours using an Intel 4770k processor with four threads.
-As before, for convenience we provide a completed version of this chain at
-[https://doi.org/10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
+## Loading pre-run MCMC chains
+
+Each of the runs above is time consuming (a few hours in a typical laptop). 
+Hence, for convenience, we have uploaded our chains to a 
+[Zenodo repository](https://doi.org/10.5281/zenodo.5243265). These can be 
+downloaded and used as the input for subsequent analyses. 
 
 ```{r download-chain-naive-nospikes}
 chains_website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/-/raw/master/"
 # chains_website <- "https://zenodo.org/record/5243265/files/"
-if (!file.exists("rds/chain_naive_nospikes.Rds")) {
-  download.file(
-    paste0(chains_website, "rds/chain_naive_nospikes.Rds"),
-    destfile = "rds/chain_naive_nospikes.Rds"
-  )
-}
-chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
-```
 
-The resulting `BASiCS_Chain` object produced using this horizontal integration
-framework is functionally similar to one produced using the vertical integration
-framework. It can be used in place of the `BASiCS_Chain` objects produced using
-the vertical integration approach, as described above.
-
-```{r diag-plot-naive-nospikes, fig.cap="Effective sample size is plotted against parameter estimates for mean and over-dispersion parameters using the horizontal integration approach. Colour indicates local density, with lighter colours representing higher density.", eval = FALSE, echo = FALSE}
-As discussed previously, it is important to ensure that an adequate effective
-sample size has been generated using MCMC.
-Figure \@ref(fig:diag-plot-naive-nospikes) shows that the sampler has generated
-a large effective sample size for most parameters, similar to the case when we 
- included spike-in molecules.
-mu_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "mu") +
-  theme(legend.position = "bottom")
-delta_ess2 <- BASiCS_DiagPlot(chain_naive_nospikes, Param = "delta") +
-  theme(legend.position = "bottom")
-multiplot(mu_ess2, delta_ess2, cols = 2)
-```
-
-### Comparison of parameter estimates with and without spike-ins
-
-Under the horizontal integration approach described above,
-the scale of mean expression parameters and global scaling factors is not 
-jointly identifiable, in that a global shift in mean expression parameters 
-could be exactly offset by an equivalent shift in cell-specific normalisation
-parameters. Therefore, the geometric mean of the mean expression parameters
-is fixed to a constant value. Relative expression level estimates are broadly 
-consistent between the horizontal and vertical integration approaches; 
-however there may be a global difference in mean expression estimates, as shown
-in Figure \@ref(fig:offset). It is important to remove this global scale offset
-before performing comparative analyses. This is performed by default in
-`BASiCS_TestDE`, but can be performed manually using `BASiCS_CorrectOffset`.
-
-```{r download-chains}
 options(timeout = 1000)
 if (!file.exists("rds/chain_naive.Rds")) {
   download.file(
@@ -555,9 +536,59 @@ if (!file.exists("rds/chain_active.Rds")) {
     destfile = "rds/chain_active.Rds"
   )
 }
+if (!file.exists("rds/chain_naive_nospikes.Rds")) {
+  download.file(
+    paste0(chains_website, "rds/chain_naive_nospikes.Rds"),
+    destfile = "rds/chain_naive_nospikes.Rds"
+  )
+}
 chain_naive <- readRDS("rds/chain_naive.Rds")
 chain_active <- readRDS("rds/chain_active.Rds")
+chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
 ```
+
+# MCMC convergence diagnosics
+
+`r Biocpkg("BASiCS")` uses an adaptive Metropolis-within-Gibbs algorithm 
+[@Roberts2009] to perform inference. Before interpreting the results, it is 
+important to ensure that the algorithm has converged. There are multiple ways
+to do this. In principle, we could visualise the history of iterations for 
+each model parameter in order to assess convergence. However, this is impractical
+as `r Biocpkg("BASiCS")` infers thousands of parameters. Instead, we use the
+`BASiCS_DiagPlot()` to visualise diagnostic metrics calculated for each parameter. 
+In particular, it can calculate the effective sample size and the Geweke 
+diagnostic criteria [@Geweke1995]. 
+For simplicity, here we only focus on the MCMC chains obtained for gene-specific
+mean expression parameters ($\mu_i$) when analysing the naive CD4^+^ T cells with
+spike-ins. However, a similar analysis must be applied to all other chains before 
+they are used in downstream analysis.  
+
+```{r diag-plot-naive, fig.cap="Effective sample size is plotted against parameter estimates for mean expression. As an illustration, we only consider the naive immune cells and the model with spike-ins. Colour indicates local density, with lighter colours representing higher density.", eval = FALSE, echo = FALSE}
+diag_p1 <- BASiCS_DiagPlot(chain_naive, Param = "mu", Measure = "geweke") +
+  theme(legend.position = "bottom")
+diag_p2 <- BASiCS_DiagPlot(chain_naive, Param = "mu", Measure = "ess") +
+  theme(legend.position = "bottom")
+diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
+
+```
+
+In this case, we can see positive evidence to support convergence of the MCMC:
+most Geweke $Z$-scores are within the dashed lines and most genes have a high
+effective sample size (above 500).
+
+# Comparison of parameter estimates with and without spike-ins
+
+Under the horizontal integration approach described above,
+the scale of mean expression parameters and global scaling factors is not 
+jointly identifiable, in that a global shift in mean expression parameters 
+could be exactly offset by an equivalent shift in cell-specific normalisation
+parameters. Therefore, the geometric mean of the mean expression parameters
+is fixed to a constant value. Relative expression level estimates are broadly 
+consistent between the horizontal and vertical integration approaches; 
+however there may be a global difference in mean expression estimates, as shown
+in Figure \@ref(fig:offset). It is important to remove this global scale offset
+before performing comparative analyses. This is performed by default in
+`BASiCS_TestDE`, but can be performed manually using `BASiCS_CorrectOffset`.
 
 ```{r offset, fig.cap="Distribution of mean expression values before and after correcting the global difference in scale."}
 BASiCS_PlotOffset(chain_naive_nospikes, chain_naive,
@@ -635,91 +666,246 @@ g2 <- ggplot() +
 g1 + g2 + plot_annotation(tag_levels = "A")
 ```
 
+# HVG/LVG detection using BASiCS
 
-# Trace plots
 
-First, we will load `r Biocpkg("BASiCS")` and read in each MCMC chain.
-While it is important to ensure the MCMC algorithm has converged and has
-produced an adequate number of independent samples from the posterior
-distribution, we will here assume this proceeds as in the MCMC diagnostics
-section of the main manuscript.
+The functions `BASiCS_DetectHVG` and `BASiCS_DetectLVG` enable the identification 
+of genes with substantially high (HVG) or low (LVG) transcriptional variability 
+within a population of cells. 
 
-```{r load-chain-naive}
-chain_naive <- readRDS("rds/chain_naive.Rds")
-chain_active <- readRDS("rds/chain_active.Rds")
-chain_naive_nospikes <- readRDS("rds/chain_naive_nospikes.Rds")
-```
+We label HVGs those genes for which their residual over-dispersion ($\epsilon_i$) 
+exceeds a pre-defined threshold with high probability. Similarly, LVGs are those
+whose $\epsilon_i$ is below a pre-specified threshold with high probability. 
+In both cases, the probability cut-off is chosen using a grid-search that aims 
+to match a given expected false discovery rate (EFDR; EFDR=10\% as default) 
+[@Newton2004]. Here, we illustrate this using the naive CD4^+^ T cells (with spike-ins)
 
-## Global scaling normalisation using BASiCS
 
-Global scaling normalisation techniques for scRNA-seq data can be used to infer
-cell-specific scaling factors that capture systematic differences in the scale
-of the expression counts across cells. 
-Generally, these scaling factors capture both biological (e.g. mRNA content) and technical (e.g. sequencing depth) factors, but spike-in genes can be used to
-disentangle these effects [@Vallejos2017]. 
-For example, when spike-in genes are used to assist data normalisation, 
-`r Biocpkg("BASiCS")` infers two separate sets of cell-specific parameters 
-associated to these sources of variability: $\phi_j$ and $\nu_j$, respectively.  
-Posterior estimates for these parameters ($\hat{\phi}_j$, $\hat{\nu}_j$) can be 
-used to normalise the input data via the `BASiCS_DenoisedCounts` function. 
-This function returns normalised expression values defined as
-$$
-  x^*_{ij} = \frac{ x_{ij} } {\hat{\phi}_j \hat{\nu}_j},
-$$
-where $x_{ij}$ denotes the observed expression count for gene $i$ in cell $j$.
+```{r det-vg-naive, message=TRUE, fig.cap="HVG and LVG detection using BASiCS (naive CD4^+^ T cells, with spike-ins). For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
+## Highly variable genes
+hvg <- BASiCS_DetectHVG(chain_naive, EpsilonThreshold = log(2))
+## Lowly variable genes
+lvg <- BASiCS_DetectLVG(chain_naive, EpsilonThreshold = -log(2))
 
-```{r normalisation-naive}
-## First remove global differences in scale for normalisation factors
-offset_corrected <- BASiCS_CorrectOffset(chain_active, chain_naive)
-norm_basics_naive <- BASiCS_DenoisedCounts(
-  Data = sce_naive,
-  Chain = chain_naive
+## Merge both tables
+vg_table <- merge(
+  as.data.frame(hvg, Filter = FALSE),
+  as.data.frame(lvg, Filter = FALSE),
+  all = TRUE
 )
-norm_basics_active <- BASiCS_DenoisedCounts(
-  Data = sce_active,
-  Chain = offset_corrected$Chain
-)
-```
 
-As shown in Figure \@ref(fig:normalisation-vs-scran), the capture efficiency and 
-scaling factors ($\nu_j$ and $\phi_j$ respectively) inferred by 
-`r Biocpkg("BASiCS")` are highly correlated with the global scaling 
-normalisation factors inferred using the method of @Lun2016.
-We will load `r Biocpkg("scran")` to estimate these size factors.
-An advantage of jointly inferring normalisation and gene-specific expression
-parameters, rather than using pre-computed
-normalisation factors, is that in the former case, statistical uncertainty is 
-propagated from normalisation to all downstream analyses.
-
-```{r normalisation-vs-scran, fig.width=4, fig.height=4, fig.cap="Comparison of BASiCS inferred global scaling factors and those estimated by scran using the method of Lun et al. (2016)."}
-## BASiCS scaling factors within each group of samples
-basics_sf_naive <- colMedians(
-  displayChainBASiCS(chain_naive, "phi")
-  * displayChainBASiCS(chain_naive, "nu")
-)
-basics_sf_active <- colMedians(
-  displayChainBASiCS(chain_active, "phi")
-  * displayChainBASiCS(chain_active, "nu")
-)
-## scran scaling factors within each group of samples
-scran_sf_naive <- calculateSumFactors(sce_naive)
-scran_sf_active <- calculateSumFactors(sce_active)
-
-ggplot() +
-  aes(basics_sf_naive, scran_sf_naive) +
+## mark genes as highly variable, lowly variable, or not either.
+vg_table$VG <- "Not HVG or LVG"
+vg_table$VG [vg_table$HVG] <- "HVG"
+vg_table$VG [vg_table$LVG] <- "LVG"
+ggplot (vg_table) +
+  aes(log10(Mu), Epsilon, colour = VG) +
   geom_point() +
-  labs(x = "BASiCS scaling factors", y = "scran scaling factors") +
-  annotate(
-    x = 14,
-    y = 0.4,
-    label = paste(
-      "Pearson's r = ",
-      round(
-        cor(basics_sf_naive, scran_sf_naive),
-        digits = 2
-      )
+  geom_hline(yintercept = 0, lty = 2) +
+  labs(
+    x = "BASiCS means (log10)",
+    y = "BASiCS residual\nover-dispersion"
+    ) +
+  scale_colour_manual(name = NULL,
+                      values = c(
+                        "HVG" = "firebrick",
+                        "LVG" = "dodgerblue",
+                        "Not HVG or LVG" = "grey80"),
+                      na.value = "grey80")
+```
+
+For the naive CD4^+^ T cell data, we obtained `r sum(vg_table$VG == "HVG")` HVG 
+and `r `sum(vg_table$VG == "LVG")` 380 LVG. As shown in Figure 
+\@ref(fig:efdr-plot-vg-naive), these genes are distributed across a wide range 
+of mean expression values. As an illustration, Figure 10 shows the distribution 
+of normalised expression values for selected HVG and LVG, focusing on examples 
+with similar mean expression levels. As expected, HVG tend to exhibit a wider 
+distribution and potentially bimodal distribution (Figure \@ref(fig:dc-vg)A). 
+Instead, LVG tend to have more narrow and unimodal distributions (Figure \@ref(fig:dc-vg)B).
+
+```{r dc-vg, fig.cap = "Examples of HVG and LVG within naive CD4+T cells"}
+library("reshape2")
+## Obtain normalised expression values
+dc_naive <- BASiCS_DenoisedCounts(sce_naive, chain_naive)
+vg_table <- merge(
+  as.data.frame(lvg, Filter = FALSE),
+  as.data.frame(hvg, Filter = FALSE),
+  by = c("GeneName", "GeneIndex", "Mu", "Delta", "Epsilon"),
+  suffixes = c("LVG", "HVG")
+)
+vg_table <- merge(
+  vg_table,
+  genenames,
+  by.x = "GeneName", by.y = "ensembl_gene_id",
+  sort = FALSE
+)
+
+## Select HVG/LVG genes with similar mean expression values
+low_exp <- 2
+up_exp <- 3
+is_mid_exp <- log10(vg_table$Mu) > low_exp & log10(vg_table$Mu) < up_exp
+hvg_table <- vg_table[which(is_mid_exp & vg_table$HVG),]
+lvg_table <- vg_table[which(is_mid_exp & vg_table$LVG),]
+
+## Order by epsilon and select top 3 HVG and LVG within the genes selected above
+top_hvg <- order(hvg_table$Epsilon, decreasing = TRUE)[1:3]
+top_lvg <- order(lvg_table$Epsilon, decreasing = FALSE)[1:3]
+hvg_counts <- log10(t(dc_naive[hvg_table$GeneName[top_hvg],]) + 1)
+lvg_counts <- log10(t(dc_naive[lvg_table$GeneName[top_lvg],]) + 1)
+
+## Add genenames
+colnames(hvg_counts) <- hvg_table$external_gene_name[top_hvg]
+colnames(lvg_counts) <- lvg_table$external_gene_name[top_lvg]
+plot_params <- list(
+  geom_violin(na.rm = TRUE),
+  coord_flip(),
+  ylim(-0.05, max(log10(dc_naive + 1))),
+  geom_jitter(position = position_jitter(0.3)),
+  ylab("log10(norm count + 1)"),
+  xlab("Gene")
+)
+plot_hvg <- ggplot(melt(hvg_counts), aes(x = Var2, y = value)) +
+  plot_params + ggtitle("Example HVGs")
+plot_lvg <- ggplot(melt(lvg_counts), aes(x = Var2, y = value)) +
+  plot_params + ggtitle("Example LVGs")
+plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
+```
+
+# Differential mean and variability testing using BASiCS
+
+Finally, we perform differential testing to identify genes 
+with different expression patterns between naive and stimulated
+CD4^+^ T cells. This considers both genes with changes in mean expression and 
+those whose transcriptional variability changes between the naive and stimulated
+cells. The results are summarised in Fig \@ref{fig:de-cd4}.
+
+```{r de-cd4, fig.cap = "Upper panel presents the mean-difference plot associated to the differential mean expression test between naive and active cells. Log-fold changes of average expression in naive cells relative to active cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in naive cells relative to active cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low effective sample size."}
+## Perform differential testing
+test_de <- BASiCS_TestDE(
+  Chain1 = chain_naive,
+  Chain2 = chain_active,
+  GroupLabel1 = "Naive",
+  GroupLabel2 = "Active",
+  EFDR_M = 0.1,
+  EFDR_R = 0.1,
+  MinESS = 100,
+  Plot = FALSE,
+  PlotOffset = FALSE
+)
+p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
+p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano")
+p1 / p2
+```
+
+To facilate interpretation, we also visualise expression patterns for 
+differentially expressed genes. To do this, we calculate normalised expression
+values for each cell and gene, correcting for a global offset between naive
+and activated cells. 
+
+```{r}
+offset <- BASiCS_CorrectOffset(chain_naive, chain_active)
+offset$Offset
+## Get offset corrected chain
+chain_naive <- offset$Chain
+## Obtain normalised counts within each group of cells
+dc_naive <- BASiCS_DenoisedCounts(sce_naive, chain_naive, WithSpikes = FALSE)
+dc_active <- BASiCS_DenoisedCounts(sce_active, chain_active, WithSpikes = FALSE)
+```
+
+We then use `r Biocpkg("ComplexHeatmap")` to visualise expression patterns for
+different groups of genes as defined by the differential expression test above.
+
+```{r}
+library("ComplexHeatmap")
+library("circlize")
+library("RColorBrewer")
+
+table_de_mean <- as.data.frame(test_de,
+                               Parameter = "Mean",
+                               Filter = FALSE)
+table_de_resdisp <- as.data.frame(test_de,
+                                  Parameter = "ResDisp",
+                                  Filter = FALSE)
+## Add gene symbol to table
+table_de_mean$Symbol <- genenames[table_de_mean$GeneName, 2]
+## utility function for selecting genes
+select_top_n <- function(table, counts, condition, n=15, decreasing=TRUE) {
+  ind_condition <- table$ResultDiffMean == condition
+  table <- table[ind_condition,]
+  ind_diff <- order(table$ProbDiffMean, decreasing = decreasing)[1:n]
+  genes <- table$GeneName[ind_diff]
+  counts[genes,]
+}
+## Active & naive count matrices for genes up-regulated in active cells
+act_counts_act <- select_top_n(table_de_mean, dc_active, "Active+")
+nai_counts_act <- select_top_n(table_de_mean, dc_naive, "Active+")
+## Active & naive count matrices for genes up-regulated in naive cells
+act_counts_nai <- select_top_n(table_de_mean, dc_active, "Naive+")
+nai_counts_nai <- select_top_n(table_de_mean, dc_naive, "Naive+")
+## Active & naive count matrices for genes not differentially expressed
+act_counts_nde <- select_top_n(table_de_mean, dc_active, "NoDiff",
+                               decreasing = FALSE)
+nai_counts_nde <- select_top_n(table_de_mean, dc_naive, "NoDiff",
+                               decreasing = FALSE)
+## Combine count matrices by cell type
+counts_active <- rbind(act_counts_act, act_counts_nai, act_counts_nde)
+counts_naive <- rbind(nai_counts_act, nai_counts_nai, nai_counts_nde)
+## split heatmaps by gene category
+split <- data.frame(
+  Upregulated = c(
+    rep("Up-regulated \nin active", nrow(act_counts_act)),
+    rep("Up-regulated \nin naive", nrow(act_counts_nai)),
+    rep("Non DE", nrow(act_counts_nde))
+    )
+)
+syms <- genenames[rownames(counts_active), 2]
+fontsize <- 7
+## Color palettes using circlize
+col <- colorRamp2(
+  breaks = seq(0,
+               log10(max(c(counts_naive, counts_active) + 1)),
+               length.out = 20),
+  colors = viridis(20)
+)
+## Subset table of DE results to extract mean estimates
+match_order <- match(rownames(counts_naive), table_de_mean$GeneName)
+table_de_selected <- table_de_mean[match_order,]
+## Color palette for mu annotation
+log_mu_naive <- log10(table_de_selected$Mean1)
+log_mu_active <- log10(table_de_selected$Mean2)
+mu_col <- colorRamp2(
+  breaks = seq(0, max(c(log_mu_naive, log_mu_active)), length.out = 20),
+  colors = viridis(20, option = "A", direction = 1)
+)
+Heatmap(
+  log10(counts_naive + 1),
+  row_labels = syms,
+  row_names_gp = gpar(fontsize = fontsize),
+  name = "log10(count + 1)",
+  column_dend_height = unit(0.2, "npc"),
+  column_title_side = "bottom",
+  column_title = "Naive cells",
+  show_column_names = FALSE,
+  cluster_rows = FALSE,
+  split = split,
+  right_annotation = rowAnnotation(
+    log_mu = log_mu_naive,
+    col = list(log_mu = mu_col)
     ),
-    geom = "text",
-    size = 4
-  )
+  col = col) +
+Heatmap(
+  log10(counts_active + 1),
+  row_labels = syms,
+  column_dend_height = unit(0.2, "npc"),
+  row_names_gp = gpar(fontsize = fontsize),
+  column_title = "Active cells",
+  column_title_side = "bottom",
+  show_column_names = FALSE,
+  split = split,
+  show_heatmap_legend = FALSE,
+  right_annotation = rowAnnotation(
+    log_mu = log_mu_active,
+    col = list(log_mu = mu_col)),
+  cluster_rows = FALSE,
+  col = col)
 ```

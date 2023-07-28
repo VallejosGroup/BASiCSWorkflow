@@ -1,0 +1,174 @@
+---
+title: "Extended methods for: A BASiCS workflow for expression variability analysis using scRNA-Seq data"
+author: 
+  - name: Alan O'Callaghan
+    affiliation: 
+    - &MRC MRC Human Genetics Unit, Institute of Genetics \& Cancer, 
+      University of Edinburgh, Western General Hospital, Crewe Road, Edinburgh, 
+      EH4 2XU, UK
+    email: "a.b.o'callaghan@sms.ed.ac.uk"
+  - name: Nils Eling
+    affiliation: 
+    - &UZH Department of Quantitative Biomedicine, University of Zurich,
+      Winterthurerstrasse 190, CH-8057, Zurich, Switzerland
+    - &ETH Institute for Molecular Health Sciences, ETH Zurich,
+      Otto-Stern Weg 7, 8093 Zurich, Switzerland
+  - name: John C. Marioni
+    affiliation: 
+    - &EBI European Molecular Biology Laboratory, European Bioinformatics 
+      Institute, Wellcome Trust Genome Campus, Hinxton, Cambridge CB10 1SD, UK
+    - &CRUK Cancer Research UK Cambridge Institute, University of Cambridge, 
+      Li Ka Shing Centre, Cambridge, CB2 0RE, UK
+  - name: Catalina A. Vallejos
+    affiliation: 
+    - *MRC 
+    - The Alan Turing Institute, British Library, 96 Euston Road, London, 
+      NW1 2DB, UK
+    email: catalina.vallejos@igmm.ed.ac.uk
+bibliography: Workflow.bib
+urlcolor: Orange
+output:
+  BiocWorkflowTools::f1000_article:
+    fig_width: 6
+    fig_height: 4
+---
+
+
+```{r setup_knitr, include = FALSE, cache = FALSE}
+library("BiocStyle")
+library("knitr")
+knitr::opts_chunk$set(
+  message = FALSE, error = FALSE, warning = FALSE,
+  cache = 0, cache.path = "cache_supp/",
+  fig.path = "figure_supp/"
+)
+```
+
+# 1. Introduction
+
+To date, three versions of the `r Biocpkg("BASiCS")` model have 
+been proposed [@Vallejos2015BASiCS] [@Vallejos2016] [@Eling2018]. They differ in 
+how inference is performed (e.g. using different priors) and the type of 
+downstream analysis that is enabled by the model. 
+
+# 2. Vallejos et al (2015) 
+
+The original model [@Vallejos2015] uses information from extrinsic spike-in 
+molecules (e.g. those introduced in [@Rna2005]) as *control features* (also 
+referred to as *technical genes*) to quantify technical noise. 
+
+Let $X_{ij}$ represent the *raw* expression data (read-counts or molecule-counts 
+for UMI-based protocols) for gene $i$ in cell $j$. For all spike-in genes, the
+model assumes that all the observed variability is due to *technical* reasons.
+In this case, $X_{ij}$ is modelled to follow a Negative Binomial distribution 
+such that: 
+
+$$ \text{E}(X_{ij}) = s_j \mu_i, \hspace{0.5cm} \text{and} \hspace{0.5cm} 
+\text{Var}(X_{ij}) = s_j \mu_i + \theta [s_j \mu_i]^2.$$
+
+As such, cell-specific parameters $s_j$ enable *global scaling normalisation*, 
+capturing *technical* systematic differences across cells (e.g. due to 
+amplification biases or variations in sequencing depth)[@Vallejos2017]. 
+Instead, gene-specific parameters $\mu_i$ represent the overall expression for 
+gene $i$ across all cells. These are assumed to be *known* and given by the input 
+concentration of spike-in molecules that is added to each cell. 
+Finally, $\theta$ captures *technical over-dispersion*, defined as the excess of 
+variability that is observed with respect to Poisson sampling noise. 
+
+For intrinsic genes (i.e. those found in the cells under study), the model is
+extended to also capture both *technical* and *biological* variability. Under
+a similar specification, the model for intrinsice genes is defined such that:
+
+$$ \text{E}(X_{ij}) = \phi_j s_j \mu_i, \hspace{0.5cm} \text{and} \hspace{0.5cm} 
+\text{Var}(X_{ij}) = \phi_j s_j \mu_i + \theta [\phi_j s_j \mu_i]^2 + 
+\delta_i (\theta + 1) [\phi_j s_j \mu_i]^2.$$
+
+Parameters $s_j$ and $\theta$ are shared with the spike-in model above and are
+inferred jointly by taking into account information across both sets of genes. 
+The additional cell-specific parameters $\phi_j$ also perform globa scaling
+normalisation, but now capture mRNA differences across cells [@Vallejos2017]. 
+As before, gene-specific parameters $\mu_i$ measure overall expression for gene
+$i$ across all cells. However, unlike for spike-in genes, these are assumed to
+be *unknown*. Finally, the new set of gene-specific parameters $\delta_i$ 
+capture, for each gene, the excess of variability with respect to Poisson 
+sampling noise and technical noise (whose strenght is controlled by $\theta$). 
+`r Biocpkg("BASiCS")` uses $\delta_i$ as a proxy for transcriptional noise and
+is akin to the *biological coefficient of variation* introduced by @McCarthy2012 
+in the context of bulk RNAseq datasets. 
+
+Posterior inference for the model above is implemented using an adaptive 
+Metropolis-within-Gibbs algorithm [@Roberts2009]. 
+
+# 3. Vallejos et al (2016) 
+
+# 4. Eling et al (2018)
+
+# 5. Downstream analyses
+
+### Testing for changes in mean expression and over-dispersion
+
+Differential mean and differential over-dispersion testing is done by computing
+the tail posterior propabilities of the difference in mean expression or 
+over-dispersion between two conditions ($A$ and $B$) being larger than an
+evidence threshold $\tau_0$ or $\omega_0$ [@Bochkina2007, @Vallejos2016]:
+$$
+\begin{aligned}
+  &\text{P}\left(\log\left(\frac{\mu_i^{(A)}}{\mu_i^{(B)}}\right) > \tau_0 | \text{Data}\right) > \alpha_m\\
+  &\text{P}\left(\log\left(\frac{\delta_i^{(A)}}{\delta_i^{(B)}}\right) > \omega_0 | \text{Data}\right) > \alpha_d
+\end{aligned}
+$$
+
+If the tail posterior probability is larger than a given propability threshold 
+$\alpha_m$ or $\alpha_d$, the gene is considered to be differentially expressed
+or differentially over-dispersed [@Vallejos2016]. The evidence threshold is
+usually fixed *a priori* and the probability threshold is defined to
+control the expected false discovery rate (EFDR) to 
+(e.g. 10%) [@Newton2004, Vallejos2016].
+
+As described by @Vallejos2016, estimates of the
+over-dispersion parameters $\delta_i$ are negatively correlated to mean 
+expression $\mu_i$. This indicates that in homogeneous populations of cells,
+highly expressed genes tend to be less noisy than lowly expressed genes. 
+Differential over-dispersion testing is therefore confounded by mean expression
+changes. When assessing changes in over-dispersion $\delta_i$, only genes with
+no changes in mean expression are considered (see @Vallejos2016).
+
+### Correcting the mean-variability confounding effect
+
+@Eling2018 extended BASiCS to account for the
+confounding effect between mean expression and expression variability. 
+For this purpose, we capture the relationship between mean and over-dispersion
+parameters by introducing the following joint prior distribution for 
+$(\mu_i, \delta_i)'$:
+$$
+  \mu_i \sim \text{log-Normal}\left(0, s^2_{\mu}\right), \hspace{0.5cm}
+  \delta_i | \mu_i \sim \text{log-t}_{\eta}\left( \text{f}(\mu_i), \sigma^2 \right).
+$$
+
+The latter is equivalent to the non-linear regression model:
+$$
+  \log(\delta_i) = \text{f}(\mu_i) + \epsilon_i, \hspace{0.5cm} \epsilon_i \sim{}\text{t}_{\eta}(0,\sigma^2), 
+$$
+
+where $\mbox{f}(\mu_i)$ represents the over-dispersion (on the log-scale) that
+is predicted by the global trend (across all genes) for a given mean expression 
+$\mu_i$. Therefore, $\epsilon_i$ can be interpreted as a gene-specific 
+*residual over-dispersion* parameter. Positive values for
+$\epsilon_i$ indicate more variation than expected for genes with similar 
+expression level. Similarly, negative values of $\epsilon_i$ suggest less 
+variation than expected [@Eling2018].
+
+In line with the probabilistic approach described above, we identified
+statistically significant differences in residual over-dispersion for those 
+genes where the tail posterior probability of observing a large difference 
+between $\epsilon_i^A$ and $\epsilon_i^B$ exceeds a certain threshold:
+$$
+  \text{P}(\mid\epsilon_i^{A} - \epsilon_i^{B}\mid > \psi_0 \mid \text{Data}) > \alpha_R,
+$$
+where $\psi_0 > 0$ defines the minimum tolerance threshold. 
+As a default choice, we assume $\psi_0 = \log_2(1.5) / \log_2(e) \approx 0.41$,
+which translates into a 50\% increase in over-dispersion. 
+The posterior probability threshold $\alpha_R$ is chosen to control the EFDR
+(e.g. 10\%) [@Newton2004]. To support interpretability of the results,
+we exclude genes that are not expressed in at least 2 cells per condition from
+differential variability testing.
