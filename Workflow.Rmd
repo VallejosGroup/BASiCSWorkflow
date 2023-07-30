@@ -74,7 +74,7 @@ if (knitr::is_html_output()) {
 }
 knitr::opts_chunk$set(
   warning = FALSE, message = FALSE, error = FALSE,
-  cache = 0, cache.path = "cache_main/",
+  cache = 2, cache.path = "cache_main/",
   # fig.pos = "h",
   fig.path = "figure/"
 )
@@ -84,7 +84,6 @@ options(timeout=100)
 # Introduction
 
 <!--- scRNA-seq and the different types of heterogeneity ---> 
-<!--- Nils to revisit and add additional references if required --->
 Single-cell RNA-sequencing (scRNA-seq) enables the study of genome-wide 
 cell-to-cell transcriptional heterogeneity that is not captured by bulk 
 experiments [@Stegle2015; @Prakadan2017; @Patange2018]. 
@@ -156,8 +155,7 @@ identified through clustering. In such cases, the model does not currently
 address issues associated to *post-selection inference*, where the same data is 
 analysed twice: first to perform clustering and then to compare expression 
 profiles between the clusters [@Lahnemann2020] (this is an inherent limitation 
-of most differential expression tools).  then to compare expression 
-profiles between the clusters [@Lahnemann2020]). 
+of most differential expression tools).
 
 `r Biocpkg("BASiCS")` jointly performs data normalisation, technical noise 
 quantification and downstream analyses, whilst propagating statistical 
@@ -227,10 +225,7 @@ library("BASiCS")
 ```
 
 Next, we load other general purpose libraries used for data visualisation (e.g.
-`r CRANpkg("ggplot2")`), data manipulation (e.g. `r CRANpkg("reshape2")`) and
-other libraries required to calculate some summary statistics 
-(`r Biocpkg("sparseMatrixStats")`) and to assess the convergence of the 
-algorithm implemented in `r Biocpkg("BASiCS")` (e.g. `r CRANpkg("coda")`). 
+`r CRANpkg("ggplot2")`) and colour scales (e.g., `r CRANpkg("viridis")`. 
 
 ```{r}
 # Data visualisation
@@ -242,13 +237,6 @@ library("ComplexHeatmap")
 library("viridis")
 library("circlize")
 library("RColorBrewer")
-# Data manipulation
-library("reshape2")
-library("tidyr")
-# To obtain summary statistics
-library("sparseMatrixStats")
-# To assess convergence of the algorithm implemented in BASiCS
-library("coda")
 ```
 
 ## Input data
@@ -296,8 +284,7 @@ data, e.g. to examine potential batch effects.
 
 The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 model to simultaneously perform data normalisation, technical noise 
-quantification and downstream analyses [@Vallejos2015BASiCS] [@Vallejos2016] 
-[@Eling2018]. Moreover, instead of modelling expression patterns separately for 
+quantification and downstream analyses [@Vallejos2015BASiCS;@Vallejos2016;@Eling2018]. Moreover, instead of modelling expression patterns separately for 
 each gene, `r Biocpkg("BASiCS")` shares information between all genes to 
 robustly quantify transcriptional variability. For example, as described by 
 [@Eling2018], pooling information across genes with similar mean expression 
@@ -306,8 +293,8 @@ latter is particularly helpful for lowly expressed genes and sparse datasets,
 where less information is available.
 
 A high-level overview for the model implemented in `r Biocpkg("BASiCS")` is
-shown in Figure X (a more detailed description is provided in Section 1 of the 
-Supplementary Material). Model parameters are designed to capture different 
+shown in Figure X (a more detailed description is provided in [TODO: REPO LINK]).
+Model parameters are designed to capture different 
 aspects of scRNAseq data. First, *nuisance* parameters are used to (primarily) 
 capture technical artifacts. This includes cell-specific parameters (indexed by 
 a $j$ subscript) used to perform global scaling normalisation (similar to the 
@@ -325,11 +312,52 @@ captures the excess of variability that is observed with respect to what would
 be expected in a homogeneous cell population, beyond technical noise. 
 The latter is used as a proxy to quantify transcriptional variability.
 
+Additionally, we use a *joint prior* specification for 
+these parameters. This joint prior assumes that genes with similar mean 
+expression ($\mu_i$) have similar over-dispersion ($\delta_i$) parameters.
+Effectively, this shrinks over-dispersion estimates towards a global trend
+that captures the relationship between mean and over-dispersion (Figure XX). 
+This improves posterior inference for over-dispersion parameters when the data 
+is less informative (e.g. small sample size, lowly expressed genes) [@Eling2018].
+This information-sharing approach is conceptually similar to that performed by 
+@Love2014 and others, where sparse data is pooled to obtain more reliable 
+estimates.
+The global trend is then used to derive gene-specific *residual over-dispersion* 
+parameters $\epsilon_i$ that are not confounded by mean expression. 
+Similar to the DM values implemented in `r Biocpkg("scran")`, these are defined 
+as deviations with respect to the overall trend (Figure XX).
+`r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
+perform differential expression analyses between two pre-specified 
+groups of cells [@Vallejos2016;@Eling2018] in terms of either mean
+expression or residual over-dispersion.
+
+Additionally, technical variation is quantified
+using replication [@Carroll2005]. In the absence of true technical replicates,
+we assume that population-level characteristics of the cells are replicated
+using appropriate experimental design. This requires that cells from the same
+population have been randomly allocated to different batches. Given appropriate
+experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
+are shared across batches, while technical variation leads to spurious
+differences between cells in different batches. Thus, `r Biocpkg("BASiCS")`
+models cell-specific size factors $\nu_j$, and batch-specific technical
+dispersion $\theta$.
+It is this version of
+the model that we will focus on here, and that we recommend for most
+users. Previous versions of the model are available within the package, but
+are primarily useful for reproducibility purposes or for analysing
+datasets that contain spike-in genes.
+
+
+
+<!--- Strongly suggest moving this to the supplementary material,
+There's not really a good reason to give people the history of BASiCS
+in a workflow
+
 Three versions of the `r Biocpkg("BASiCS")` model have been published to date.
 Whilst based on a similar model specification, they differ in how inference is
 performed (e.g. using different priors) and the type of downstream analysis that
-can be performed. The main differences are described below (for more details, 
-see Section [REF] in the Supplementary Material):
+can be performed. The main differences are described below; for more details, 
+see the extended model description in [TODO: ZENODO REPO].
 
 - **Vallejos et al (2015)** [@Vallejos2015]: the original model uses 
 information from extrinsic spike-in molecules (e.g. those introduced by 
@@ -360,57 +388,15 @@ embraces the high granularity of scRNA-seq data, uncovering changes in
 cell-to-cell transcriptional variability. As noted by @Vallejos2016, the inverse
 relationship that is observed between mean expression and over-dispersion 
 derived from (bulk and) scRNAseq can affect the interpretation of such analyses.
-To address this  
+In particular, genes that are differentially expressed between two groups of
+cells are likely to exhibit changes in both mean expression and variability,
+due to the inverse relationship between these two quantities. Thus, 
+comparisons of variability between populations must be restricted to genes
+that do not exhibit changes in mean expression.
 
-Due to typical inverse relationship
-, 
-proposed 
-
-
-However, the strong relationship that is typically observed between variability and mean estimates (e.g., Brennecke et al. [2013]) can hinder the interpretation of these results.
-
-
-[SAY SOMETHING ABOUT THE CONFOUNDING]. 
-This limitation was addressed by @Eling2018. 
-
-<!---
-PLACE-HOLDER FOR TEXT THAT MAY BE USEFUL.
-
-@Eling2018 introduced a novel method of inferring gene expression profiles 
-using `r Biocpkg("BASiCS")` without
-relying on spike-ins to quantify technical noise. This is useful
-for droplet-based scRNAseq protocols, given that it is not possible to ensure
-that each droplet contains a specified quantity of spike-in molecules.
-In this horizontal integration framework, technical variation is quantified
-using replication [@Carroll2005]. In the absence of true technical replicates,
-we assume that population-level characteristics of the cells are replicated
-using appropriate experimental design. This requires that cells from the same
-population have been randomly allocated to different batches. Given appropriate
-experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
-are shared across batches, while technical variation leads to spurious
-differences between cells in different batches.
----->
-
-
-
-
-- **Eling et al (2018)** [@Eling2018]: 
-
-`r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
-perform differential expression analyses between two pre-specified 
-groups of cells [@Vallejos2016; @Eling2018].
-
-
-that are not 
-confounded by differences in technical noise or in overall expression.
-
-To quantify technical noise, the original implementation of 
-`r Biocpkg("BASiCS")` uses information from , but the model has been extended to address situations wherein
-spike-ins are not available [@Eling2018].
-
-
-To account for the strong relationship that is typically observed 
-between gene-specific mean expression and over-dispersion estimates, 
+- **Eling et al (2018)** [@Eling2018]: the model was extended to account for
+the strong relationship that is typically observed 
+between gene-specific mean expression and over-dispersion estimates.
 Eling *et al.*  [@Eling2018] introduced a *joint prior* specification for 
 these parameters. This joint prior assumes that genes with similar mean 
 expression ($\mu_i$) have similar over-dispersion parameters $\delta_i$. 
@@ -425,12 +411,29 @@ The global trend is then used to derive gene-specific *residual over-dispersion*
 parameters $\epsilon_i$ that are not confounded by mean expression. 
 Similar to the DM values implemented in `r Biocpkg("scran")`, these are defined 
 as deviations with respect to the overall trend (Figure XX).
-
-
-
 `r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
 perform differential expression analyses between two pre-specified 
 groups of cells [@Vallejos2016; @Eling2018].
+Furthermore, the model was extended using a horizontal integration framework
+to allow its use in the absence of spike-in genes.
+This is useful
+for droplet-based scRNAseq protocols, given that it is not possible to ensure
+that each droplet contains a specified quantity of spike-in molecules.
+In this horizontal integration framework, technical variation is quantified
+using replication [@Carroll2005]. In the absence of true technical replicates,
+we assume that population-level characteristics of the cells are replicated
+using appropriate experimental design. This requires that cells from the same
+population have been randomly allocated to different batches. Given appropriate
+experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
+are shared across batches, while technical variation leads to spurious
+differences between cells in different batches.
+It is this version of
+the model that we will focus on here, and that we recommend for most
+users. Previous versions of the model are available within the package, but
+are primarily useful for reproducibility purposes or for analysing
+datasets that contain spike-in genes.
+-->
+
 While several differential expression tools have been proposed for scRNA-seq 
 data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that 
 these do not generally outperform popular bulk RNA-seq tools [@Soneson2018]. 
@@ -465,9 +468,10 @@ development across multiple time-points and capturing multiple tissues
 [@Ibarra-Soria2018;@Kernfeld2018]. 
 
 To illustrate the use of `r Biocpkg("BASiCS")` in this context, we use 
-droplet-based scRNAseq generated using the 10X microfluidics platform (an 
+droplet-based scRNAseq generated using the 10X microfluidics platform. An 
 example using a dataset generated using a plate-based protocol including 
-spike-ins is provided in the supplementary material, Section [ADD-REF]). 
+spike-ins is provided in the "AnalysisCD4T.Rmd" document of the
+Zenodo repository [TODO: ADD-REF].
 In particular, we focus on the data generated by @Ibarra-Soria2018 which
 contains expression profiles for 20,819 cells collected from E8.25 mouse 
 embryos. These data comprise a highly heterogeneous population of cells with 
@@ -477,7 +481,8 @@ E-MTAB-6153 on ArrayExpress and can be obtained from
 The authors also provide additional information summarising the experimental
 design (animal of source for each cell) and the cluster labels generated by
 in their analysis. The code required to download these data is provided in 
-the supplementary material (Section [ADD-REF]). 
+the "DataPreparationBASiCSWorkflow.Rmd" document of
+the Zenodo repository [TODO: ADD-REF].
 
 As explained above, when analysing a heterogeneous population of cells, a 
 clustering analysis is required to identify the cell types that drive this 
@@ -494,7 +499,8 @@ pair of cell types.
 While quality control and pre-processing is an important topic in scRNAseq
 analysis, we feel that it has been covered in detail in other articles.
 For this analysis, we have performed quality control, pre-processing and 
-exploratory data analysis in the supplementary material (see Section [ADD-REF]). 
+exploratory data analysis in the "DataPreparationBASiCSWorkflow.Rmd" document of
+the Zenodo repository [TODO: ADD-REF]. 
 The code presented there needs to be run before running the rest of this 
 workflow. Here, we load the pre-processed data. This consists of two separate 
 `SingleCellExperiment` data objects: one for presomitic and one for
@@ -568,19 +574,21 @@ The primary inputs for `BASiCS_MCMC` correspond to:
   $\delta_i$ [@Vallejos2016]. 
 - `WithSpikes`: if `TRUE` information from spike-in molecules is used to aid
   data normalisation and to quantify technical noise. 
-- `PriorParam`: Defines the prior hyper-parameters to be used by 
-`r Biocpkg("BASiCS")`. We recommend to use the `BASiCS_PriorParam` function
-for this purpose. If `PriorMu = "EmpiricalBayes"`, $\mu_i$'s are assigned a 
-log-normal prior with gene-specific location hyper-parameters defined via an 
-empirical Bayes framework. Alternatively, if `PriorMu = "default"`, location 
-hyper-parameters are set to be equal 0 for all genes. 
+- `PriorParam`: Defines the prior hyper-parameters to be used by `r Biocpkg("BASiCS")`.
+
 
 As a default, we recommend to use `Regression = TRUE`, as the joint prior 
 introduced by [@Eling2018] leads to more stable estimation,
 particularly for small sample sizes and lowly expressed genes. 
 This approach also enables users to obtain a measure of
 transcriptional variability that is not confounded by mean expression. 
-We also recommend to use `PriorMu = "EmpiricalBayes"` as we have observed 
+Advanced users may use the `BASiCS_PriorParam` function
+to adjust prior hyperparameters. If `PriorMu = "EmpiricalBayes"`, $\mu_i$'s are assigned a 
+log-normal prior with gene-specific location hyper-parameters defined via an 
+empirical Bayes framework. Alternatively, if `PriorMu = "default"`, location 
+hyper-parameters are set to be equal 0 for all genes. We recommend that users
+use the defaults for `PriorParam` for most applications.
+We recommend to use `PriorMu = "EmpiricalBayes"` as we have observed 
 that an empirical Bayes framework [@Casella1985]
 improves estimation performance for sparser datasets. 
 Extra parameters can be used to store the output 
@@ -588,8 +596,8 @@ Extra parameters can be used to store the output
 algorithm (`PrintProgress`).
 
 Here, we run the MCMC sampler separately for somitic and pre-somitic mesoderm
-cells. We use 30,000 iterations (`N`), discarding the initial 15,000 iterations
-as burn-in, (`Burn`), and saving parameter values only once in each 15 
+cells. We use 20,000 iterations (`N`), discarding the initial 10,000 iterations
+as burn-in, (`Burn`), and saving parameter values only once in each 10
 iterations (`Thin`).
 We recommend this setting for large datasets, as it generally produces reliable
 and reproducible results. However, specific datasets may require a larger number
@@ -630,8 +638,8 @@ chain_psm <- BASiCS_MCMC(
 )
 ```
 
-This first of these chains takes 84 minutes to complete on a 3.4 GHz Intel
-Core i7 4770k procesor with 32GB RAM, while the second takes 69 minutes.
+This first of these chains takes 140 minutes to complete on a 3.4 GHz Intel
+Core i7 4770k procesor with 32GB RAM, while the second takes 159 minutes.
 For convenience, these can be obtained online at 
 [https://doi.org/10.5281/zenodo.5243265](https://doi.org/10.5281/zenodo.5243265).
 
@@ -674,8 +682,6 @@ expression parameters $\mu_i$ associated to the first 3 genes.
 displayChainBASiCS(chain_sm, Param = "mu")[1:2, 1:3]
 ```
 
-See Section [ADD-REF] in the supplementary material for further examples on
-how to explore the posterior distribution. 
 
 ## MCMC convergence diagnostics
 
@@ -710,8 +716,9 @@ convergence (e.g. [@Geweke1995]) based on a single MCMC chain.
 
 For illustration purposes, here we focus on the chains generated for the 
 somatic mesoderm cells. However, it is important to analyse convergence for 
-all MCMC chains. The convergence analysis for the chains generated for pre-somatic 
-mesoderm cells is provided in Section [ADD-REF] within the supplementary material. 
+all MCMC chains; we have omitted this analysis for pre-somitic 
+mesoderm cells in the present manuscript for brevity, but they can be viewed
+in the [TODO: ZENODO REPO].
 
 Traceplots can be used to visually assess the history of MCMC iterations 
 for a specific parameter (e.g. Figure \@ref(fig:convergence-SM), left panel). 
@@ -737,7 +744,9 @@ parameters simultaneously.
 The `BASiCS_DiagPlot()` can be used to visualise such diagnostic metrics. 
 Here, we illustrate usage for two such metrics focusing on the MCMC
 chain that was obtained for the somitic mesoderm cells (similar results were 
-obtained for pre-somitic mesoderm cells in the supplementary material). 
+obtained for pre-somitic mesoderm cells in the
+"DataPreparationBASiCSWorkflow.Rmd" document of
+the Zenodo repository [TODO: ADD-REF]. 
 First, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995].
 The latter compares the average of draws obtained during the initial (10\% after 
 burn in, by default) and the final part of the chain (50\% by default)
@@ -843,7 +852,8 @@ parameter_df$DM <- DM(
 sel_genes <- !is.na(parameter_df$residualoverdisp) 
 
 ## The plots below are generated using ggplot2
-## We use `plot_params` to specify the format of such plots whilst avoiding code duplication
+## We use `plot_params` to specify the format of 
+## such plots whilst avoiding code duplication
 ## The plots can be further customized using ggplot2 principles
 ## For example, we modify x- and y-axis limits in some of the plots below
 plot_params <- list(
@@ -866,7 +876,8 @@ g1 <- ggplot(parameter_df[sel_genes,], aes(log10(cv2_scran), log10(overdisp))) +
     linetype = "dashed"
   )
   
-g2 <- ggplot(parameter_df[sel_genes,], aes(log10(mean_scran), log10(cv2_scran))) +
+g2 <- ggplot(parameter_df[sel_genes,]) +
+  aes(log10(mean_scran), log10(cv2_scran)) +
   xlim(-3, 2.2) + ylim(-3, 3) 
 
 g3 <- ggplot(parameter_df[sel_genes,], aes(log10(mean), log10(overdisp))) +
@@ -907,12 +918,32 @@ For the somitic mesoderm cell data, both approaches led to correlated
 estimates (Figure \@ref(fig:dispersion-vs-mean)D, Pearson's correlation equal 
 to `r with(parameter_df, cor(DM, residualoverdisp))`) but the residual 
 variability estimates generated for these data are less consistent than what we 
-have observed in the context of less sparse data (see Section [ADD-REF] in the 
-supplementary material). 
-For the majority of genes (`r with(parameter_df[sel_genes,], sum(sign(DM) == sign(residualoverdisp)))` out of `r sum(sel_genes)` captured in at least 3 
+have observed in the context of less sparse data (see the "AnalysisCD4T.Rmd"
+document in the [TODO: ADD-REF] Zenodo repository). 
+For the majority of genes 
+(`r with(parameter_df[sel_genes,], sum(sign(DM) == sign(residualoverdisp)))`
+out of `r sum(sel_genes)`
+captured in at least 3 
 cells) both approaches led some broadly similar results, inferring the same 
-sign for their residual variability estimates. However, [TO-DO: explore what
+sign for their residual variability estimates.
+
+<!--- However, [TO-DO: explore what
 drives the difference; rank figure below is a tentative idea].
+
+Do we need this? If this is a workflow for analysing data using BASiCS,
+we should focus on what BASiCS does.
+
+```{r rank-var-comparison}
+# g1 <- ggplot(parameter_df[sel_genes,], aes(rank(DM), rank(residualoverdisp))) 
+# # Select genes captured in at least 100 cells 
+# sel_genes2 <- sel_genes & rowSums(counts(sce_sm) > 0) > 100
+# g2 <- ggplot(parameter_df[sel_genes2,], aes(rank(DM), rank(residualoverdisp))) 
+
+# (g1 + g2) *
+#   plot_params + plot_annotation(tag_levels = "A") &
+#   theme(plot.tag = element_text(size = 15))
+```
+--->
 
 Finally, as expected, we observe that
 neither DM values nor posterior estimates for $\epsilon_i$ are 
@@ -920,16 +951,6 @@ associated with mean expression (Figure \@ref(fig:dispersion-vs-mean)E-F).
 However, unlike the DM method, the integrated approach implemented in 
 `r Biocpkg("BASiCS")` provides a direct measure of statistical uncertainty for 
 these estimates via posterior variance. 
-
-
-```{r rank-var-comparison}
-g1 <- ggplot(parameter_df[sel_genes,], aes(rank(DM), rank(residualoverdisp))) 
-# Select genes captured in at least 100 cells 
-sel_genes2 <- sel_genes & rowSums(counts(sce_sm) > 0) > 100
-g2 <- ggplot(parameter_df[sel_genes2,], aes(rank(DM), rank(residualoverdisp))) 
-
-(g1 + g2) * plot_params + plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(size = 15))
-```
 
 
 ## HVG/LVG detection using BASiCS
@@ -1168,8 +1189,8 @@ probability threshold is suitable.
 
 ```{r visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between somitic and pre-somitic cells. Log-fold changes of average expression in somitic cells relative to pre-somitic cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in somitic cells relative to pre-somitic mesoderm cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
-p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano")
-    #TransLogit = TRUE)
+p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano",
+  TransLogit = TRUE)
 p1 / p2
 ```
 
@@ -1184,7 +1205,7 @@ genes within one group of cells (such step is also internally done by
 differences in mRNA content between the groups. 
 
 ```{r offset-denoised}
-## Calculate a global offset between the groups using the SM population as reference
+## Calculate a global offset between groups, using the SM population as reference
 offset <- BASiCS_CorrectOffset(chain_psm, chain_sm)
 offset$Offset
 ## Get offset corrected chain
@@ -1239,7 +1260,7 @@ select_top_n <- function(table, condition, n=15, decreasing=TRUE) {
 select_all <- c(
   select_top_n(table_de, "PSM+"), # up-regulated in pre-somitic cells
   select_top_n(table_de, "SM+"), # up-regulated in somitic cells
-  select_top_n(table_de, "NoDiff", decreasing = FALSE) # not differentially expressed
+  select_top_n(table_de, "NoDiff", decreasing = FALSE) # no difference
 ) 
 counts_psm <- assay(sce_psm, "BASiCS_norm")[select_all,]
 counts_sm <- assay(sce_sm, "BASiCS_norm")[select_all,]
@@ -1377,7 +1398,7 @@ over-dispersion in somitic cells have a lower proportion of zeros in pre-somitic
 mesoderm cells,
 and vice versa.
 
-```{r, var-plots, fig.width = 6, fig.height = 7, fig.cap="A, C: $\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
+```{r, var-plots, fig.width = 6, fig.height = 4, fig.cap="A, C: $\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
 g1 <- ggplot(
     table_de[table_de$ResultDiffResDisp == "SM+", ]
   ) +
@@ -1470,8 +1491,9 @@ plot_vg <- function(ind_vg) {
     data.frame(t(var_sm), Group = "SM"),
     data.frame(t(var_psm), Group = "PSM")
   )
-  colnames(var_df)[-ncol(var_df)] <- rowData(sce_sm)[var_genes, "external_gene_name"]
-  var_long_df <- pivot_longer(var_df, cols = colnames(var_df)[-ncol(var_df)])
+  var_gene_names <- rowData(sce_sm)[var_genes, "external_gene_name"]
+  colnames(var_df)[-ncol(var_df)] <- var_gene_names
+  var_long_df <- pivot_longer(var_df, cols = var_gene_names)
 
   ggplot(var_long_df, aes(x = name, y = value + 1, colour = Group)) +
     geom_violin(width = 0.8, position = position_dodge(width = 0.8)) +
@@ -1508,7 +1530,7 @@ ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("SM+") &
     table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
   ) > 0.99
 g1 <- plot_vg(ind_vg) +
-    theme(legend.position = "bottom")
+    theme(legend.position = "none")
 
 ## genes more variable in somitic     &
 ## not differentially expressed     &
@@ -1675,7 +1697,7 @@ No competing interests were disclosed.
 
 # Grant information
 
-C.A.V. is a Chancellor’s Fellow funded by the University of Edinburgh.
+C.A.V. is a Chancellor's Fellow funded by the University of Edinburgh.
 A.OC. was funded by the Chancellor's Fellowship granted to C.A.V.
 N.E. was funded by the European Molecular Biology Laboratory International PhD
 Programme. Work by JCM was supported by CRUK (C9545/A29580) and by core support
