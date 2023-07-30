@@ -32,3 +32,4 @@ figure*/*
 *.pdf
 .DS_Store
 downloads/
+*.png
