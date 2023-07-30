@@ -25,8 +25,10 @@ figure*/*
 *.out
 *.fdb_latexmk
 *.fls
-!figure/Overview.png
-!figure/Overview.svg
+!figure/Workflow-Overview.svg
+!figure/Workflow-Overview.pdf
+!figure/Workflow-Schematic.svg
+!figure/Workflow-Schematic.pdf
 *.Rds
 *.tex
 *.pdf

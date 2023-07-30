@@ -1,6 +1,6 @@
 .PHONY: run server
 
-all: Supplements.pdf Workflow.pdf
+all: Workflow.pdf
 
 IMAGE=alanocallaghan/basicsworkflow2020-docker
 VERSION=0.4.0

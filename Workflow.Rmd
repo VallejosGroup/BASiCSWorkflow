@@ -206,11 +206,8 @@ package ecosystem [@Amezquita2019].
 A graphical overview is provided in Figure \@ref(fig:overview) 
 and its main components are described below. 
 
-```{r overview, out.width=out_width, out.height=out_height, fig.cap = "Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a matrix of expression counts, we use the scater and scran Bioconductor packages to perform QC and initial exploratory analyses. To robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations, we apply the BASiCS Bioconductor package and  illustrate how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.", echo=FALSE}
-library(cowplot)
-fig_svg <- cowplot::ggdraw() +
-  cowplot::draw_image("figure/Overview.svg")
-plot(fig_svg)
+```{r overview, out.width="0.7\\textwidth", fig.cap = "Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a matrix of expression counts, we use the scater and scran Bioconductor packages to perform QC and initial exploratory analyses. To robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations, we apply the BASiCS Bioconductor package and  illustrate how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.", echo=FALSE}
+knitr::include_graphics("figure/Workflow-Overview.pdf", auto_pdf = TRUE)
 ```
 
 Here, we load all the libraries that will be used throughout this workflow.
@@ -225,7 +222,8 @@ library("BASiCS")
 ```
 
 Next, we load other general purpose libraries used for data visualisation (e.g.
-`r CRANpkg("ggplot2")`) and colour scales (e.g., `r CRANpkg("viridis")`. 
+`r CRANpkg("ggplot2")`), colour scales (e.g., `r CRANpkg("viridis")`,
+and data manipulation (`r CRANpkg("tidyr")`). 
 
 ```{r}
 # Data visualisation
@@ -237,6 +235,8 @@ library("ComplexHeatmap")
 library("viridis")
 library("circlize")
 library("RColorBrewer")
+# data manipulation
+library("tidyr")
 ```
 
 ## Input data
@@ -330,6 +330,10 @@ as deviations with respect to the overall trend (Figure XX).
 perform differential expression analyses between two pre-specified 
 groups of cells [@Vallejos2016;@Eling2018] in terms of either mean
 expression or residual over-dispersion.
+
+```{r basics-schematic, echo = FALSE, out.width="\\textwidth", fig.cap="TODO A schematic representation of the features of the BASiCS model."}
+knitr::include_graphics("figure/Workflow-Schematic.pdf", auto_pdf = TRUE)
+```
 
 Additionally, technical variation is quantified
 using replication [@Carroll2005]. In the absence of true technical replicates,
@@ -1062,7 +1066,7 @@ distribution (Figure \@ref(fig:plot-example-vg-SM)A).
 Instead, LVG tend to have more narrow and unimodal distributions 
 (Figure \@ref(fig:plot-example-vg-SM)B).
 
-```{r plot-example-vg-SM, fig.cap = "BASiCS denoised counts for example HVG and LVG with similar overall levels of expression."}
+```{r plot-example-vg-SM, fig.cap = "BASiCS denoised counts for example HVG (A) and LVG (B) with similar overall levels of expression."}
 ## Obtain normalised expression values and store them as an assay in sce_sm
 assay(sce_sm, "BASiCS_norm") <- BASiCS_DenoisedCounts(
   sce_sm, chain_sm, WithSpikes = FALSE
@@ -1080,12 +1084,13 @@ top_hvg <- order(rowData(sce_sm)$Epsilon[is_hvg], decreasing = TRUE)[1:5]
 top_lvg <- order(rowData(sce_sm)$Epsilon[is_lvg], decreasing = FALSE)[1:5]
 
 ## Generate violin plots for the selected HVG and LVG
-## The plotExpression() function from the scater package is used for this purpose
+## using scater::plotExpression
 plot_hvg <- plotExpression(sce_sm, 
     rowData(sce_sm)$external_gene_name[is_hvg][top_hvg],
     exprs_values = "BASiCS_norm",
     swap_rownames = "external_gene_name",
-    feature_colours = FALSE
+    feature_colours = FALSE,
+    point_fun = function(...) list() # disables drawing points
   ) +
   ylim(0, 90) 
 
@@ -1094,7 +1099,8 @@ plot_lvg <- plotExpression(
     rowData(sce_sm)$external_gene_name[is_lvg][top_lvg], 
     exprs_values = "BASiCS_norm",
     swap_rownames = "external_gene_name",
-    feature_colours = FALSE
+    feature_colours = FALSE,
+    point_fun = function(...) list() # disables drawing points
   ) +
   ylim(0, 90) 
 
@@ -1128,7 +1134,7 @@ mean expression.
 - `EFDR_M` and `EFDR_R`: define the target EFDR to calibrate the 
 decision rule associated to changes in mean or residual over-dispersion, 
 respectively. Default: 10\%.
-- `MinESS`: ESS threshold, below which genes will be excluded from the
+- `MinESS`: genes with ESS values below this threshold will be excluded from the
 differential expression tests.
 This is used to increase the robustness of the results, excludes genes for which 
 the sampler explored the parameter space less efficiently (see 
@@ -1190,7 +1196,7 @@ probability threshold is suitable.
 ```{r visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between somitic and pre-somitic cells. Log-fold changes of average expression in somitic cells relative to pre-somitic cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in somitic cells relative to pre-somitic mesoderm cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
 p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano",
-  TransLogit = TRUE)
+  TransLogit = TRUE) ## logit-transforms the Y-axis, which can be clearer.
 p1 / p2
 ```
 
@@ -1361,7 +1367,7 @@ changes in mean expression in parallel to changes in variability.
 For this, we will first combine the results of the differential mean expression 
 and the differential residual over-dispersion test.
 These are independent analyses, given that changes in residual
-over-dispersion are not confounded by changes
+over-dispersion are not confounded with changes
 in mean expression, as shown in Figure \@ref(fig:combine-results).
 <!---We will further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.---> 
