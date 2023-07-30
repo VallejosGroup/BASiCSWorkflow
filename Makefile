@@ -3,7 +3,7 @@
 all: Supplements.pdf Workflow.pdf
 
 IMAGE=alanocallaghan/basicsworkflow2020-docker
-VERSION=0.1.1
+VERSION=0.4.0
 
 %.pdf: %.Rmd
 	docker run -v $(shell pwd):/home/rstudio/mycode \
@@ -17,7 +17,7 @@ run:
 		-w /home/rstudio/mycode \
 		-v /tmp/.X11-unix:/tmp/.X11-unix:ro \
 		-e DISPLAY=${DISPLAY} \
-		-u rstudio \
+		-u $(id -u):$(id -g) \
 		-it $(IMAGE):$(VERSION) \
 		/bin/bash
 
