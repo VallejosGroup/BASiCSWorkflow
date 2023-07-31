@@ -25,13 +25,13 @@ figure*/*
 *.out
 *.fdb_latexmk
 *.fls
+*.pdf
 !figure/Workflow-Overview.svg
 !figure/Workflow-Overview.pdf
 !figure/Workflow-Schematic.svg
 !figure/Workflow-Schematic.pdf
 *.Rds
 *.tex
-*.pdf
 .DS_Store
 downloads/
 *.png
