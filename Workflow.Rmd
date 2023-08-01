@@ -1363,7 +1363,8 @@ conditions are marked as `NA` and are therefore not displayed.
 
 ```{r diff-res-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential residual over-dispersion test between somitic and pre-somitic cells. Differences of residual over-dispersion in somitic cells relative to pre-somitic mesoderm cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual over-dispersion in somitic cells relative to pre-somitic cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "MA")
-p2 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "Volcano")
+p2 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "Volcano",
+  TransLogit = TRUE)
 p1 / p2
 ```
 
