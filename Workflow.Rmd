@@ -284,7 +284,8 @@ data, e.g. to examine potential batch effects.
 
 The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 model to simultaneously perform data normalisation, technical noise 
-quantification and downstream analyses [@Vallejos2015BASiCS;@Vallejos2016;@Eling2018]. Moreover, instead of modelling expression patterns separately for 
+quantification and downstream analyses [@Vallejos2015BASiCS;@Vallejos2016;@Eling2018].
+Moreover, instead of modelling expression patterns separately for 
 each gene, `r Biocpkg("BASiCS")` shares information between all genes to 
 robustly quantify transcriptional variability. For example, as described by 
 [@Eling2018], pooling information across genes with similar mean expression 
@@ -680,7 +681,7 @@ options(timeout = 1000)
 ## After download, files are then stored in an `rds` sub-folder 
 if (!file.exists("rds/chain_SM.Rds")) {
   download.file(
-    paste0(chains_website, "rds/chain_SM.Rds"),
+    paste0(chains_website, "rds/chain_SM_DefaultPrior.Rds"),
     destfile = "rds/chain_SM.Rds"
   )
 }
@@ -819,6 +820,7 @@ large Geweke diagnostic values or low effective sample sizes in a certain
 dataset, then caution should be applied when interpreting the results of the 
 model. These issues can often be addressed by more stringent 
 filtering of genes and cells before performing inference.
+TODO: this is worse than the equivalent with EB prior, mention in that doc
 
 ```{r mcmc-diag, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; somitic mesoderm cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
 diag_p1 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "geweke") +
@@ -952,24 +954,6 @@ out of `r sum(sel_genes)`
 captured in at least 3 
 cells) both approaches led some broadly similar results, inferring the same 
 sign for their residual variability estimates.
-
-<!--- However, [TO-DO: explore what
-drives the difference; rank figure below is a tentative idea].
-
-Do we need this? If this is a workflow for analysing data using BASiCS,
-we should focus on what BASiCS does.
-
-```{r rank-var-comparison}
-# g1 <- ggplot(parameter_df[sel_genes,], aes(rank(DM), rank(residualoverdisp))) 
-# # Select genes captured in at least 100 cells 
-# sel_genes2 <- sel_genes & rowSums(counts(sce_sm) > 0) > 100
-# g2 <- ggplot(parameter_df[sel_genes2,], aes(rank(DM), rank(residualoverdisp))) 
-
-# (g1 + g2) *
-#   plot_params + plot_annotation(tag_levels = "A") &
-#   theme(plot.tag = element_text(size = 15))
-```
---->
 
 Finally, as expected, we observe that
 neither DM values nor posterior estimates for $\epsilon_i$ are 
