@@ -35,3 +35,4 @@ figure*/*
 .DS_Store
 downloads/
 *.png
+!figure/*.R
