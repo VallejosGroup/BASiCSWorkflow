@@ -511,6 +511,27 @@ workflow. Here, we load the pre-processed data. This consists of two separate
 somitic mesoderm cells. 
 
 ```{r SCE-load}
+# Website were the files are located
+chains_website <- "https://gitlab.com/alanocallaghan/basicsworkflow2020/-/raw/master/"
+# chains_website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/-/raw/master/"
+# chains_website <- "https://zenodo.org/record/5243265/files/"
+# To avoid timeout issues as we are downloading large files
+options(timeout = 1000)
+# File download
+## The code below uses `file.exists` to check if files were previously downloaded
+## After download, files are then stored in an `rds` sub-folder 
+if (!file.exists("rds/sce_sm.Rds")) {
+  download.file(
+    paste0(chains_website, "rds/sce_sm.Rds"),
+    destfile = "rds/sce_sm.Rds"
+  )
+}
+if (!file.exists("rds/sce_psm.Rds")) {
+  download.file(
+    paste0(chains_website, "rds/sce_psm.Rds"),
+    destfile = "rds/sce_psm.Rds"
+  )
+}
 # Pre-somitic mesoderm cells
 sce_psm <- readRDS("rds/sce_psm.Rds")
 # Somitic mesoderm cells
@@ -649,7 +670,8 @@ For convenience, these can be obtained online at
 
 ```{r download-chain-SM}
 # Website were the files are located
-chains_website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/-/raw/master/"
+chains_website <- "https://gitlab.com/alanocallaghan/basicsworkflow2020/-/raw/master/"
+# chains_website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/-/raw/master/"
 # chains_website <- "https://zenodo.org/record/5243265/files/"
 # To avoid timeout issues as we are downloading large files
 options(timeout = 1000)
