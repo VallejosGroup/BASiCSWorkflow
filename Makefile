@@ -5,7 +5,7 @@ all: Workflow.pdf
 IMAGE=alanocallaghan/basicsworkflow2020-docker
 VERSION=0.4.0
 
-%.pdf: %.Rmd
+%.pdf: %.Rmd figure/Workflow-Overview.pdf figure/Workflow-Schematic.pdf
 	docker run -v $(shell pwd):/home/rstudio/mycode \
 		-w /home/rstudio/mycode \
 		$(IMAGE):$(VERSION) \
@@ -23,3 +23,7 @@ run:
 
 server:
 	docker run -p 8787:8787 -v $(shell pwd):/home/rstudio/mycode -e PASSWORD=bioc $(IMAGE):$(VERSION)
+
+figure/%.pdf: figure/%.svg
+	inkscape $< --export-area-page --batch-process --export-type=pdf --export-filename=$@
+
