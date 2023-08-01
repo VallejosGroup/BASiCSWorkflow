@@ -25,7 +25,6 @@ jobs:
 
       - name: Build
         run: |
-          rmarkdown::render("Supplements.Rmd")
           rmarkdown::render("Workflow.Rmd")
         shell: Rscript {0}
 
@@ -35,4 +34,3 @@ jobs:
           name: pdfs
           path: |
             Workflow.pdf
-            Supplements.pdf
