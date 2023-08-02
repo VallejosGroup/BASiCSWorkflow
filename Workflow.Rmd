@@ -681,7 +681,7 @@ options(timeout = 1000)
 ## After download, files are then stored in an `rds` sub-folder 
 if (!file.exists("rds/chain_SM.Rds")) {
   download.file(
-    paste0(chains_website, "rds/chain_SM_DefaultPrior.Rds"),
+    paste0(chains_website, "rds/chain_SM.Rds"),
     destfile = "rds/chain_SM.Rds"
   )
 }
