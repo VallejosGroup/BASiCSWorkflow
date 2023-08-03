@@ -212,7 +212,7 @@ knitr::include_graphics("figure/Workflow-Overview.pdf", auto_pdf = TRUE)
 
 Here, we load all the libraries that will be used throughout this workflow.
 First, we load Bioconductor libraries included in Figure \@ref(fig:overview). 
-We will provide further explanation about their function in the following sections.
+We provide further explanation about their function in the following sections.
 
 ```{r}
 library("SingleCellExperiment")
@@ -347,7 +347,7 @@ differences between cells in different batches. Thus, `r Biocpkg("BASiCS")`
 models cell-specific size factors $\nu_j$, and batch-specific technical
 dispersion $\theta$.
 It is this version of
-the model that we will focus on here, and that we recommend for most
+the model that we focus on here, and that we recommend for most
 users. Previous versions of the model are available within the package, but
 are primarily useful for reproducibility purposes or for analysing
 datasets that contain spike-in genes.
@@ -433,7 +433,7 @@ experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
 are shared across batches, while technical variation leads to spurious
 differences between cells in different batches.
 It is this version of
-the model that we will focus on here, and that we recommend for most
+the model that we focus on here, and that we recommend for most
 users. Previous versions of the model are available within the package, but
 are primarily useful for reproducibility purposes or for analysing
 datasets that contain spike-in genes.
@@ -672,7 +672,6 @@ For convenience, these can be obtained online at
 ```{r download-chain-SM}
 # Website were the files are located
 chains_website <- "https://gitlab.com/alanocallaghan/basicsworkflow2020/-/raw/master/"
-# chains_website <- "https://git.ecdf.ed.ac.uk/vallejosgroup/basicsworkflow2020/-/raw/master/"
 # chains_website <- "https://zenodo.org/record/5243265/files/"
 # To avoid timeout issues as we are downloading large files
 options(timeout = 1000)
@@ -1250,7 +1249,7 @@ To visualise expression patterns for multiple genes at once, we use the
 Bioconductor package `r Biocpkg("ComplexHeatmap")` [@Gu2016] package, grouping
 genes according to the result of the differential mean expression test 
 (i.e. up-regulated in somitic/pre-somitic cells or non differentially expressed;
-see Figure \@ref(fig:heatmap-diffexp)). 
+see Figures \@ref(fig:heatmap-diffexp1), \@ref(fig:heatmap-diffexp2) and \@ref(fig:heatmap-diffexp3)). 
 For example, among the non DE group, we observe several genes encoding
 ribosomal proteins (e.g. *Rps14*). 
 Genes in this family have been previously observed to have stable expression
@@ -1259,90 +1258,131 @@ Such visualisations may aid in the interpretation of such stable or
 "housekeeping" genes, as well as genes which are up- or down-regulated in each
 population.
 
-```{r heatmap-diffexp, fig.width = 7, fig.height = 6, fig.cap="Heatmap displays normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells. Genes are stratified according to their differential expression status (non differentially expressed; upregulated in somitic or pre-somitic cells). For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 
-## utility function for selecting top DE/non-DE genes
+To do this in each dataset, we create a few small utility functions,
+starting with a function to select the genes with highest probability
+of being differentially expressed, or the genes with smallest probability of
+being differentially expressed:
+
+```{r select-top-n}
 select_top_n <- function(table, condition, n=15, decreasing=TRUE) {
   ind_condition <- table$ResultDiffMean == condition
   table <- table[ind_condition, ]
   ind_diff <- order(table$ProbDiffMean, decreasing = decreasing)[1:n]
   return(table$GeneName[ind_diff])
 }
+```
 
-select_all <- c(
-  select_top_n(table_de, "PSM+"), # up-regulated in pre-somitic cells
-  select_top_n(table_de, "SM+"), # up-regulated in somitic cells
-  select_top_n(table_de, "NoDiff", decreasing = FALSE) # no difference
-) 
-counts_psm <- assay(sce_psm, "BASiCS_norm")[select_all,]
-counts_sm <- assay(sce_sm, "BASiCS_norm")[select_all,]
-rownames(counts_psm) <- rownames(counts_sm) <- 
-  rowData(sce_sm)[select_all, "external_gene_name"]
+Next, we define a function that uses this gene selection to subset the
+normalised counts for each population:
 
-## split heatmaps by gene category
-split <- data.frame(
-  Upregulated = rep(
-    c(
-      "Up-regulated \nin PSM", 
-      "Up-regulated \nin SM",
-      "Non DE"
+```{r use-select}
+use_select <- function(sce, psm, sce_sm, select) {
+  counts_psm <- assay(sce_psm, "BASiCS_norm")[select,]
+  counts_sm <- assay(sce_sm, "BASiCS_norm")[select,]
+  rownames(counts_psm) <- rownames(counts_sm) <- 
+    rowData(sce_sm)[select, "external_gene_name"]
+  list(psm = counts_psm, sm = counts_sm)
+}
+```
+
+Next, we define a function that uses the `circlize` package to create a
+color scale for the heatmaps:
+
+```{r color}
+make_colorscale_counts <- function(counts_sm, counts_psm) {
+  colorRamp2(
+    breaks = seq(0,
+      log10(max(c(as.numeric(counts_sm), as.numeric(counts_psm)) + 1)),
+      length.out = 20
     ),
-    each = length(select_all) / 3
+    colors = viridis(20)
   )
-)
-fontsize <- 7
+}
+```
 
-## Color palettes using circlize
-col <- colorRamp2(
-  breaks = seq(0,
-    log10(max(c(as.numeric(counts_sm), as.numeric(counts_psm)) + 1)),
-    length.out = 20
-  ),
-  colors = viridis(20)
-)
+Next, we define a function that uses the `circlize` package to create a
+color scale for the side annotations displaying the mean expression values in
+each group:
 
-## Subset table of DE results to extract mean estimates
-match_order <- match(rownames(counts_sm), table_de$external_gene_name)
-table_de_selected <- table_de[match_order, ]
+```{r mu-color}
+make_colorscale_mu <- function(log_mu_sm, log_mu_psm) {
+  colorRamp2(
+    breaks = seq(0, max(c(log_mu_sm, log_mu_psm)), length.out = 20),
+    colors = viridis(20, option = "A", direction = 1)
+  )
+}
+```
 
-## Color palette for mu annotation
-log_mu_sm <- log10(table_de_selected$Mean1)
-log_mu_psm <- log10(table_de_selected$Mean2)
-mu_col <- colorRamp2(
-  breaks = seq(0, max(c(log_mu_sm, log_mu_psm)), length.out = 20),
-  colors = viridis(20, option = "A", direction = 1)
-)
+Then, we define a function that uses the `ComplexHeatmap` package to
+create a single heatmap, with the normalised counts for a single population,
+featuring the mean expression values for each gene as a side annotation:
 
-Heatmap(
-  log10(as.matrix(counts_sm) + 1),
-  col = col,
-  split = split,
-  right_annotation = rowAnnotation(
-    `log(mu)` = log_mu_sm,
-    col = list(`log(mu)` = mu_col)
-  ),
-  name = "log10(count + 1)",
-  column_title = "Somitic cells",
-  show_column_names = FALSE,
-  cluster_columns = FALSE,
-  cluster_rows = FALSE,
-  row_names_gp = gpar(fontsize = fontsize)
-) +
+```{r heatmap-drawer}
+make_heatmap <- function(counts, col, log_mu, mu_col, title) {
   Heatmap(
-    log10(as.matrix(counts_psm) + 1),
+    log10(as.matrix(counts) + 1),
     col = col,
-    split = split,
     right_annotation = rowAnnotation(
-      `log(mu)` = log_mu_psm,
+      `log(mu)` = log_mu,
       col = list(`log(mu)` = mu_col)
     ),
-    column_title = "Pre-somitic cells",
-    show_heatmap_legend = FALSE,
+    name = "log10(count + 1)",
+    column_title = title,
     show_column_names = FALSE,
-    cluster_rows = FALSE,
     cluster_columns = FALSE,
-    row_names_gp = gpar(fontsize = fontsize),
+    cluster_rows = FALSE,
+    row_names_gp = gpar(fontsize = 6)
   )
+}
+```
+
+
+Finally, we define a function that uses the functions we defined so
+far to create a combined heatmap showing the normalised counts for both
+populations, with mean expression values as side annotations:
+
+```{r heatmap-fun}
+plot_heatmap <- function(table, condition, decreasing = TRUE) {
+  select <- select_top_n(table_de, condition, decreasing = decreasing)
+  counts_sub <- use_select(sce, sce_psm, sce_sm, select)
+  counts_sm <- counts_sub$sm
+  counts_psm <- counts_sub$psm
+
+  ## Subset table of DE results to extract mean estimates
+  match_order <- match(rownames(counts_sm), table_de$external_gene_name)
+  table_de_selected <- table_de[match_order, ]
+
+  col <- make_colorscale_counts(counts_sm, counts_psm)
+  log_mu_sm <- log10(table_de_selected$Mean1)
+  log_mu_psm <- log10(table_de_selected$Mean2)
+
+  mu_col <- make_colorscale_mu(log_mu_sm, log_mu_psm)
+
+  h <- make_heatmap(counts_sm, col, log_mu_sm, mu_col, "Somitic cells") +
+      make_heatmap(counts_psm, col, log_mu_psm, mu_col, "Pre-somitic cells")
+  draw(h)
+}
+```
+
+First, we show genes up-regulated in somitic cells:
+
+
+```{r heatmap-diffexp1, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing genes up-regulated in PSM cells. For each group, 10 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
+plot_heatmap(table_de, "PSM+")
+```
+
+We can create a similar plot for genes up-regulated in SM cells:
+
+```{r heatmap-diffexp2, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing genes up-regulated in SM cells. For each group, 10 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
+plot_heatmap(table_de, "SM+")
+```
+
+
+Finally, we show non-differentially expressed genes:
+
+```{r heatmap-diffexp3, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing non-differentially expressed genes. For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
+plot_heatmap(table_de, "NoDiff", decreasing = FALSE)
 ```
 
 While several computational tools exist to perform differential mean expression
@@ -1371,12 +1411,12 @@ p1 / p2
 While one could focus on the sets of gene that show significant changes in
 residual over-dispersion, here we want to highlight how to analyse
 changes in mean expression in parallel to changes in variability.
-For this, we will first combine the results of the differential mean expression 
+For this, we first combine the results of the differential mean expression 
 and the differential residual over-dispersion test.
 These are independent analyses, given that changes in residual
 over-dispersion are not confounded with changes
 in mean expression, as shown in Figure \@ref(fig:combine-results).
-<!---We will further remove the genes that were excluded from the test and those 
+<!---We further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.---> 
 
 ```{r combine-results, fig.cap="Difference in residual over-dispersion against $\\log_2$ fold change in mean expression."}
@@ -1412,6 +1452,8 @@ mesoderm cells,
 and vice versa.
 
 ```{r, var-plots, fig.width = 6, fig.height = 4, fig.cap="A, C: $\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
+## mean expression vs log2FC for genes with higher residual over-dispersion in
+## somitic cells
 g1 <- ggplot(
     table_de[table_de$ResultDiffResDisp == "SM+", ]
   ) +
@@ -1424,6 +1466,8 @@ g1 <- ggplot(
     yintercept = 0, colour = "firebrick", linetype = "dashed"
   )
 
+## mean expression vs log2FC for genes with higher residual over-dispersion in
+## pre-somitic cells
 g2 <- ggplot(
     table_de[table_de$ResultDiffResDisp == "PSM+", ]
   ) +
@@ -1444,7 +1488,182 @@ the results of differential variability tests
 in order to appraise the quality
 of the results, and to identify systematic patterns among the genes identified. 
 One useful way to do this is by examining the normalised counts on a
-gene-by-gene basis.
+gene-by-gene basis. To do this, we first add some gene-level summary statistic
+about the normalised counts to the `table_de` object,
+and then define a function that
+selects the normalised counts for a given gene, and then reshapes them into
+a form suitable for plotting. 
+
+
+<!---These are genes with higher variability in one population
+than the other, but which have a similar frequency of detection in each
+population. Given that these genes have a similar proportion of zero counts
+in both populations, it is likely that the differences in variability
+are not driven by a more intermittent gene expression pattern.
+
+These are genes with higher variability in one population and differing levels of detection; as mentioned above,
+these may represent genes with a more intermittent expression
+pattern in one cell population. These may point to
+differences in intrinsic sources of variability in expression, such as regulatory
+elements (e.g., transcription factors). They may also represent genes that
+are markers of extrinsic variability, for example cell sub-populations that 
+differ in abundance between the cell populations in question. Disentangling
+intrinsic and extrinsic sources of variability when interpreting such genes is 
+an important component of any analysis of differential variability, and should
+be undertaken with care.
+--->
+
+
+```{r vg-df-fun}
+## merge with some summary statistics about genes
+gene_tests <- data.frame(
+  "GeneName" = rownames(sce_sm),
+  "ExpPropSM" = rowMeans(assay(sce_sm, "BASiCS_norm") > 0),
+  "ExpPropPSM" = rowMeans(assay(sce_psm, "BASiCS_norm") > 0)
+)
+
+table_de_genetests <- merge(table_de, gene_tests)
+
+make_vg_df <- function(ind_vg) {
+  table_de_vg <- table_de[ind_vg, ]
+  ## If more than 4 genes,
+  ## pick top 4 ranked by differences in residual over-dispersion
+  if(nrow(table_de_vg) > 4) {
+    table_de_vg <- table_de_vg[
+      order(abs(table_de_vg$ResDispDistance), decreasing = TRUE), ]
+    table_de_vg <- table_de_vg[1:4, ]
+  }
+  var_genes <- table_de_vg$GeneName
+  var_sm <- as.matrix(assay(sce_sm, "BASiCS_norm")[var_genes, , drop = FALSE])
+  var_psm <- as.matrix(assay(sce_psm, "BASiCS_norm")[var_genes, , drop = FALSE])
+  var_df <- rbind(
+    data.frame(t(var_sm), Group = "SM"),
+    data.frame(t(var_psm), Group = "PSM")
+  )
+  var_gene_names <- rowData(sce_sm)[var_genes, "external_gene_name"]
+  colnames(var_df)[-ncol(var_df)] <- var_gene_names
+  pivot_longer(var_df, cols = var_gene_names)
+}
+```
+
+We can use this function to wrangle the data for a selection of genes we
+want to visualise. For example, all genes that are identified as differentially
+variable in somitic cells:
+
+```{r vg-df}
+df_vg_sm <- make_vg_df(table_de_genetests$ResultDiffResDisp %in% c("SM+"))
+head(df_vg_sm)
+```
+
+We can then use this function to plot the normalised counts for genes
+that fill a number of criteria with respect to mean expression, expression
+variability, and detection levels, by defining a function that
+uses the `make_vg_df` function we just defined. This function takes
+a logical vector and uses it to subset the `table_de`, `sce_sm` and `sce_psm`
+objects, merges them into a form suitable for plotting, and then plots them.
+
+```{r vg-plot-fun}
+## Utility function that plots logcounts of a set of genes defined by "ind_vg"
+plot_vg <- function(ind_vg) {
+  df <- make_vg_df(ind_vg)
+  ggplot(df, aes(x = name, y = value + 1, colour = Group)) +
+    geom_violin(width = 0.8, position = position_dodge(width = 0.8)) +
+    geom_point(
+      position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+      alpha = 0.2
+    ) +
+    scale_x_discrete(guide = guide_axis(angle = 45)) +
+    scale_y_log10() +
+    labs(x = "Gene", y = "Denoised count + 1") +
+    scale_colour_brewer(palette = "Set1")
+}
+```
+
+First, we select genes that are more variable in somitic cells than in
+pre-somitic mesoderm cells, but which are not differentially expressed.
+Furthermore, we narrow our selection to genes with
+similar levels of non-zero expression in both populations, and which are
+expressed in at least 50% of cells within each population. These criteria
+are designed to select genes that likely have a largely unimodal expression
+pattern, simply having higher cell-to-cell variability in somitic cells.
+We then plot the normalised counts for
+these genes using the function we defined above, and save it to
+a variable called `g1` for display later.
+
+
+```{r select-vg1}
+ind_vg_unimodal_sm <- table_de_genetests$ResultDiffResDisp %in% c("SM+") &
+  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
+  abs(
+    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
+  ) < 0.05 &
+  pmin(
+    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
+  ) > 0.99
+g1 <- plot_vg(ind_vg_unimodal_sm) +
+    theme(legend.position = "none")
+```
+
+Next, we select genes that are more variable in somitic cells
+than in pre-somitic mesoderm cells, but which are not differentially expressed.
+Furthermore, we narrow our selection to genes with
+different levels of non-zero expression in both populations, and which are
+expressed in at least 50% of cells within one or more of the populations.
+These are genes that could be described as having a more bursting pattern
+of expression in somitic cells. We then plot the normalised counts for
+these genes, and again save the plot object for display later.
+
+```{r select-vg2}
+ind_vg_bursting_sm <- table_de_genetests$ResultDiffResDisp %in% c("SM+") &
+  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
+  abs(
+    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
+  ) > 0.1 &
+  pmax(
+    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
+  ) > 0.75
+g2 <- plot_vg(ind_vg_bursting_sm)
+```
+
+Now, we use the same selection criteria, plotting first for genes
+that are largely unimodal, with a high cell-to-cell variability in
+pre-somitic cells, and then for genes that have a more bursting
+expression pattern in pre-somitic cells:
+
+```{r select-vg3}
+ind_vg_unimodal_psm <- table_de_genetests$ResultDiffResDisp %in% c("PSM+") &
+  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
+  abs(
+    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
+  ) < 0.1 &
+  pmin(
+    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
+  ) > 0.75
+
+g3 <- plot_vg(ind_vg_unimodal_psm) +
+    theme(legend.position = "none")
+
+
+ind_vg_bursting_psm <- table_de_genetests$ResultDiffResDisp %in% c("PSM+") &
+  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
+  abs(
+    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
+  ) > 0.10 &
+  pmax(
+    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
+  ) > 0.50
+g4 <- plot_vg(ind_vg_bursting_psm)
+```
+
+Now that we have created four violin plots of the various types of
+differentially variable gene that we have defined, we can combine the plots
+together to visualise them simultaneously:
+
+
+```{r violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in somitic cells, and similar levels of detection in pre-somitic and somitic populations. B: Four genes with higher residual over-dispersion in somitic cells and different levels of detection in somitic and pre-somitic cells. C: Four genes with higher residual over-dispersion in pre-somitic cells and similar levels of detection in somitic and pre-somitic cells. D: Three genes with higher residual over-dispersion in pre-somitic cells and different levels of detection in somitic and pre-somitic cells."}
+(g1 + g2) / (g3 + g4) + plot_annotation(tag_levels = "A")
+```
+
 Figure \@ref(fig:violin-diffresdisp) shows denoised counts for
 genes with significant differences in residual over-dispersion, with each panel 
 showing a different type of expression patterns. 
@@ -1467,133 +1686,7 @@ These cases are likely driven by more tight regulation, rather than
 transcriptional burst or sub-population structure. 
 
 
-<!---These are genes with higher variability in one population
-than the other, but which have a similar frequency of detection in each
-population. Given that these genes have a similar proportion of zero counts
-in both populations, it is likely that the differences in variability
-are not driven by a more intermittent gene expression pattern.
 
-These are genes with higher variability in one population and differing levels of detection; as mentioned above,
-these may represent genes with a more intermittent expression
-pattern in one cell population. These may point to
-differences in intrinsic sources of variability in expression, such as regulatory
-elements (e.g., transcription factors). They may also represent genes that
-are markers of extrinsic variability, for example cell sub-populations that 
-differ in abundance between the cell populations in question. Disentangling
-intrinsic and extrinsic sources of variability when interpreting such genes is 
-an important component of any analysis of differential variability, and should
-be undertaken with care.
---->
-
-
-```{r, violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in somitic cells, and similar levels of detection in pre-somitic and somitic populations. B: Four genes with higher residual over-dispersion in somitic cells and different levels of detection in somitic and pre-somitic cells. C: Four genes with higher residual over-dispersion in pre-somitic cells and similar levels of detection in somitic and pre-somitic cells. D: Three genes with higher residual over-dispersion in pre-somitic cells and different levels of detection in somitic and pre-somitic cells."}
-## Utility function that plots logcounts of a set of genes defined by "ind_vg"
-plot_vg <- function(ind_vg) {
-  table_de_vg <- table_de[ind_vg, ]
-  ## If more than 4 genes,
-  ## pick top 4 ranked by differences in residual over-dispersion
-  if(nrow(table_de_vg) > 4) {
-    table_de_vg <- table_de_vg[
-      order(abs(table_de_vg$ResDispDistance), decreasing = TRUE), ]
-    table_de_vg <- table_de_vg[1:4, ]
-  }
-  var_genes <- table_de_vg$GeneName
-  var_sm <- as.matrix(assay(sce_sm, "BASiCS_norm")[var_genes, , drop = FALSE])
-  var_psm <- as.matrix(assay(sce_psm, "BASiCS_norm")[var_genes, , drop = FALSE])
-  var_df <- rbind(
-    data.frame(t(var_sm), Group = "SM"),
-    data.frame(t(var_psm), Group = "PSM")
-  )
-  var_gene_names <- rowData(sce_sm)[var_genes, "external_gene_name"]
-  colnames(var_df)[-ncol(var_df)] <- var_gene_names
-  var_long_df <- pivot_longer(var_df, cols = var_gene_names)
-
-  ggplot(var_long_df, aes(x = name, y = value + 1, colour = Group)) +
-    geom_violin(width = 0.8, position = position_dodge(width = 0.8)) +
-    geom_point(
-      position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
-      alpha = 0.5
-    ) +
-    scale_x_discrete(guide = guide_axis(angle = 45)) +
-    scale_y_log10() +
-    labs(x = "Gene", y = "Denoised count + 1") +
-    scale_colour_brewer(palette = "Set1")
-}
-
-## merge with some summary statistics about genes
-gene_tests <- data.frame(
-  "GeneName" = rownames(sce_sm),
-  "ExpPropSM" = rowMeans(assay(sce_sm, "BASiCS_norm") > 0),
-  "ExpPropPSM" = rowMeans(assay(sce_psm, "BASiCS_norm") > 0)
-)
-
-table_de_genetests <- merge(table_de, gene_tests)
-
-## genes more variable in somitic   &
-## not differentially expressed   &
-## with similar levels of non-zero expression &
-## expressed in at least 50% of cells within each group
-## ie, genes that are probably unimodal but with higher variance in somitic cells
-ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("SM+") &
-  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
-  abs(
-    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
-  ) < 0.05 &
-  pmin(
-    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
-  ) > 0.99
-g1 <- plot_vg(ind_vg) +
-    theme(legend.position = "none")
-
-## genes more variable in somitic     &
-## not differentially expressed     &
-## with different levels of non-zero expression &
-## expressed in at least 50% of cells within one or more of the groups
-## i.e., genes with more bursting pattern of expression
-ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("SM+") &
-  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
-  abs(
-    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
-  ) > 0.1 &
-  pmax(
-    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
-  ) > 0.75
-g2 <- plot_vg(ind_vg)
-
-
-## genes more variable in pre-somitic mesoderm   &
-## not differentially expressed   &
-## with similar levels of non-zero expression &
-## expressed in at least 50% of cells within each group
-## ie, genes that are probably unimodal but with higher variance
-ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("PSM+") &
-  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
-  abs(
-    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
-  ) < 0.1 &
-  pmin(
-    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
-  ) > 0.75
-g3 <- plot_vg(ind_vg) +
-    theme(legend.position = "none")
-
-## genes more variable in PSM &
-## not differentially expressed   &
-## with similar levels of non-zero expression &
-## expressed in at least 50% of cells within one or more of the groups
-## i.e., genes with more bursting pattern of expression
-ind_vg <- table_de_genetests$ResultDiffResDisp %in% c("PSM+") &
-  table_de_genetests$ResultDiffMean %in% c("NoDiff") &
-  abs(
-    table_de_genetests$ExpPropSM - table_de_genetests$ExpPropPSM
-  ) > 0.10 &
-  pmax(
-    table_de_genetests$ExpPropSM, table_de_genetests$ExpPropPSM
-  ) > 0.50
-g4 <- plot_vg(ind_vg)
-
-(g1 + g2) / (g3 + g4) + plot_annotation(tag_levels = "A")
-```
 
 # Discussion 
 
