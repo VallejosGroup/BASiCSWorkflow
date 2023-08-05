@@ -154,8 +154,8 @@ also be used in cases where the groups of cells of interest are computationally
 identified through clustering. In such cases, the model does not currently 
 address issues associated to *post-selection inference*, where the same data is 
 analysed twice: first to perform clustering and then to compare expression 
-profiles between the clusters [@Lahnemann2020] (this is an inherent limitation 
-of most differential expression tools).
+profiles between the clusters [@Lahnemann2020]; this is an inherent limitation 
+of most differential expression tools.
 
 `r Biocpkg("BASiCS")` jointly performs data normalisation, technical noise 
 quantification and downstream analyses, whilst propagating statistical 
@@ -163,9 +163,10 @@ uncertainty across these steps.
 These features are implemented within a probabilistic model that builds upon a
 negative binomial distribution, a widely used statistical model in the context 
 of bulk and scRNA-seq experiments [@Love2014;@Svensson2020;@Townes2020;@Townes2019]. 
-The negative binomial distribution is commonly used to model count
-data when the observed variability exceeds what can be captured by a simpler
-Poisson model --- this is typically referred to as *over-dispersion*. 
+The negative binomial distribution is commonly used to model count data when
+the observed variability differs from what can be captured by a simpler
+Poisson model --- this is typically referred to as over-dispersion. 
+
 <!--- emphasis, this is critical ---> 
 Critically, `r Biocpkg("BASiCS")` enables the quantification of transcriptional
 variability within a population of cells, while accounting for the overall 
@@ -294,9 +295,10 @@ latter is particularly helpful for lowly expressed genes and sparse datasets,
 where less information is available.
 
 A high-level overview for the model implemented in `r Biocpkg("BASiCS")` is
-shown in Figure X (a more detailed description is provided in [TODO: REPO LINK]).
+shown in Figure \@ref(fig:basics-schematic),
+and a more detailed description is provided in [TODO: REPO LINK].
 Model parameters are designed to capture different 
-aspects of scRNAseq data. First, *nuisance* parameters are used to (primarily) 
+aspects of scRNAseq data. First, *nuisance* parameters are used to 
 capture technical artifacts. This includes cell-specific parameters (indexed by 
 a $j$ subscript) used to perform global scaling normalisation (similar to the 
 size factors in `r Biocpkg("scran")`) and global parameters designed to capture 
@@ -313,24 +315,21 @@ captures the excess of variability that is observed with respect to what would
 be expected in a homogeneous cell population, beyond technical noise. 
 The latter is used as a proxy to quantify transcriptional variability.
 
-Additionally, we use a *joint prior* specification for 
-these parameters. This joint prior assumes that genes with similar mean 
-expression ($\mu_i$) have similar over-dispersion ($\delta_i$) parameters.
-Effectively, this shrinks over-dispersion estimates towards a global trend
-that captures the relationship between mean and over-dispersion (Figure XX). 
-This improves posterior inference for over-dispersion parameters when the data 
-is less informative (e.g. small sample size, lowly expressed genes) [@Eling2018].
-This information-sharing approach is conceptually similar to that performed by 
-@Love2014 and others, where sparse data is pooled to obtain more reliable 
-estimates.
-The global trend is then used to derive gene-specific *residual over-dispersion* 
-parameters $\epsilon_i$ that are not confounded by mean expression. 
-Similar to the DM values implemented in `r Biocpkg("scran")`, these are defined 
-as deviations with respect to the overall trend (Figure XX).
-`r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
-perform differential expression analyses between two pre-specified 
-groups of cells [@Vallejos2016;@Eling2018] in terms of either mean
-expression or residual over-dispersion.
+To account for the strong relationship that is typically observed between
+gene-specific mean expression and over-dispersion estimates, Eling *et al.* 
+[@Eling2018] introduced a *joint prior* specification for these parameters.
+This joint prior assumes that genes with similar mean expression ($\mu_i$) have
+similar over-dispersion parameters $\delta_i$. Effectively, this shrinks
+over-dispersion estimates towards a global trend that captures the relationship
+between mean and over-dispersion (Figure \@ref(fig:basics-schematic)).
+This improves posterior inference for over-dispersion parameters when the data
+is less informative (e.g. small sample size, lowly expressed genes)
+[@Eling2018]. This information-sharing approach is conceptually similar to
+that performed by @Love2014 and others, where sparse data is pooled to obtain
+more reliable estimates. The global trend is then used to derive gene-specific
+*residual over-dispersion* parameters $\epsilon_i$ that are not confounded by
+mean expression. Similar to the DM values implemented in `r Biocpkg("scran")`,
+these are defined as deviations with respect to the overall trend.
 
 ```{r basics-schematic, echo = FALSE, out.width="\\textwidth", fig.cap="TODO A schematic representation of the features of the BASiCS model."}
 knitr::include_graphics("figure/Workflow-Schematic.pdf", auto_pdf = TRUE)
@@ -601,7 +600,6 @@ The primary inputs for `BASiCS_MCMC` correspond to:
 - `WithSpikes`: if `TRUE` information from spike-in molecules is used to aid
   data normalisation and to quantify technical noise. 
 - `PriorParam`: Defines the prior hyper-parameters to be used by `r Biocpkg("BASiCS")`.
-
 
 As a default, we recommend to use `Regression = TRUE`, as the joint prior 
 introduced by [@Eling2018] leads to more stable estimation,
@@ -1722,6 +1720,19 @@ of the technology [@Svensson2018].
 Given that `r Biocpkg("BASiCS")` requires computationally intensive
 MCMC sampling to estimate the posterior distribution, it becomes computationally
 intractable to analyse data from very large numbers of cells. 
+Alternative inference schemes such as variational inference, maximum
+*a posteriori* estimation, or Hamiltonian Monte Carlo may be useful in this
+context. Advanced users may wish to use the `r Biocpkg("BASiCStan")` package
+to test these alternative inference schemes. This also provides access to
+the model diagnostics, facilities for running multiple chains, and
+posterior summaries provided by Stan [@Carpenter2017], while also being
+fully compatible with the workflow described in this manuscript via the function
+`Stan2BASiCS`, that converts the output of the Stan inference procedure to
+the type of output generated by `BASiCS_MCMC`. However, we note that
+the inference methods provided by Stan are often very slow (Hamiltonian
+Monte Carlo) or unreliable (variational inference, maximum *a posteriori*)
+for BASiCS.
+
 Finally, we also anticipate potential extensions of `r Biocpkg("BASiCS")` to 
 account for the more complex experimental designs. For example, in cohort 
 studies where cells are extracted from multiple individuals, the hierarchical 
@@ -1757,10 +1768,6 @@ A Docker image containing all software requirements is available at
 sessionInfo()
 ```
 
-```{r, echo = FALSE}
-# saveRDS(sce_sm, "rds/sce_sm_output.rds")
-# saveRDS(sce_psm, "rds/sce_psm_output.rds")
-```
 
 # Data availability
 
