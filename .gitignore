@@ -36,3 +36,4 @@ figure*/*
 downloads/
 *.png
 !figure/*.R
+!figure-components/*

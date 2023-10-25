@@ -120,7 +120,7 @@ mechanisms [@Eling2019].
 Moreover, these variability estimates can also be inflated by the technical 
 noise that is typically observed in scRNA-seq data [@Brennecke2013]. This 
 technical noise relates to systematic differences between cells that may be 
-introduced by the data generating process (e.g.~due to differences in dilution 
+introduced by the data generating process (e.g., due to differences in dilution 
 or sequencing depth) [@Vallejos2017]. 
 
 <!--- Experimental strategies to tackle technical noise --->
@@ -141,7 +141,7 @@ However, despite the benefits associated to the use of spike-ins and UMIs,
 these are not routinely available for all scRNA-seq protocols [@Haque2017]. 
 In particular, spike-ins are of limited use in droplet-based protocols, 
 as spike-ins can only be added to the reagent mixture in a known concentration,
-and the exact quantity in each droplet necessarily remains unknown.
+and the exact quantity in each droplet necessarily remains unknown [@Bacher2016].
 
 <!--- Introduce BASiCS --->
 The Bioconductor package `r Biocpkg("BASiCS")` implements a Bayesian 
@@ -166,7 +166,6 @@ of bulk and scRNA-seq experiments [@Love2014;@Svensson2020;@Townes2020;@Townes20
 The negative binomial distribution is commonly used to model count data when
 the observed variability differs from what can be captured by a simpler
 Poisson model --- this is typically referred to as over-dispersion. 
-
 <!--- emphasis, this is critical ---> 
 Critically, `r Biocpkg("BASiCS")` enables the quantification of transcriptional
 variability within a population of cells, while accounting for the overall 
@@ -285,7 +284,11 @@ data, e.g. to examine potential batch effects.
 
 The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 model to simultaneously perform data normalisation, technical noise 
-quantification and downstream analyses [@Vallejos2015BASiCS;@Vallejos2016;@Eling2018].
+quantification and downstream analyses [@Vallejos2015BASiCS;@Vallejos2016;@Eling2018]
+within a cell population or populations under study. In this context,
+cell populations could correspond to groups set a priori by the experimental
+design (e.g. naive or stimulated CD4+ T cells in [@Martinez-jimenez2017]),
+or to groups of cells that were computationally identified through clustering.
 Moreover, instead of modelling expression patterns separately for 
 each gene, `r Biocpkg("BASiCS")` shares information between all genes to 
 robustly quantify transcriptional variability. For example, as described by 
@@ -351,92 +354,6 @@ users. Previous versions of the model are available within the package, but
 are primarily useful for reproducibility purposes or for analysing
 datasets that contain spike-in genes.
 
-
-
-<!--- Strongly suggest moving this to the supplementary material,
-There's not really a good reason to give people the history of BASiCS
-in a workflow
-
-Three versions of the `r Biocpkg("BASiCS")` model have been published to date.
-Whilst based on a similar model specification, they differ in how inference is
-performed (e.g. using different priors) and the type of downstream analysis that
-can be performed. The main differences are described below; for more details, 
-see the extended model description in [TODO: ZENODO REPO].
-
-- **Vallejos et al (2015)** [@Vallejos2015]: the original model uses 
-information from extrinsic spike-in molecules (e.g. those introduced by 
-[@Rna2005]) as *control features* to quantify technical noise. This enables the 
-estimation of two sets of cell-specific normalisation parameters ($s_j$ and 
-$\phi_j$) capturing technical (e.g. amplification biases) and biological 
-(e.g. mRNA content) systematic differences across cells [@Vallejos2017]. A
-probabilistic decision rule (based on $\delta_i$) was proposed to identify 
-*highly variable genes* (HVGs) that capture the major sources of heterogeneity 
-within the analysed cells [@Brennecke2013]. HVG detection is often used to 
-perform feature selection, choosing the input set of genes for subsequent 
-analyses. A similar rule was developed to highlight *lowly variable genes* 
-(LVGs) that exhibit stable expression across the population of cells. These may 
-relate to essential cellular functions and can assist the development of new 
-data normalisation or integration strategies [@Lin2019].
-
-- **Vallejos et al (2016)** [@Vallejos2016]: the model was extended to enable
-**differential expression** analyses between two pre-specified groups of cells 
-(e.g. different experimental conditions or cell types). This is achieved by 
-comparing the posterior distribution of gene-specific parameters ($\mu_i$ and 
-$\delta_i$). While several differential expression tools were previously 
-proposed for scRNA-seq data (e.g. [@Kharchenko2014; @Finak2015]), some evidence 
-suggests that these do not generally outperform popular bulk RNA-seq tools 
-[@Soneson2018]. Moreover, most of these methods are only designed to uncover 
-changes in overall expression, ignoring the more complex patterns that can arise 
-at the single cell level [@Lahnemann2020]. Instead, `r Biocpkg("BASiCS")` 
-embraces the high granularity of scRNA-seq data, uncovering changes in 
-cell-to-cell transcriptional variability. As noted by @Vallejos2016, the inverse
-relationship that is observed between mean expression and over-dispersion 
-derived from (bulk and) scRNAseq can affect the interpretation of such analyses.
-In particular, genes that are differentially expressed between two groups of
-cells are likely to exhibit changes in both mean expression and variability,
-due to the inverse relationship between these two quantities. Thus, 
-comparisons of variability between populations must be restricted to genes
-that do not exhibit changes in mean expression.
-
-- **Eling et al (2018)** [@Eling2018]: the model was extended to account for
-the strong relationship that is typically observed 
-between gene-specific mean expression and over-dispersion estimates.
-Eling *et al.*  [@Eling2018] introduced a *joint prior* specification for 
-these parameters. This joint prior assumes that genes with similar mean 
-expression ($\mu_i$) have similar over-dispersion parameters $\delta_i$. 
-Effectively, this shrinks over-dispersion estimates towards a global trend
-that captures the relationship between mean and over-dispersion (Figure XX). 
-This improves posterior inference for over-dispersion parameters when the data 
-is less informative (e.g. small sample size, lowly expressed genes) [@Eling2018].
-This information-sharing approach is conceptually similar to that performed by 
-@Love2014 and others, where sparse data is pooled to obtain more reliable 
-estimates.
-The global trend is then used to derive gene-specific *residual over-dispersion* 
-parameters $\epsilon_i$ that are not confounded by mean expression. 
-Similar to the DM values implemented in `r Biocpkg("scran")`, these are defined 
-as deviations with respect to the overall trend (Figure XX).
-`r Biocpkg("BASiCS")` also provides a probabilistic decision rule to 
-perform differential expression analyses between two pre-specified 
-groups of cells [@Vallejos2016; @Eling2018].
-Furthermore, the model was extended using a horizontal integration framework
-to allow its use in the absence of spike-in genes.
-This is useful
-for droplet-based scRNAseq protocols, given that it is not possible to ensure
-that each droplet contains a specified quantity of spike-in molecules.
-In this horizontal integration framework, technical variation is quantified
-using replication [@Carroll2005]. In the absence of true technical replicates,
-we assume that population-level characteristics of the cells are replicated
-using appropriate experimental design. This requires that cells from the same
-population have been randomly allocated to different batches. Given appropriate
-experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
-are shared across batches, while technical variation leads to spurious
-differences between cells in different batches.
-It is this version of
-the model that we focus on here, and that we recommend for most
-users. Previous versions of the model are available within the package, but
-are primarily useful for reproducibility purposes or for analysing
-datasets that contain spike-in genes.
--->
 
 While several differential expression tools have been proposed for scRNA-seq 
 data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that 
@@ -1115,8 +1032,8 @@ plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
 This section highlights the use of `r Biocpkg("BASiCS")` to perform differential 
 expression tests for mean and variability between different pre-specified 
 populations of cells and experimental conditions. 
-Here, we compare the somitic mesoderm cells, analysed in the previous section, to 
-pre-somitic mesoderm cells analysed in the same study
+Here, we compare the somitic mesoderm cells, analysed in the previous section,
+to pre-somitic mesoderm cells analysed in the same study
 TODO: ref, explain comparison.
 
 Differential expression testing is performed via the
