@@ -3,7 +3,7 @@
 all: Workflow.pdf
 
 IMAGE=alanocallaghan/basicsworkflow2020-docker
-VERSION=0.4.0
+VERSION=0.5.3
 
 %.pdf: %.Rmd figure/Workflow-Overview.pdf figure/Workflow-Schematic.pdf
 	docker run -v $(shell pwd):/home/rstudio/mycode \
