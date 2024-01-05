@@ -668,7 +668,8 @@ For illustration purposes, here we focus on the chains generated for the
 somatic mesoderm cells. However, it is important to analyse convergence for 
 all MCMC chains; we have omitted this analysis for pre-somitic 
 mesoderm cells in the present manuscript for brevity, but they can be viewed
-in the data preparation document shown in the Zenodo repository for
+in the data preparation document (`DataPreparationBASiCSWorkflow`)
+in the Zenodo repository for
 this manuscript (see [Data availability](#data-availability)).
 
 Traceplots can be used to visually assess the history of MCMC iterations 
@@ -696,7 +697,7 @@ The function `BASiCS_DiagPlot()` can be used to visualise such diagnostic metric
 Here, we illustrate usage for two such metrics focusing on the MCMC
 chain that was obtained for the somitic mesoderm cells (similar results were 
 obtained for pre-somitic mesoderm cells in the
-"DataPreparationBASiCSWorkflow.Rmd" document of
+`DataPreparationBASiCSWorkflow` document of
 the Zenodo repository (see [Data availability](#data-availability)). 
 First, we focus on the diagnostic criterion proposed by Geweke [@Geweke1995].
 The latter compares the average of draws obtained during the initial (10\% after 
