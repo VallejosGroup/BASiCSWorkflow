@@ -460,7 +460,7 @@ if (!file.exists("rds/sce_sm.Rds")) {
 }
 if (!file.exists("rds/sce_psm.Rds")) {
   download.file(
-    paste0(chains_website, "rds/sce_psm.Rds"),
+    paste0(chains_website, "sce_psm.Rds"),
     destfile = "rds/sce_psm.Rds"
   )
 }
