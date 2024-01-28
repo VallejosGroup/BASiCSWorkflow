@@ -340,8 +340,14 @@ mean expression. Similar to the DM values implemented in `r Biocpkg("scran")`,
 these are defined as deviations with respect to the overall trend.
 These residual over-dispersion values can be used to quantify transcriptional
 heterogeneity without any confounding with mean expression, though
-it should be noted that they may also represent structural heterogeneity
-resulting from heterogeneous cell types within the population being studied.
+it should be noted that residual over-dispersion may also arise due to
+structural heterogeneity (e.g. distinct cell sub-types or states).
+For example, @Eling2018 computationally explored the impact of unobserved
+structural heterogeneity by generating artificially contaminated datasets.
+In contrast, @Martinez-Jiminenez2017 showed that changes in transcriptional
+heterogeneity can related to aging, where older mice were shown to exhibit
+a more "bursting" or stochastic transcriptional pattern relative to younger mice.
+
 
 ```{r basics-schematic, echo = FALSE, out.width="\\textwidth", fig.cap="A schematic representation of the features of the BASiCS model. BASiCS accounts for cell-to-cell and batch-to-batch variability using nuisance parameters. Accounting for cell-to-cell and batch-to-batch technical variability allows BASiCS to robustly perform gene-level inference of mean and variability. Furthermore, by accounting for the association between mean and variability in scRNAseq, BASiCS can also infer transcriptional noise using the residual variability parameter $\\epsilon_i$."}
 knitr::include_graphics("figure/Workflow-Schematic.pdf", auto_pdf = TRUE)
@@ -448,7 +454,7 @@ options(timeout = 1000)
 ## After download, files are then stored in an `rds` sub-folder 
 if (!file.exists("rds/sce_sm.Rds")) {
   download.file(
-    paste0(chains_website, "rds/sce_sm.Rds"),
+    paste0(chains_website, "sce_sm.Rds"),
     destfile = "rds/sce_sm.Rds"
   )
 }
@@ -604,13 +610,13 @@ options(timeout = 1000)
 ## After download, files are then stored in an `rds` sub-folder 
 if (!file.exists("rds/chain_sm.Rds")) {
   download.file(
-    paste0(chains_website, "rds/chain_sm.Rds"),
+    paste0(chains_website, "chain_sm.Rds"),
     destfile = "rds/chain_sm.Rds"
   )
 }
 if (!file.exists("rds/chain_psm.Rds")) {
   download.file(
-    paste0(chains_website, "rds/chain_psm.Rds"),
+    paste0(chains_website, "chain_psm.Rds"),
     destfile = "rds/chain_psm.Rds"
   )
 }
