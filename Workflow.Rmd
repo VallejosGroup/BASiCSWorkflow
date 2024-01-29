@@ -24,7 +24,7 @@ author:
     - *MRC 
     - The Alan Turing Institute, British Library, 96 Euston Road, London, 
       NW1 2DB, UK
-    email: catalina.vallejos@igmm.ed.ac.uk
+    email: "catalina.vallejos@igmm.ed.ac.uk"
 abstract: |
   Cell-to-cell gene expression variability is an inherent feature of complex 
   biological systems, such as immunity and development. Single-cell RNA 
@@ -75,7 +75,7 @@ if (knitr::is_html_output()) {
 knitr::opts_chunk$set(
   warning = FALSE, message = FALSE, error = FALSE,
   # cache = 2, cache.path = "cache_main/",
-  cache = 0,
+  # cache = 0,
   # fig.pos = "h",
   fig.path = "figure/"
 )
@@ -128,7 +128,7 @@ or sequencing depth) [@Vallejos2017].
 Different strategies have been incorporated into scRNA-seq protocols to control 
 or attenuate technical noise. 
 For example, external RNA spike-in molecules (such as the set introduced by the 
-External RNA Controls Consortium, ERCC [@Rna2005]) can be added to each cell’s 
+External RNA Controls Consortium, ERCC [@Rna2005]) can be added to each cell's 
 lysate in a (theoretically) known fixed quantity.
 Spike-ins can assist quality control steps [@McCarthy2017], data normalisation
 [@Vallejos2017] and can be used to infer technical noise [@Brennecke2013].
@@ -344,7 +344,7 @@ it should be noted that residual over-dispersion may also arise due to
 structural heterogeneity (e.g. distinct cell sub-types or states).
 For example, @Eling2018 computationally explored the impact of unobserved
 structural heterogeneity by generating artificially contaminated datasets.
-In contrast, @Martinez-Jiminenez2017 showed that changes in transcriptional
+In contrast, @Martinez-jimenez2017 showed that changes in transcriptional
 heterogeneity can related to aging, where older mice were shown to exhibit
 a more "bursting" or stochastic transcriptional pattern relative to younger mice.
 
@@ -380,21 +380,6 @@ Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
 uncovering changes in cell-to-cell expression variability that are not 
 confounded by differences in technical noise or in overall expression.
 
-<!-- this seems out of place, and somewhat redundant
-## Transcriptional variability analysis using `r Biocpkg("scran")` 
-
-To quantify transcriptional variability, `r Biocpkg("scran")` can infer an 
-overall trend between mean expression and the squared coefficient of 
-variation (CV^2^) for each gene. 
-Variability estimates that are not confounded by this 
-trend are then obtained via the DM approach [@Kolodziejczyk2015cell]. 
-For each gene, these are defined as the distance between CV$^2$ and a rolling 
-median along the range of mean expression values.
-DM estimates enable exploratory analyses of transcriptional 
-variability, but a measure of statistical uncertainty is not readily available. 
-As such, gene-specific downstream inference (such as differential variability 
-testing) is precluded.
--->
 
 # Case study: analysis of presomitic and somitic mesoderm cells {#SM-analysis}
 
@@ -1426,23 +1411,6 @@ selects the normalised counts for a given gene, and then reshapes them into
 a form suitable for plotting. 
 
 
-<!---These are genes with higher variability in one population
-than the other, but which have a similar frequency of detection in each
-population. Given that these genes have a similar proportion of zero counts
-in both populations, it is likely that the differences in variability
-are not driven by a more intermittent gene expression pattern.
-
-These are genes with higher variability in one population and differing levels of detection; as mentioned above,
-these may represent genes with a more intermittent expression
-pattern in one cell population. These may point to
-differences in intrinsic sources of variability in expression, such as regulatory
-elements (e.g., transcription factors). They may also represent genes that
-are markers of extrinsic variability, for example cell sub-populations that 
-differ in abundance between the cell populations in question. Disentangling
-intrinsic and extrinsic sources of variability when interpreting such genes is 
-an important component of any analysis of differential variability, and should
-be undertaken with care.
---->
 
 
 ```{r vg-df-fun}
@@ -1515,7 +1483,7 @@ First, we select genes that are more variable in somitic cells than in
 pre-somitic mesoderm cells, but which are not differentially expressed.
 Furthermore, we narrow our selection to genes with
 similar levels of non-zero expression in both populations, and which are
-expressed in at least 50% of cells within each population. These criteria
+expressed in at least 50\% of cells within each population. These criteria
 are designed to select genes that likely have a largely unimodal expression
 pattern, simply having higher cell-to-cell variability in somitic cells.
 We then plot the normalised counts for
@@ -1586,6 +1554,7 @@ ind_vg_bursting_psm <- table_de_genetests$ResultDiffResDisp %in% c("PSM+") &
   ) > 0.50
 g4 <- plot_vg(ind_vg_bursting_psm)
 ```
+
 
 Now that we have created four violin plots of the various types of
 differentially variable gene that we have defined, we can combine the plots
@@ -1681,6 +1650,37 @@ potentially, temporal) structure (e.g. [@Aijo2019]).
 We intend to update this workflow as the field evolves, and as we address the 
 issues and challenges outlined here. 
 
+
+
+# Data availability {#data-availability}
+
+The data used in this article are available for download
+on EBI ArrayExpress under accession number
+[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
+The MCMC chains used to generate this article can be found in Zenodo
+under the DOI [10.5281/zenodo.10251224](https://doi.org/10.5281/zenodo.10251224).
+
+
+# Software availability
+
+
+This section will be generated by the Editorial Office before publication. 
+Authors are asked to provide some initial information to assist the 
+Editorial Office, as detailed below.
+
+1. URL link to where the software can be downloaded from or used by a non-coder
+  https://bioconductor.org/packages/3.18/bioc/html/BASiCS.html
+  (AUTHOR TO PROVIDE; optional)
+2. URL link to the author's version control system repository containing the 
+  source code (AUTHOR TO PROVIDE; required)
+  Software: https://github.com/catavallejos/BASiCS/
+  Manuscript: https://github.com/VallejosGroup/BASiCSWorkflow/
+3. Link to source code as at time of publication (*F1000Research* TO GENERATE)
+4. Link to archived source code as at time of publication (*F1000Research* 
+  TO GENERATE)
+5. Software license (AUTHOR TO PROVIDE; required)
+  License: [GPL-2.0](https://opensource.org/licenses/GPL-2.0)
+
 # Reproducibility
 
 The following software versions were used throughout this workflow:
@@ -1696,8 +1696,11 @@ The following software versions were used throughout this workflow:
   Version numbers for all remaining packages are available in the
   [Session Info](#session-info) section.
 
-A Docker image containing all software requirements is available at 
+A Docker image containing all software requirements is available from
 [Docker hub](https://hub.docker.com/r/alanocallaghan/basicsworkflow2020-docker).
+
+This image can be downloaded using the command
+`docker pull alanocallaghan/basicsworkflow2020-docker:0.5.3`.
 
 # Session Info {#session-info}
 
@@ -1705,37 +1708,6 @@ A Docker image containing all software requirements is available at
 sessionInfo()
 ```
 
-
-# Data availability {#data-availability}
-
-The data used in this article are available for download
-on EBI ArrayExpress under accession number
-[E-MTAB-4888](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/).
-The MCMC chains used to generate this article can be found in Zenodo
-under the DOI [10.5281/zenodo.10251224](https://doi.org/10.5281/zenodo.10251224).
-
-
-# Software availability
-
-**Software: All software used in this workflow is available as part of 
-Bioconductor 3.18.**
-
-This section will be generated by the Editorial Office before publication. 
-Authors are asked to provide some initial information to assist the 
-Editorial Office, as detailed below.
-
-1. URL link to where the software can be downloaded from or used by a non-coder
-  https://bioconductor.org/packages/3.13/bioc/html/BASiCS.html
-  (AUTHOR TO PROVIDE; optional)
-2. URL link to the author's version control system repository containing the 
-  source code (AUTHOR TO PROVIDE; required)
-  Software: https://github.com/catavallejos/BASiCS/
-  Manuscript: https://github.com/VallejosGroup/BASiCSWorkflow/
-3. Link to source code as at time of publication (*F1000Research* TO GENERATE)
-4. Link to archived source code as at time of publication (*F1000Research* 
-  TO GENERATE)
-5. Software license (AUTHOR TO PROVIDE; required)
-  GPL (>= 2)
 
 # Author information
 
