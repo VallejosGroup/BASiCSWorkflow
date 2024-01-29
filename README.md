@@ -5,7 +5,7 @@ This workflows runs using the docker image
 [alanocallaghan/bocker](https://hub.docker.com/repository/docker/alanocallaghan/bocker).
 To use the latest build of the docker
 ```bash
-docker pull alanocallaghan/bocker
+docker pull alanocallaghan/basicsworkflow2020-docker
 ```
 
 To run the docker image via Rstudio server. The code below ensures that the files in 
