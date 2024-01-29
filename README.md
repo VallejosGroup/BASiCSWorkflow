@@ -22,7 +22,7 @@ make server
 > To avoid that a `--platform=linux/amd64` can be added:
 > 
 > ```bash
-> docker run --platform=linux/amd64 -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc alanocallaghan/bocker
+> docker run --platform=linux/amd64 -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc alanocallaghan/basicsworkflow2020-docker
 > ```
 > 
 > This issue has been documented by others e.g. [here](https://stackoverflow.com/questions/66662820/m1-docker-preview-and-keycloak-images-platform-linux-amd64-does-not-match-th)
