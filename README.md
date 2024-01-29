@@ -12,7 +12,7 @@ To run the docker image via Rstudio server. The code below ensures that the file
 /home/rstudio/mycode are available within the docker.
 
 ```bash
-docker run -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc alanocallaghan/bocker
+make server
 ```
 
 > NOTE: for Macbook users with an M1 chip, the following WARNING will be returned:
@@ -33,5 +33,5 @@ Username: rstudio, password = bioc.
 
 Equivalently, to launch bash:
 ```bash
-docker run -v $(pwd):/home/rstudio/mycode -it alanocallaghan/bocker /bin/bash
+make run
 ```
