@@ -50,10 +50,14 @@ keywords: Single-cell RNA sequencing, expression variability,
   transcriptional noise, differential expression testing
 bibliography: Workflow.bib
 urlcolor: Orange
+#output:
+#  BiocWorkflowTools::f1000_article:
+#    fig_width: 6
+#    fig_height: 3.5
 output:
-  BiocWorkflowTools::f1000_article:
-    fig_width: 6
-    fig_height: 3.5
+  word_document:
+    reference_docx: f1000research-11-59-V1.docx
+csl: american-medical-association.csl
 ---
 
 ```{r setup_knitr, include = FALSE, cache = FALSE}
@@ -74,9 +78,7 @@ if (knitr::is_html_output()) {
 }
 knitr::opts_chunk$set(
   warning = FALSE, message = FALSE, error = FALSE,
-  # cache = 2, cache.path = "cache_main/",
-  # cache = 0,
-  # fig.pos = "h",
+  cache = 2, cache.path = "cache_main/",
   fig.path = "figure/"
 )
 options(timeout=100)
@@ -205,17 +207,118 @@ can be obtained from
 
 # Methods {#methods}
 
+## Implementation
+
+The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
+model to simultaneously perform data normalisation, technical noise 
+quantification and downstream analyses [@Vallejos2015BASiCS;@Vallejos2016;@Eling2018]
+within a cell population or populations under study. In this context,
+cell populations could correspond to groups set a priori by the experimental
+design (e.g. naive or stimulated CD4+ T cells in [@Martinez-jimenez2017]),
+or to groups of cells that were computationally identified through clustering.
+Moreover, instead of modelling expression patterns separately for 
+each gene, `r Biocpkg("BASiCS")` shares information between all genes to 
+robustly quantify transcriptional variability. For example, as described by 
+[@Eling2018], pooling information across genes with similar mean expression 
+levels helps to obtain more reliable transcriptional variability estimates. The 
+latter is particularly helpful for lowly expressed genes and sparse datasets, 
+where less information is available.
+
+A high-level overview for the model implemented in `r Biocpkg("BASiCS")` is
+shown in Figure \@ref(fig:fig1-basics-schematic),
+and a more detailed description is provided in the `ExtendedMethods` document
+in the Zenodo repository for this manuscript (see [Data availability](#data-availability)).
+Model parameters are designed to capture different 
+aspects of scRNAseq data. First, *nuisance* parameters are used to 
+capture technical artifacts. This includes cell-specific parameters (indexed by 
+a $j$ subscript) used to perform global scaling normalisation (similar to the 
+size factors in `r Biocpkg("scran")`) and global parameters designed to capture 
+technical over-dispersion (this can also be interpreted as measurement error) 
+that is shared by all genes. Note that, whilst `r Biocpkg("scran")` infers 
+cell-specific size factors as a pre-processing step, `r Biocpkg("BASiCS")` uses 
+an integrated approach wherein data normalisation and downstream analyses are 
+performed simultaneously, thereby propagating statistical uncertainty. Secondly,
+`r Biocpkg("BASiCS")` summarises expression patterns within the population of 
+cells under study (e.g. a experimental condition or cell type) using two sets
+of gene-specific parameters (indexed by a $i$ subscript). Mean parameters 
+$\mu_i$ quantify overall expression for each gene $i$. In contrast, $\delta_i$ 
+captures the excess of variability that is observed with respect to what would 
+be expected in a homogeneous cell population, beyond technical noise. 
+The latter is used as a proxy to quantify transcriptional variability.
+
+To account for the strong relationship that is typically observed between
+gene-specific mean expression and over-dispersion estimates, Eling *et al.* 
+[@Eling2018] introduced a *joint prior* specification for these parameters.
+This joint prior assumes that genes with similar mean expression ($\mu_i$) have
+similar over-dispersion parameters $\delta_i$. Effectively, this shrinks
+over-dispersion estimates towards a global trend that captures the relationship
+between mean and over-dispersion (Figure \@ref(fig:fig1-basics-schematic)).
+This improves posterior inference for over-dispersion parameters when the data
+is less informative (e.g. small sample size, lowly expressed genes)
+[@Eling2018]. This information-sharing approach is conceptually similar to
+that performed by @Love2014 and others, where sparse data is pooled to obtain
+more reliable estimates. The global trend is then used to derive gene-specific
+*residual over-dispersion* parameters $\epsilon_i$ that are not confounded by
+mean expression. Similar to the DM values implemented in `r Biocpkg("scran")`,
+these are defined as deviations with respect to the overall trend.
+These residual over-dispersion values can be used to quantify transcriptional
+heterogeneity without any confounding with mean expression, though
+it should be noted that residual over-dispersion may also arise due to
+structural heterogeneity (e.g. distinct cell sub-types or states).
+For example, @Eling2018 computationally explored the impact of unobserved
+structural heterogeneity by generating artificially contaminated datasets.
+In contrast, @Martinez-jimenez2017 showed that changes in transcriptional
+heterogeneity can related to aging, where older mice were shown to exhibit
+a more "bursting" or stochastic transcriptional pattern relative to younger mice.
+
+
+```{r fig1-basics-schematic, echo = FALSE, out.width="\\textwidth", fig.cap="A schematic representation of the features of the BASiCS model. BASiCS accounts for cell-to-cell and batch-to-batch variability using nuisance parameters. Accounting for cell-to-cell and batch-to-batch technical variability allows BASiCS to robustly perform gene-level inference of mean and variability. Furthermore, by accounting for the association between mean and variability in scRNAseq, BASiCS can also infer transcriptional noise using the residual variability parameter $\\epsilon_i$."}
+knitr::include_graphics("figure/Workflow-Schematic.pdf", auto_pdf = TRUE)
+```
+
+Additionally, technical variation is quantified
+using replication [@Carroll2005]. In the absence of true technical replicates,
+we assume that population-level characteristics of the cells are replicated
+using appropriate experimental design. This requires that cells from the same
+population have been randomly allocated to different batches. Given appropriate
+experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
+are shared across batches, while technical variation leads to spurious
+differences between cells in different batches. Thus, `r Biocpkg("BASiCS")`
+models cell-specific size factors $\nu_j$, and batch-specific technical
+dispersion $\theta$.
+It is this version of
+the model that we focus on here, and that we recommend for most
+users. Previous versions of the model are available within the package, but
+are primarily useful for reproducibility purposes or for analysing
+datasets that contain spike-in genes.
+
+
+While several differential expression tools have been proposed for scRNA-seq 
+data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that 
+these do not generally outperform popular bulk RNA-seq tools [@Soneson2018]. 
+Moreover, most of these methods are only designed to uncover changes in overall
+expression, ignoring the more complex patterns that can arise at the single cell 
+level [@Lahnemann2020]. 
+Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
+uncovering changes in cell-to-cell expression variability that are not 
+confounded by differences in technical noise or in overall expression.
+
+
+## Operation
+
 This step-by-step scRNA-seq workflow is primarily based on the Bioconductor 
-package ecosystem [@Amezquita2019]. 
-A graphical overview is provided in Figure \@ref(fig:overview) 
+package ecosystem [@Amezquita2019], and as such should run on any major
+operating system using R $\geq$ 4.0, although results may differ slightly using
+different Bioconductor and R versions. 
+A graphical overview is provided in Figure \@ref(fig:fig2-overview) 
 and its main components are described below. 
 
-```{r overview, out.width="0.7\\textwidth", fig.cap = "Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a matrix of expression counts, we use the scater and scran Bioconductor packages to perform QC and initial exploratory analyses. To robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations, we apply the BASiCS Bioconductor package and  illustrate how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.", echo=FALSE}
+```{r fig2-overview, out.width="0.7\\textwidth", fig.cap = "Graphical overview for the scRNA-seq analysis workflow described in this manuscript. Starting from a matrix of expression counts, we use the scater and scran Bioconductor packages to perform QC and initial exploratory analyses. To robustly quantify transcriptional heterogeneity within seemingly homogeneous cell populations, we apply the BASiCS Bioconductor package and  illustrate how BASiCS can be used to analyse a single or multiple pre-specified groups of cells.", echo=FALSE}
 knitr::include_graphics("figure/Workflow-Overview.pdf", auto_pdf = TRUE)
 ```
 
 Here, we load all the libraries that will be used throughout this workflow.
-First, we load Bioconductor libraries included in Figure \@ref(fig:overview). 
+First, we load Bioconductor libraries included in Figure \@ref(fig:fig2-overview). 
 We provide further explanation about their function in the following sections.
 
 ```{r}
@@ -225,7 +328,8 @@ library("scran")
 library("BASiCS")
 ```
 
-Next, we load other general purpose libraries used for data visualisation (e.g.
+Next, we load other general purpose libraries used for data visualisation ---
+e.g.,
 `r CRANpkg("ggplot2")`), colour scales (e.g., `r CRANpkg("viridis")`,
 and data manipulation (`r CRANpkg("tidyr")`). 
 
@@ -276,7 +380,7 @@ To perform further exploratory data analysis, we use the Bioconductor package
 The latter is used to perform *global scaling* normalisation, calculating 
 cell-specific scaling factors that capture global differences in read-counts 
 across cells (e.g. due to sequencing depth and PCR amplification) 
-[@Lun2016pooling]. Note that, the use of `r Biocpkg("scran")` as a normalisation 
+[@Lun2016pooling]. Note that the use of `r Biocpkg("scran")` as a normalisation 
 tool is not a requirement for `r Biocpkg("BASiCS")` (which uses raw read-counts 
 as input). However, we recommend the use of `r Biocpkg("scran")` normalisation 
 as part of the exploratory data analysis. For example, normalised read-counts 
@@ -284,104 +388,9 @@ can be used to visualise the data in a low-dimensional space (e.g. using
 principal component analysis). This can help to explore the structure of the 
 data, e.g. to examine potential batch effects. 
 
-## BASiCS - Bayesian Analysis of Single Cell Sequencing data
+# Use cases
 
-The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
-model to simultaneously perform data normalisation, technical noise 
-quantification and downstream analyses [@Vallejos2015BASiCS;@Vallejos2016;@Eling2018]
-within a cell population or populations under study. In this context,
-cell populations could correspond to groups set a priori by the experimental
-design (e.g. naive or stimulated CD4+ T cells in [@Martinez-jimenez2017]),
-or to groups of cells that were computationally identified through clustering.
-Moreover, instead of modelling expression patterns separately for 
-each gene, `r Biocpkg("BASiCS")` shares information between all genes to 
-robustly quantify transcriptional variability. For example, as described by 
-[@Eling2018], pooling information across genes with similar mean expression 
-levels helps to obtain more reliable transcriptional variability estimates. The 
-latter is particularly helpful for lowly expressed genes and sparse datasets, 
-where less information is available.
-
-A high-level overview for the model implemented in `r Biocpkg("BASiCS")` is
-shown in Figure \@ref(fig:basics-schematic),
-and a more detailed description is provided in the `ExtendedMethods` document
-in the Zenodo repository for this manuscript (see [Data availability](#data-availability)).
-Model parameters are designed to capture different 
-aspects of scRNAseq data. First, *nuisance* parameters are used to 
-capture technical artifacts. This includes cell-specific parameters (indexed by 
-a $j$ subscript) used to perform global scaling normalisation (similar to the 
-size factors in `r Biocpkg("scran")`) and global parameters designed to capture 
-technical over-dispersion (this can also be interpreted as measurement error) 
-that is shared by all genes. Note that, whilst `r Biocpkg("scran")` infers 
-cell-specific size factors as a pre-processing step, `r Biocpkg("BASiCS")` uses 
-an integrated approach wherein data normalisation and downstream analyses are 
-performed simultaneously, thereby propagating statistical uncertainty. Secondly,
-`r Biocpkg("BASiCS")` summarises expression patterns within the population of 
-cells under study (e.g. a experimental condition or cell type) using two sets
-of gene-specific parameters (indexed by a $i$ subscript). Mean parameters 
-$\mu_i$ quantify overall expression for each gene $i$. In contrast, $\delta_i$ 
-captures the excess of variability that is observed with respect to what would 
-be expected in a homogeneous cell population, beyond technical noise. 
-The latter is used as a proxy to quantify transcriptional variability.
-
-To account for the strong relationship that is typically observed between
-gene-specific mean expression and over-dispersion estimates, Eling *et al.* 
-[@Eling2018] introduced a *joint prior* specification for these parameters.
-This joint prior assumes that genes with similar mean expression ($\mu_i$) have
-similar over-dispersion parameters $\delta_i$. Effectively, this shrinks
-over-dispersion estimates towards a global trend that captures the relationship
-between mean and over-dispersion (Figure \@ref(fig:basics-schematic)).
-This improves posterior inference for over-dispersion parameters when the data
-is less informative (e.g. small sample size, lowly expressed genes)
-[@Eling2018]. This information-sharing approach is conceptually similar to
-that performed by @Love2014 and others, where sparse data is pooled to obtain
-more reliable estimates. The global trend is then used to derive gene-specific
-*residual over-dispersion* parameters $\epsilon_i$ that are not confounded by
-mean expression. Similar to the DM values implemented in `r Biocpkg("scran")`,
-these are defined as deviations with respect to the overall trend.
-These residual over-dispersion values can be used to quantify transcriptional
-heterogeneity without any confounding with mean expression, though
-it should be noted that residual over-dispersion may also arise due to
-structural heterogeneity (e.g. distinct cell sub-types or states).
-For example, @Eling2018 computationally explored the impact of unobserved
-structural heterogeneity by generating artificially contaminated datasets.
-In contrast, @Martinez-jimenez2017 showed that changes in transcriptional
-heterogeneity can related to aging, where older mice were shown to exhibit
-a more "bursting" or stochastic transcriptional pattern relative to younger mice.
-
-
-```{r basics-schematic, echo = FALSE, out.width="\\textwidth", fig.cap="A schematic representation of the features of the BASiCS model. BASiCS accounts for cell-to-cell and batch-to-batch variability using nuisance parameters. Accounting for cell-to-cell and batch-to-batch technical variability allows BASiCS to robustly perform gene-level inference of mean and variability. Furthermore, by accounting for the association between mean and variability in scRNAseq, BASiCS can also infer transcriptional noise using the residual variability parameter $\\epsilon_i$."}
-knitr::include_graphics("figure/Workflow-Schematic.pdf", auto_pdf = TRUE)
-```
-
-Additionally, technical variation is quantified
-using replication [@Carroll2005]. In the absence of true technical replicates,
-we assume that population-level characteristics of the cells are replicated
-using appropriate experimental design. This requires that cells from the same
-population have been randomly allocated to different batches. Given appropriate
-experimental design, `r Biocpkg("BASiCS")` assumes that biological effects
-are shared across batches, while technical variation leads to spurious
-differences between cells in different batches. Thus, `r Biocpkg("BASiCS")`
-models cell-specific size factors $\nu_j$, and batch-specific technical
-dispersion $\theta$.
-It is this version of
-the model that we focus on here, and that we recommend for most
-users. Previous versions of the model are available within the package, but
-are primarily useful for reproducibility purposes or for analysing
-datasets that contain spike-in genes.
-
-
-While several differential expression tools have been proposed for scRNA-seq 
-data (e.g. [@Kharchenko2014; @Finak2015]), some evidence suggests that 
-these do not generally outperform popular bulk RNA-seq tools [@Soneson2018]. 
-Moreover, most of these methods are only designed to uncover changes in overall
-expression, ignoring the more complex patterns that can arise at the single cell 
-level [@Lahnemann2020]. 
-Instead, `r Biocpkg("BASiCS")` embraces the high granularity of scRNA-seq data,
-uncovering changes in cell-to-cell expression variability that are not 
-confounded by differences in technical noise or in overall expression.
-
-
-# Case study: analysis of presomitic and somitic mesoderm cells {#SM-analysis}
+## Case study: analysis of presomitic and somitic mesoderm cells {#SM-analysis}
 
 The development of droplet-based scRNA-seq [@Klein2015;@Macosko2015] 
 lead to a large increase in the number of cells that can be profiled per 
@@ -417,7 +426,7 @@ focus on analysing presomitic and somitic mesoderm cells. This is an arbitrary
 choice and the steps described in this workflow could be applied to any other 
 pair of cell types. 
 
-## Preparing the input data for BASiCS
+### Preparing the input data for BASiCS
 
 While quality control and pre-processing is an important topic in scRNAseq
 analysis, we feel that it has been covered in detail in other articles.
@@ -430,7 +439,7 @@ workflow. Here, we load the pre-processed data. This consists of two separate
 somitic mesoderm cells. 
 
 ```{r SCE-load}
-# Website were the files are located
+# Website where the files are located
 chains_website <- "https://zenodo.org/record/10251224/files/"
 # To avoid timeout issues as we are downloading large files
 options(timeout = 1000)
@@ -498,7 +507,7 @@ colData(sce_psm)$BatchInfo  <- colData(sce_psm)$sample
 colData(sce_sm)$BatchInfo  <- colData(sce_sm)$sample
 ```
 
-## Parameter estimation using BASiCS
+### Parameter estimation using BASiCS
 
 Parameter estimation is implemented in the `BASiCS_MCMC` function using an 
 adaptive Metropolis within Gibbs algorithm (see section 3 in [@Roberts2009]).
@@ -627,7 +636,7 @@ displayChainBASiCS(chain_sm, Param = "mu")[1:2, 1:3]
 ```
 
 
-## MCMC convergence diagnostics
+### MCMC convergence diagnostics
 
 Before interpreting the estimates generated by `r Biocpkg("BASiCS")`, 
 it is important to check the performance of the MCMC algorithm used.
@@ -667,10 +676,10 @@ in the Zenodo repository for
 this manuscript (see [Data availability](#data-availability)).
 
 Traceplots can be used to visually assess the history of MCMC iterations 
-for a specific parameter (e.g. Figure \@ref(fig:convergence-SM), left panel). 
+for a specific parameter (e.g. Figure \@ref(fig:fig3-convergence-SM), left panel). 
 As mentioned above, significant departures from a horizontal trend suggest a
 lack of convergence.
-As illustrated in Figure \@ref(fig:convergence-SM), histograms can also be 
+As illustrated in Figure \@ref(fig:fig3-convergence-SM), histograms can also be 
 used to display the marginal distribution for each parameter. 
 For `r Biocpkg("BASiCS")`, users should expect these to follow a unimodal 
 distribution. Failure to satisfy these graphical diagnostics suggest that `N` 
@@ -679,7 +688,7 @@ Alternatively, more stringent quality control could be applied to the input
 data, as we have observed that genes with very low counts often suffer from 
 slow convergence.
 
-```{r convergence-SM, fig.cap="Trace plot, marginal histogram, and autocorrelation function of the posterior distribution of the mean expression parameter for a gene in somitic mesoderm cells following MCMC sampling. Trace plots should explore the posterior without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
+```{r fig3-convergence-SM, fig.cap="Trace plot, marginal histogram, and autocorrelation function of the posterior distribution of the mean expression parameter for a gene in somitic mesoderm cells following MCMC sampling. Trace plots should explore the posterior without getting stuck in one location or drifting over time towards a region of higher density. High autocorrelation indicates that the number of effective independent samples is low. It is good practice to perform these visualisation for many different parameters; here we only show one."}
 plot(chain_sm, Param = "mu", Gene = 1)
 ```
 
@@ -702,14 +711,14 @@ Large absolute $Z$-scores suggest that the algorithm has not converged (as a
 rule of thumb, a threshold at $|Z| < 3$ is often applied). 
 For the somitic and pre-somitic mesoderm datasets, most Z-scores associated to mean
 expression parameters $\mu_i$ were small in absolute value 
-(see Figure \@ref(fig:mcmc-diag)A), suggesting that the algorithm has 
+(see Figure \@ref(fig:fig4-mcmc-diag)A), suggesting that the algorithm has 
 largely converged.
 
 
 As well as assessing MCMC convergence, it is important to ensure that the MCMC 
 algorithm has efficiently explored the parameter space. 
 For example, the autocorrelation function (e.g. Figure 
-\@ref(fig:convergence-SM), right panel) quantifies the 
+\@ref(fig:fig3-convergence-SM), right panel) quantifies the 
 correlation between the chain and its lagged versions. 
 Strong autocorrelation indicates that neighbouring MCMC samples are highly 
 dependent and suggest poor sampling efficiency. 
@@ -728,7 +737,7 @@ $$
 where $N_{tot}$ represents the total number of MCMC draws (after burn-in and
 thining) and $\rho(k)$ is the autocorrelation at lag $k$.
 ESS estimates associated to mean expression parameters for the somitic mesoderm
-cells are displayed in Figure \@ref(fig:mcmc-diag)B.
+cells are displayed in Figure \@ref(fig:fig4-mcmc-diag)B.
 Whilst ESS is around 1,000 ($N_{tot}$ in this case) for most genes, we observe 
 low ESS values for a small proportion of genes.
 As described later in this manuscript, `BASiCS_TestDE` automatically excludes 
@@ -739,7 +748,7 @@ dataset, then caution should be applied when interpreting the results of the
 model. These issues can often be addressed by more stringent 
 filtering of genes and cells before performing inference.
 
-```{r mcmc-diag, fig.cap="MCMC diagnostics for gene-specific mean expression parameters; somitic mesoderm cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
+```{r fig4-mcmc-diag, fig.cap="Markov chain Monte Carlo diagnostics for gene-specific mean expression parameters; somitic mesoderm cells. A: Geweke Z-score for mean expression parameters is plotted against mean expression estimates. Dashed lines represent absolute Z-scores of 3, outside of which we advise caution when interpreting results. B: Effective sample size (ESS) is plotted against mean expression estimates. A dashed line shows a threshold of 100, below which we advise caution when interpreting results."}
 diag_p1 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "geweke") +
   theme(legend.position = "bottom")
 diag_p2 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "ess") +
@@ -747,7 +756,7 @@ diag_p2 <- BASiCS_DiagPlot(chain_sm, Param = "mu", Measure = "ess") +
 diag_p1 + diag_p2 + plot_annotation(tag_levels = "A")
 ```
 
-## Quantifying transcriptional variability using BASiCS
+### Quantifying transcriptional variability using BASiCS
 
 Studying gene-level transcriptional variability can provide insights about the 
 regulation of gene expression, and how it relates to the properties of genomic 
@@ -759,19 +768,19 @@ For example, we can obtain CV^2^ estimates for each gene using
 `r Biocpkg("scran")` normalised counts as input. 
 In contrast, `r Biocpkg("BASiCS")` infers transcriptional variability using 
 gene-specific over-dispersion parameters $\delta_i$ (see *Methods*).
-Figure \@ref(fig:dispersion-vs-mean) compares these approaches, focusing on 
+Figure \@ref(fig:fig5-dispersion-vs-mean) compares these approaches, focusing on 
 somitic mesoderm cells (repeating this analysis for pre-somitic mesoderm cells 
 led to similar results). 
-For each of the panels in  Figure \@ref(fig:dispersion-vs-mean),
+For each of the panels in  Figure \@ref(fig:fig5-dispersion-vs-mean),
 we use the R package `r CRANpkg("ggpointdensity")` to visualise 
 the local density of genes along the axes.
 Note that the `BASiCS_ShowFit` 
-function can be used to generate Figure \@ref(fig:dispersion-vs-mean)C, but we 
+function can be used to generate Figure \@ref(fig:fig5-dispersion-vs-mean)C, but we 
 generated the plot manually to demonstrate how users can extract this 
 information from a `BASiCS_MCMC` object, and for visual consistency with the 
 other panels.
 
-```{r dispersion-vs-mean, fig.width=6, fig.height=6, fig.cap="Comparison of gene-specific transcriptional variability estimates and mean expression estimates obtained for each gene using BASiCS and scran. For this analysis, we exclude genes that are not expressed in at least 2 cells. BASiCS estimates for each gene are defined by the posterior median of the associated parameter. scran estimates for each gene are derived after applying the pooling normalisation strategy proposed by Lun et al. Points are coloured according to the local density of genes along the x- and y- axis. A: scran squared CV estimates versus BASiCS estimates for over-dispersion parameters. B: scran estimates for mean expression and the squared CV. C: BASiCS estimates for mean expression and over-dispersion parameters. D: BASiCS estimates for residual over-dispersion parameters versus DM values estimated by scran. E: scran estimates for mean expression and DM values. F: BASiCS estimates for mean expression and residual over-dispersion parameters. Dashed red lines in panels A and D represent the line given by x=y. "}
+```{r fig5-dispersion-vs-mean, fig.width=6, fig.height=6, fig.cap="Comparison of gene-specific transcriptional variability estimates and mean expression estimates obtained for each gene using BASiCS and scran. For this analysis, we exclude genes that are not expressed in at least 2 cells. BASiCS estimates for each gene are defined by the posterior median of the associated parameter. scran estimates for each gene are derived after applying the pooling normalisation strategy proposed by Lun et al. Points are coloured according to the local density of genes along the x- and y- axis. A: scran squared CV estimates versus BASiCS estimates for over-dispersion parameters. B: scran estimates for mean expression and the squared CV. C: BASiCS estimates for mean expression and over-dispersion parameters. D: BASiCS estimates for residual over-dispersion parameters versus DM values estimated by scran. E: scran estimates for mean expression and DM values. F: BASiCS estimates for mean expression and residual over-dispersion parameters. Dashed red lines in panels A and D represent the line given by x=y. "}
 
 ## Get BASiCS point estimates for mean and variability - SM cells
 summary_sm <- Summary(chain_sm)
@@ -845,14 +854,14 @@ g6 <- ggplot(parameter_df[sel_genes,], aes(log10(mean), residualoverdisp))
 ```
 
 
-As seen in Figure \@ref(fig:dispersion-vs-mean)A, CV^2^ and posterior estimates 
+As seen in Figure \@ref(fig:fig5-dispersion-vs-mean)A, CV^2^ and posterior estimates 
 for $\delta_i$ are highly correlated. 
 Moreover, both variability metrics are confounded by differences in mean 
 expression, i.e. highly expressed genes tend to exhibit lower variability
-(Figures \@ref(fig:dispersion-vs-mean)B-C). 
+(Figures \@ref(fig:fig5-dispersion-vs-mean)B-C). 
 We note, however, that `r Biocpkg("scran")` infers a more narrow distribution of
 transcriptional variability estimates for any given mean expression level.
-To remove the confounding observed in Figures \@ref(fig:dispersion-vs-mean)B-C, 
+To remove the confounding observed in Figures \@ref(fig:fig5-dispersion-vs-mean)B-C, 
 `r Biocpkg("scran")` and `r Biocpkg("BASiCS")` derive *residual variability* 
 estimates as deviations with respect to an global mean-variability trend 
 (see *Methods*).
@@ -860,8 +869,8 @@ These are derived using the DM approach [@Kolodziejczyk2015cell] and the
 residual over-dispersion parameters $\epsilon_i$ defined by [@Eling2018],
 respectively.
 For the somitic mesoderm cell data, both approaches led to correlated 
-estimates (Figure \@ref(fig:dispersion-vs-mean)D, Pearson's correlation equal 
-to `r with(parameter_df, cor(DM, residualoverdisp))`) but the residual 
+estimates (Figure \@ref(fig:fig5-dispersion-vs-mean)D, Pearson's correlation equal 
+to `r round(with(parameter_df, cor(DM, residualoverdisp, use="complete.obs")), digits=2)`) but the residual 
 variability estimates generated for these data are less consistent than what we 
 have observed in the context of less sparse data (see the `AnalysisCD4T`
 document in the Zenodo repository for this manuscript (see [Data availability](#data-availability)). 
@@ -874,13 +883,13 @@ sign for their residual variability estimates.
 
 Finally, as expected, we observe that
 neither DM values nor posterior estimates for $\epsilon_i$ are 
-associated with mean expression (Figure \@ref(fig:dispersion-vs-mean)E-F).
+associated with mean expression (Figure \@ref(fig:fig5-dispersion-vs-mean)E-F).
 However, unlike the DM method, the integrated approach implemented in 
 `r Biocpkg("BASiCS")` provides a direct measure of statistical uncertainty for 
 these estimates via posterior variance. 
 
 
-## HVG/LVG detection using BASiCS
+### HVG/LVG detection using BASiCS
 
 In `r Biocpkg("BASiCS")`, the functions `BASiCS_DetectHVG` and 
 `BASiCS_DetectLVG` can be used to identify genes with substantially high (HVG) 
@@ -945,7 +954,7 @@ rowData(sce_sm) <- merge(
 Performing HVG and LVG detection involves identifying a posterior probability
 threshold that matches a target EFDR. We perform this choice using a 
 grid search in which EFDR is calculated for a range of different probability 
-thresholds between 0.5 and 1. As seen in Figure \@ref(fig:efdr-plot-vg-SM),
+thresholds between 0.5 and 1. As seen in Figure \@ref(fig:fig6-efdr-plot-vg-SM),
 for the somitic mesoderm cells, this leads to a threshold of 
 `r hvg@ProbThreshold` and `r lvg@ProbThreshold` for HVG and LVG detection, 
 respectively (the value of these thresholds can be extracted from the 
@@ -957,7 +966,7 @@ threshold of $\frac{2}{3}$ is used.
 This default threshold value can be changed using the `ProbThreshold` to
 `BASiCS_DetectHVG` and `BASiCS_DetectLVG`.
 
-```{r efdr-plot-vg-SM, fig.cap = "Lines representing the EFDR and EFNR for a range of posterior probability thresholds for the HVG (A) and LVG (B) detection tasks. The target EFDR is indicated by dashed horizontal lines, while the chosen posterior probability threshold is indicated by a vertical dashed line."}
+```{r fig6-efdr-plot-vg-SM, fig.cap = "Lines representing the EFDR and EFNR for a range of posterior probability thresholds for the HVG (A) and LVG (B) detection tasks. The target EFDR is indicated by dashed horizontal lines, while the chosen posterior probability threshold is indicated by a vertical dashed line."}
 p1 <- BASiCS_PlotVG(hvg, Plot = "Grid")
 p2 <- BASiCS_PlotVG(lvg, Plot = "Grid") 
 
@@ -967,7 +976,7 @@ p1 + p2 +
   theme(legend.position = "bottom")
 ```
 
-```{r plot-vg-SM, fig.cap="HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
+```{r fig7-plot-vg-SM, fig.cap="HVG and LVG detection using BASiCS. For each gene, BASiCS posterior estimates (posterior medians) associated to mean expression and residual over-dispersion parameters are plotted. Genes are coloured according to HVG/LVG status. Genes that are not expressed in at least 2 cells are excluded."}
 plotRowData(sce_sm, x = "Mu", y = "Epsilon", colour_by = "VG") + 
   scale_x_log10() + 
   geom_hline(yintercept = c(-log(2), 0, log(2)), lty = 2) +
@@ -979,17 +988,17 @@ plotRowData(sce_sm, x = "Mu", y = "Epsilon", colour_by = "VG") +
 
 For the somitic mesoderm cells data, we obtained 
 *`r sum(hvg@Table$HVG, na.rm=TRUE)`* HVG and *`r sum(lvg@Table$LVG, na.rm=TRUE)`* LVG.
-As shown in Figure \@ref(fig:plot-vg-SM), these genes are distributed across 
+As shown in Figure \@ref(fig:fig7-plot-vg-SM), these genes are distributed across 
 a wide range of mean expression values. 
-As an illustration, Figure \@ref(fig:plot-example-vg-SM) shows the 
+As an illustration, Figure \@ref(fig:fig8-plot-example-vg-SM) shows the 
 distribution of normalised expression values for selected HVG and LVG, focusing 
 on examples with similar mean expression levels.
 As expected, HVG tend to exhibit a wider and potentially bimodal
-distribution (Figure \@ref(fig:plot-example-vg-SM)A).
+distribution (Figure \@ref(fig:fig8-plot-example-vg-SM)A).
 Instead, LVG tend to have more narrow and unimodal distributions 
-(Figure \@ref(fig:plot-example-vg-SM)B).
+(Figure \@ref(fig:fig8-plot-example-vg-SM)B).
 
-```{r plot-example-vg-SM, fig.cap = "BASiCS denoised counts for example HVG (A) and LVG (B) with similar overall levels of expression."}
+```{r fig8-plot-example-vg-SM, fig.cap = "BASiCS denoised counts for example HVG (A) and LVG (B) with similar overall levels of expression."}
 ## Obtain normalised expression values and store them as an assay in sce_sm
 assay(sce_sm, "BASiCS_norm") <- BASiCS_DenoisedCounts(
   sce_sm, chain_sm, WithSpikes = FALSE
@@ -1030,7 +1039,7 @@ plot_lvg <- plotExpression(
 plot_hvg + plot_lvg + plot_annotation(tag_levels = "A")
 ```
 
-## Differential mean and variability testing using BASiCS
+### Differential mean and variability testing using BASiCS
 
 This section highlights the use of `r Biocpkg("BASiCS")` to perform differential 
 expression tests for mean and variability between different pre-specified 
@@ -1108,13 +1117,13 @@ We do not perform this here, but a relevant workflow is described by
 We first focus on the differential mean expression test. MA-plots
 (log fold change M versus mean average A) and volcano plots (posterior 
 probability versus log fold change) are popular graphical summaries in this
-context, and are presented in Figure \@ref(fig:visualise-DE-mean-plot). These
+context, and are presented in Figure \@ref(fig:fig9-visualise-DE-mean-plot). These
 can be useful in ensuring that suitable magnitude and confidence thresholds have
 been chosen. In this instance, it is clear that a large number of genes are
 differentially expressed between the two conditions, and the selected
 probability threshold is suitable.
 
-```{r visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between somitic and pre-somitic cells. Log-fold changes of average expression in somitic cells relative to pre-somitic cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in somitic cells relative to pre-somitic mesoderm cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
+```{r fig9-visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between somitic and pre-somitic cells. Log-fold changes of average expression in somitic cells relative to pre-somitic cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in somitic cells relative to pre-somitic mesoderm cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
 p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano",
   TransLogit = TRUE) ## logit-transforms the Y-axis, which can be clearer.
@@ -1165,7 +1174,7 @@ To visualise expression patterns for multiple genes at once, we use the
 Bioconductor package `r Biocpkg("ComplexHeatmap")` [@Gu2016] package, grouping
 genes according to the result of the differential mean expression test 
 (i.e. up-regulated in somitic/pre-somitic cells or non differentially expressed;
-see Figures \@ref(fig:heatmap-diffexp1), \@ref(fig:heatmap-diffexp2) and \@ref(fig:heatmap-diffexp3)). 
+see Figures \@ref(fig:fig10-heatmap-diffexp1), \@ref(fig:fig11-heatmap-diffexp2) and \@ref(fig:fig12-heatmap-diffexp3)). 
 For example, among the non DE group, we observe several genes encoding
 ribosomal proteins (e.g. *Rps14*). 
 Genes in this family have been previously observed to have stable expression
@@ -1284,20 +1293,20 @@ plot_heatmap <- function(table, condition, decreasing = TRUE) {
 First, we show genes up-regulated in somitic cells:
 
 
-```{r heatmap-diffexp1, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing genes up-regulated in PSM cells. For each group, 10 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
+```{r fig10-heatmap-diffexp1, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing genes up-regulated in PSM cells. For each group, 10 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 plot_heatmap(table_de, "PSM+")
 ```
 
 We can create a similar plot for genes up-regulated in SM cells:
 
-```{r heatmap-diffexp2, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing genes up-regulated in SM cells. For each group, 10 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
+```{r fig11-heatmap-diffexp2, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing genes up-regulated in SM cells. For each group, 10 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 plot_heatmap(table_de, "SM+")
 ```
 
 
 Finally, we show non-differentially expressed genes:
 
-```{r heatmap-diffexp3, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing non-differentially expressed genes. For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
+```{r fig12-heatmap-diffexp3, fig.width = 5, fig.height = 3.5, fig.cap="Normalised expression values ($\\log_{10}(x + 1)$ scale) for somitic and pre-somitic cells, showing non-differentially expressed genes. For each group, 15 example genes are shown. These were selected according to the ranking of their associated tail posterior probabilities associated to the differential mean expression test. Colour indicates expression level; colour bars on the right of heatmap segments indicate the inferred mean expression level (in log scale) for each gene in each population."}
 plot_heatmap(table_de, "NoDiff", decreasing = FALSE)
 ```
 
@@ -1311,13 +1320,13 @@ analysis.
 
 We can now visualise the changes in residual over-dispersion between somitic and 
 pre-somitic mesoderm cells in the form of a MA-plot 
-(Figure \@ref(fig:diff-res-plot)).
+(Figure \@ref(fig:fig13-diff-res-plot)).
 In this visualisation, the difference between the posterior medians of the 
 residual over-dispersion parameters $\epsilon_i$ are shown on the y-axis.
 Epsilon values for genes that are not expressed in at least 2 cells per 
 conditions are marked as `NA` and are therefore not displayed.
 
-```{r diff-res-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential residual over-dispersion test between somitic and pre-somitic cells. Differences of residual over-dispersion in somitic cells relative to pre-somitic mesoderm cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual over-dispersion in somitic cells relative to pre-somitic cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
+```{r fig13-diff-res-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential residual over-dispersion test between somitic and pre-somitic cells. Differences of residual over-dispersion in somitic cells relative to pre-somitic mesoderm cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual over-dispersion in somitic cells relative to pre-somitic cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "MA")
 p2 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "Volcano",
   TransLogit = TRUE)
@@ -1331,11 +1340,11 @@ For this, we first combine the results of the differential mean expression
 and the differential residual over-dispersion test.
 These are independent analyses, given that changes in residual
 over-dispersion are not confounded with changes
-in mean expression, as shown in Figure \@ref(fig:combine-results).
+in mean expression, as shown in Figure \@ref(fig:fig14-combine-results).
 <!---We further remove the genes that were excluded from the test and those 
 that are not expressed in at least 2 cells in either condition.---> 
 
-```{r combine-results, fig.cap="Difference in residual over-dispersion against $\\log_2$ fold change in mean expression."}
+```{r fig14-combine-results, fig.cap="Difference in residual over-dispersion against $\\log_2$ fold change in mean expression."}
 ## create list of generic plot parameters to use across a few plots
 plot_params <- list(
   geom_pointdensity(na.rm = TRUE),
@@ -1360,14 +1369,14 @@ ggplot(table_de) +
 
 While genes with significant changes in residual over-dispersion often have
 similar levels of mean expression, as seen in
-Figure \@ref(fig:var-plots)A and C,
+Figure \@ref(fig:fig15-var-plots)A and C,
 they may have a different proportion of zero counts in the two cell populations.
-Figure \@ref(fig:var-plots)B and D show that many genes with higher residual
+Figure \@ref(fig:fig15-var-plots)B and D show that many genes with higher residual
 over-dispersion in somitic cells have a lower proportion of zeros in pre-somitic
 mesoderm cells,
 and vice versa.
 
-```{r, var-plots, fig.width = 6, fig.height = 4, fig.cap="A, C: $\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
+```{r fig15-var-plots, fig.width = 6, fig.height = 4, fig.cap="A, C: $\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
 ## mean expression vs log2FC for genes with higher residual over-dispersion in
 ## somitic cells
 g1 <- ggplot(
@@ -1561,16 +1570,16 @@ differentially variable gene that we have defined, we can combine the plots
 together to visualise them simultaneously:
 
 
-```{r violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in somitic cells, and similar levels of detection in pre-somitic and somitic populations. B: Four genes with higher residual over-dispersion in somitic cells and different levels of detection in somitic and pre-somitic cells. C: Four genes with higher residual over-dispersion in pre-somitic cells and similar levels of detection in somitic and pre-somitic cells. D: Three genes with higher residual over-dispersion in pre-somitic cells and different levels of detection in somitic and pre-somitic cells."}
+```{r fig16-violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in somitic cells, and similar levels of detection in pre-somitic and somitic populations. B: Four genes with higher residual over-dispersion in somitic cells and different levels of detection in somitic and pre-somitic cells. C: Four genes with higher residual over-dispersion in pre-somitic cells and similar levels of detection in somitic and pre-somitic cells. D: Three genes with higher residual over-dispersion in pre-somitic cells and different levels of detection in somitic and pre-somitic cells."}
 (g1 + g2) / (g3 + g4) + plot_annotation(tag_levels = "A")
 ```
 
-Figure \@ref(fig:violin-diffresdisp) shows denoised counts for
+Figure \@ref(fig:fig16-violin-diffresdisp) shows denoised counts for
 genes with significant differences in residual over-dispersion, with each panel 
 showing a different type of expression patterns. 
 Exploration of such patterns is important component of any analysis of 
 differential variability, and should be undertaken with care.
-Figure \@ref(fig:violin-diffresdisp)B and \@ref(fig:violin-diffresdisp)D
+Figure \@ref(fig:fig16-violin-diffresdisp)B and \@ref(fig:fig16-violin-diffresdisp)D
 show genes with differing levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in somitic or pre-somitic mesoderm cells (B and D, 
 respectively).
@@ -1579,7 +1588,7 @@ one of the cell population.
 They may also represent genes that are markers of extrinsic variability, 
 for example cell sub-populations that differ in abundance between the cell populations in question. 
 In contrast, Figure
-\@ref(fig:violin-diffresdisp)A and \@ref(fig:violin-diffresdisp)C
+\@ref(fig:fig16-violin-diffresdisp)A and \@ref(fig:fig16-violin-diffresdisp)C
 show genes with similar levels of detection in both populations, as well as 
 higher levels of residual over-dispersion in somitic or pre-somitic mesoderm cells (A and C, 
 respectively). 
