@@ -5,14 +5,14 @@ This workflows runs using the docker image
 [alanocallaghan/bocker](https://hub.docker.com/repository/docker/alanocallaghan/bocker).
 To use the latest build of the docker
 ```bash
-docker pull alanocallaghan/bocker
+docker pull alanocallaghan/basicsworkflow2020-docker
 ```
 
 To run the docker image via Rstudio server. The code below ensures that the files in 
 /home/rstudio/mycode are available within the docker.
 
 ```bash
-docker run -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc alanocallaghan/bocker
+make server
 ```
 
 > NOTE: for Macbook users with an M1 chip, the following WARNING will be returned:
@@ -22,7 +22,7 @@ docker run -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc alanocal
 > To avoid that a `--platform=linux/amd64` can be added:
 > 
 > ```bash
-> docker run --platform=linux/amd64 -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc alanocallaghan/bocker
+> docker run --platform=linux/amd64 -p 8787:8787 -v $(pwd):/home/rstudio/mycode -e PASSWORD=bioc alanocallaghan/basicsworkflow2020-docker
 > ```
 > 
 > This issue has been documented by others e.g. [here](https://stackoverflow.com/questions/66662820/m1-docker-preview-and-keycloak-images-platform-linux-amd64-does-not-match-th)
@@ -33,5 +33,5 @@ Username: rstudio, password = bioc.
 
 Equivalently, to launch bash:
 ```bash
-docker run -v $(pwd):/home/rstudio/mycode -it alanocallaghan/bocker /bin/bash
+make run
 ```
