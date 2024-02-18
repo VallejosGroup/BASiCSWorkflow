@@ -365,17 +365,17 @@ may distort downstream analyses.
 The [*OSCA*](https://bioconductor.org/books/release/OSCA/) online book provides 
 an extensive overview on important aspects of how to perform QC of scRNA-seq 
 data, including exploratory analyses [@Amezquita2019].
-Here, we use QC diagnostics to identify and remove samples that correspond to 
+Generally, we use QC diagnostics to identify and remove samples that correspond to 
 broken cells, that are empty, or that contain multiple cells [@Ilicic2016]. 
 We also remove lowly expressed genes that represent less reliable 
 information.
 
-We use the Bioconductor package `r Biocpkg("scater")` package [@McCarthy2017] to 
+We recommend the Bioconductor package `r Biocpkg("scater")` package [@McCarthy2017] to 
 calculate QC metrics for each cell (e.g. total read-count) and gene 
 (e.g. percentage of zeroes across all cells), respectively. 
-We also use the visualisation tools implemented in the `r Biocpkg("scater")` to 
+We also recommend  the visualisation tools implemented in the `r Biocpkg("scater")` to 
 explore the input dataset and its associated QC diagnostic metrics. 
-To perform further exploratory data analysis, we use the Bioconductor package 
+To perform further exploratory data analysis, we recommend the Bioconductor package 
 `r Biocpkg("scran")` [@Lun2016].
 The latter is used to perform *global scaling* normalisation, calculating 
 cell-specific scaling factors that capture global differences in read-counts 
@@ -433,14 +433,15 @@ analysis, we feel that it has been covered in detail in other articles.
 For this analysis, we have performed quality control, pre-processing and 
 exploratory data analysis in the `DataPreparationBASiCSWorkflow` document of
 the Zenodo repository for this manuscript (see [Data availability](#data-availability)).
-The code presented there needs to be run before running the rest of this 
-workflow. Here, we load the pre-processed data. This consists of two separate 
+The code presented there reads the unprocessed raw data and prepares it for
+use in this workflow. Here, we load the pre-processed data.
+This consists of two separate 
 `SingleCellExperiment` data objects: one for presomitic and one for
 somitic mesoderm cells. 
 
 ```{r SCE-load}
 # Website where the files are located
-chains_website <- "https://zenodo.org/record/10251224/files/"
+files_website <- "https://zenodo.org/record/10251224/files/"
 # To avoid timeout issues as we are downloading large files
 options(timeout = 1000)
 # File download
@@ -448,13 +449,13 @@ options(timeout = 1000)
 ## After download, files are then stored in an `rds` sub-folder 
 if (!file.exists("rds/sce_sm.Rds")) {
   download.file(
-    paste0(chains_website, "sce_sm.Rds"),
+    paste0(files_website, "sce_sm.Rds"),
     destfile = "rds/sce_sm.Rds"
   )
 }
 if (!file.exists("rds/sce_psm.Rds")) {
   download.file(
-    paste0(chains_website, "sce_psm.Rds"),
+    paste0(files_website, "sce_psm.Rds"),
     destfile = "rds/sce_psm.Rds"
   )
 }
@@ -1123,7 +1124,7 @@ been chosen. In this instance, it is clear that a large number of genes are
 differentially expressed between the two conditions, and the selected
 probability threshold is suitable.
 
-```{r fig9-visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential mean expression test between somitic and pre-somitic cells. Log-fold changes of average expression in somitic cells relative to pre-somitic cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in somitic cells relative to pre-somitic mesoderm cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
+```{r fig9-visualise-DE-mean-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the mean-difference plot associated to the differential mean expression test between somitic and pre-somitic cells. Log-fold changes of average expression in somitic cells relative to pre-somitic cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Log-fold changes of average expression in somitic cells relative to pre-somitic mesoderm cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "MA")
 p2 <- BASiCS_PlotDE(test_de, Parameters = "Mean", Plots = "Volcano",
   TransLogit = TRUE) ## logit-transforms the Y-axis, which can be clearer.
@@ -1175,10 +1176,7 @@ Bioconductor package `r Biocpkg("ComplexHeatmap")` [@Gu2016] package, grouping
 genes according to the result of the differential mean expression test 
 (i.e. up-regulated in somitic/pre-somitic cells or non differentially expressed;
 see Figures \@ref(fig:fig10-heatmap-diffexp1), \@ref(fig:fig11-heatmap-diffexp2) and \@ref(fig:fig12-heatmap-diffexp3)). 
-For example, among the non DE group, we observe several genes encoding
-ribosomal proteins (e.g. *Rps14*). 
-Genes in this family have been previously observed to have stable expression
-across a wide range of scRNAseq datasets in mouse and human [@Lin2019].
+For example, among the non DE group, we observe *Cox5a*, a gene essential to mitochondrial function.
 Such visualisations may aid in the interpretation of such stable or 
 "housekeeping" genes, as well as genes which are up- or down-regulated in each
 population.
@@ -1326,7 +1324,7 @@ residual over-dispersion parameters $\epsilon_i$ are shown on the y-axis.
 Epsilon values for genes that are not expressed in at least 2 cells per 
 conditions are marked as `NA` and are therefore not displayed.
 
-```{r fig13-diff-res-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the MA plot associated to the differential residual over-dispersion test between somitic and pre-somitic cells. Differences of residual over-dispersion in somitic cells relative to pre-somitic mesoderm cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual over-dispersion in somitic cells relative to pre-somitic cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
+```{r fig13-diff-res-plot, fig.height = 8, fig.width = 6, fig.cap = "Upper panel presents the mean-difference plot associated to the differential residual over-dispersion test between somitic and pre-somitic cells. Differences of residual over-dispersion in somitic cells relative to pre-somitic mesoderm cells are plotted against average expression estimates combined across both groups of cells. Bottom panel presents the volcano plot associated to the same test. Differences of residual over-dispersion in somitic cells relative to pre-somitic cells are plotted against their associated tail posterior probabilities. Colour indicates the differential expression status for each gene, including a label to identify genes that were excluded from differential expression test due to low ESS."}
 p1 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "MA")
 p2 <- BASiCS_PlotDE(test_de, Parameters = "ResDisp", Plots = "Volcano",
   TransLogit = TRUE)
@@ -1570,7 +1568,7 @@ differentially variable gene that we have defined, we can combine the plots
 together to visualise them simultaneously:
 
 
-```{r fig16-violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in somitic cells, and similar levels of detection in pre-somitic and somitic populations. B: Four genes with higher residual over-dispersion in somitic cells and different levels of detection in somitic and pre-somitic cells. C: Four genes with higher residual over-dispersion in pre-somitic cells and similar levels of detection in somitic and pre-somitic cells. D: Three genes with higher residual over-dispersion in pre-somitic cells and different levels of detection in somitic and pre-somitic cells."}
+```{r fig16-violin-diffresdisp, fig.width = 7, fig.height = 5, fig.cap="Violin plots of denoised counts. A: Four genes with higher residual over-dispersion in somitic cells, and similar levels of detection in pre-somitic and somitic populations. B: Four genes with higher residual over-dispersion in somitic cells and different levels of detection in somitic and pre-somitic cells. C: Four genes with higher residual over-dispersion in pre-somitic cells and similar levels of detection in somitic and pre-somitic cells. D: Four genes with higher residual over-dispersion in pre-somitic cells and different levels of detection in somitic and pre-somitic cells."}
 (g1 + g2) / (g3 + g4) + plot_annotation(tag_levels = "A")
 ```
 
