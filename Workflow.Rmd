@@ -55,8 +55,7 @@ urlcolor: Orange
 #    fig_width: 6
 #    fig_height: 3.5
 output:
-  word_document:
-    reference_docx: f1000research-11-59-V1.docx
+  word_document
 csl: american-medical-association.csl
 ---
 
