@@ -50,12 +50,11 @@ keywords: Single-cell RNA sequencing, expression variability,
   transcriptional noise, differential expression testing
 bibliography: Workflow.bib
 urlcolor: Orange
-#output:
-#  BiocWorkflowTools::f1000_article:
-#    fig_width: 6
-#    fig_height: 3.5
-output:
-  word_document
+# output:
+#   BiocWorkflowTools::f1000_article:
+#     fig_width: 6
+#     fig_height: 3.5
+output: word_document
 csl: american-medical-association.csl
 ---
 
@@ -210,7 +209,7 @@ can be obtained from
 
 The `r Biocpkg("BASiCS")` Bioconductor package uses a Bayesian hierarchical 
 model to simultaneously perform data normalisation, technical noise 
-quantification and downstream analyses [@Vallejos2015BASiCS;@Vallejos2016;@Eling2018]
+quantification and downstream analyses [@Vallejos2015;@Vallejos2016;@Eling2018]
 within a cell population or populations under study. In this context,
 cell populations could correspond to groups set a priori by the experimental
 design (e.g. naive or stimulated CD4+ T cells in [@Martinez-jimenez2017]),
@@ -1364,16 +1363,15 @@ ggplot(table_de) +
   )
 ```
 
-While genes with significant changes in residual over-dispersion often have
+Genes with significant changes in residual over-dispersion often have
 similar levels of mean expression, as seen in
-Figure \@ref(fig:fig15-var-plots)A and C,
-they may have a different proportion of zero counts in the two cell populations.
-Figure \@ref(fig:fig15-var-plots)B and D show that many genes with higher residual
-over-dispersion in somitic cells have a lower proportion of zeros in pre-somitic
-mesoderm cells,
-and vice versa.
+Figure \@ref(fig:fig15-var-plots).
+However, they may have a different proportion of zero counts in the two cell
+populations, indicating a more bursting expression pattern, or similar proportion
+of zero counts but more varying expression levels. We will now explore ways to 
+identify genes in each of these categories.
 
-```{r fig15-var-plots, fig.width = 6, fig.height = 4, fig.cap="A, C: $\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (C) cells. B, D: Proportion of expressed cells for genes, with higher residual over-dispersion in somitic cells (B) and pre-somitic mesoderm (D) cells. Dashed red lines in panels A and C represent a log fold change of zero, meaning no change in average expression. Dashed red lines in panels B and D represent the line described by y=x, representing equal detection levels in both populations."}
+```{r fig15-var-plots, fig.width = 6, fig.height = 4, fig.cap="$\\log_2$ change in expression against log mean expression for genes with higher residual over-dispersion in somitic (A) cells and pre-somitic mesoderm (B) cells. Dashed red lines represent a log fold change of zero, meaning no change in average expression."}
 ## mean expression vs log2FC for genes with higher residual over-dispersion in
 ## somitic cells
 g1 <- ggplot(
