@@ -50,11 +50,11 @@ keywords: Single-cell RNA sequencing, expression variability,
   transcriptional noise, differential expression testing
 bibliography: Workflow.bib
 urlcolor: Orange
-# output:
-#   BiocWorkflowTools::f1000_article:
-#     fig_width: 6
-#     fig_height: 3.5
-output: word_document
+output:
+  BiocWorkflowTools::f1000_article:
+    fig_width: 6
+    fig_height: 3.5
+# output: word_document
 csl: american-medical-association.csl
 ---
 
